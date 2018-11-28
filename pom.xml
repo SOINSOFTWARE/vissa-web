@@ -86,6 +86,12 @@
 			<artifactId>spring-context</artifactId>
 			<version>4.3.8.RELEASE</version>
 		</dependency>
+		<dependency>
+			<groupId>com.soinsoftware.vissa</groupId>
+			<artifactId>vissa-model</artifactId>
+			<version>1.0.0</version>
+			<scope>compile</scope>
+		</dependency>
 	</dependencies>
 
 	<build>

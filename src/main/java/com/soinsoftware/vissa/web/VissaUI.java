@@ -9,6 +9,7 @@ import javax.servlet.annotation.WebServlet;
 
 import org.apache.log4j.Logger;
 
+import com.soinsoftware.vissa.manager.VissaManagerFactory;
 import com.vaadin.annotations.VaadinServletConfiguration;
 import com.vaadin.navigator.Navigator;
 import com.vaadin.navigator.ViewChangeListener;
@@ -70,10 +71,17 @@ public class VissaUI extends UI {
 
 	@Override
 	protected void init(VaadinRequest vaadinRequest) {
-		getPage().setTitle("Vissa ERP");
-		addStyleName(ValoTheme.UI_WITH_MENU);
-		Responsive.makeResponsive(this);
-		buildUI(getUser());
+		try {
+			VissaManagerFactory.getInstance();
+			getPage().setTitle("Vissa ERP");
+			addStyleName(ValoTheme.UI_WITH_MENU);
+			Responsive.makeResponsive(this);
+			buildUI(getUser());
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
 	}
 
 	private void buildValoMenuLayout() {
@@ -189,6 +197,7 @@ public class VissaUI extends UI {
 		ComponentContainer viewContainer = root.getContentContainer();
 		Navigator navigator = new Navigator(this, viewContainer);
 		navigator.addView(KEY_HISTORIES, DefaultView.class);
+		navigator.addView(KEY_PET_TYPE, SupplierLayout.class);
 		navigator.setErrorView(DefaultView.class);
 
 		navigator.addViewChangeListener(new ViewChangeListener() {
