@@ -52,19 +52,21 @@ public class VissaUI extends UI {
 	private static final String KEY_BREED = "breed";
 	private static final String KEY_COMPANY_DATA = "companyData";
 	private static final String KEY_DRENCHING = "drenching";
-	private static final String KEY_EVENTS = "events";
+	private static final String KEY_PURCHASES = "Compras";
 	private static final String KEY_FOOD_BRAND = "foodBrand";
-	private static final String KEY_HISTORIES = "histories";
-	private static final String KEY_PET_TYPE = "petType";
+	private static final String KEY_SALES = "Ventas";
+	private static final String KEY_SUPPLIER = "supplier";
+	private static final String KEY_SUPPLIER_LIST = "supplierList";
 	private static final String KEY_VACCINE = "vaccine";
-	private static final String VALUE_BREED = "Raza";
-	private static final String VALUE_COMPANY_DATA = "Datos de la veterinaria";
+	private static final String VALUE_BREED = "Productos";
+	private static final String VALUE_COMPANY_DATA = "Datos de la compañía";
 	private static final String VALUE_CONFIGURATIONS = "Configuración";
 	private static final String VALUE_DRENCHING = "Productos antiparasitarios";
-	private static final String VALUE_EVENTS = "Eventos";
+	private static final String VALUE_PURCHASES = "Compras";
 	private static final String VALUE_FOOD_BRAND = "Alimentos de mascotas";
-	private static final String VALUE_HISTORIES = "Historias";
-	private static final String VALUE_PET_TYPE = "Especies";
+	private static final String VALUE_SALES = "Ventas";
+	private static final String VALUE_SUPPLIER = "Proveedores";
+	private static final String VALUE_SUPPLIER_LIST = "Lista de provedores";
 	private static final String VALUE_VACCINE = "Productos de vacunación";
 	private LinkedHashMap<String, String> menuItems = new LinkedHashMap<String, String>();
 	private LinkedHashMap<String, FontAwesome> menuIconItems = new LinkedHashMap<String, FontAwesome>();
@@ -96,10 +98,10 @@ public class VissaUI extends UI {
 	}
 
 	private void buildMenuItems() {
-		menuItems.put(KEY_EVENTS, VALUE_EVENTS);
-		menuItems.put(KEY_HISTORIES, VALUE_HISTORIES);
+		menuItems.put(KEY_PURCHASES, VALUE_PURCHASES);
+		menuItems.put(KEY_SALES, VALUE_SALES);
 		menuItems.put(KEY_COMPANY_DATA, VALUE_COMPANY_DATA);
-		menuItems.put(KEY_PET_TYPE, VALUE_PET_TYPE);
+		menuItems.put(KEY_SUPPLIER, VALUE_SUPPLIER);
 		menuItems.put(KEY_BREED, VALUE_BREED);
 		menuItems.put(KEY_FOOD_BRAND, VALUE_FOOD_BRAND);
 		menuItems.put(KEY_VACCINE, VALUE_VACCINE);
@@ -107,10 +109,10 @@ public class VissaUI extends UI {
 	}
 
 	private void buildMenuIconItems() {
-		menuIconItems.put(KEY_EVENTS, FontAwesome.LIST);
-		menuIconItems.put(KEY_HISTORIES, FontAwesome.AMBULANCE);
+		menuIconItems.put(KEY_PURCHASES, FontAwesome.LIST);
+		menuIconItems.put(KEY_SALES, FontAwesome.AMBULANCE);
 		menuIconItems.put(KEY_COMPANY_DATA, FontAwesome.BOOK);
-		menuIconItems.put(KEY_PET_TYPE, FontAwesome.BOOKMARK);
+		menuIconItems.put(KEY_SUPPLIER, FontAwesome.BOOKMARK);
 		menuIconItems.put(KEY_BREED, FontAwesome.TAGS);
 		menuIconItems.put(KEY_FOOD_BRAND, FontAwesome.NEWSPAPER_O);
 		menuIconItems.put(KEY_VACCINE, FontAwesome.PRODUCT_HUNT);
@@ -196,8 +198,10 @@ public class VissaUI extends UI {
 	private void buildNavigator(ValoMenuLayout root, CssLayout menu, CssLayout menuItemsLayout) {
 		ComponentContainer viewContainer = root.getContentContainer();
 		Navigator navigator = new Navigator(this, viewContainer);
-		navigator.addView(KEY_HISTORIES, DefaultView.class);
-		navigator.addView(KEY_PET_TYPE, SupplierLayout.class);
+		navigator.addView(KEY_SALES, DefaultView.class);
+		navigator.addView(KEY_SUPPLIER, SupplierLayout.class);
+		navigator.addView(KEY_PURCHASES, PurchaseLayout.class);
+		navigator.addView(KEY_SUPPLIER_LIST, SupplierListLayout.class);
 		navigator.setErrorView(DefaultView.class);
 
 		navigator.addViewChangeListener(new ViewChangeListener() {
