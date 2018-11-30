@@ -75,15 +75,27 @@ public class SupplierListLayout extends VerticalLayout implements View {
 		tittle.addStyleName(ValoTheme.LABEL_H1);
 		addComponent(tittle);
 
+		Button backButton = new Button("Regresar", FontAwesome.BACKWARD);
+		HorizontalLayout buttonLayout = new HorizontalLayout();
+		buttonLayout.setSpacing(true);
+		buttonLayout.setMargin(true);
+		buttonLayout.addComponents(backButton);
 		grid = new Grid<>();
 		fillGridData();
+		grid.addColumn(Person::getDocumentType).setCaption("Tipo de documento");
+		grid.addColumn(Person::getDocumentNumber).setCaption("Documento");
 		grid.addColumn(Person::getName).setCaption("Nombre");
 		grid.setSelectionMode(SelectionMode.SINGLE);
-		grid.setSizeFull();
+		
 
-		Panel dataPanel = new Panel(grid);
-		dataPanel.addStyleName("well");
-		addComponent(dataPanel);
+		HorizontalLayout gridLayout = new HorizontalLayout();
+		gridLayout.setSpacing(true);
+		gridLayout.setMargin(true);
+		gridLayout.addComponents(backButton);
+		
+		//Panel dataPanel = new Panel(grid);
+	//	dataPanel.addStyleName("well");
+		addComponents(buttonLayout,gridLayout);
 	}
 
 	

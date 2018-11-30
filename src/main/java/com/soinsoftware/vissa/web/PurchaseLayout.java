@@ -70,7 +70,7 @@ public class PurchaseLayout extends VerticalLayout implements View {
 		txtBillNumber.setValue("12313");
 		txtSupplier = new TextField("Proveedor");
 
-		Button searchSupplierButton = new Button("Buscar", FontAwesome.SAVE);
+		Button searchSupplierButton = new Button("Buscar", FontAwesome.MAP_O);
 		searchSupplierButton.addClickListener(e -> searchSupplier(""));
 		
 		dtPurchaseDate = new DateField("Fecha");
