@@ -4,23 +4,27 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Date;
 
+import com.soinsoftware.vissa.bll.PersonBll;
 import com.soinsoftware.vissa.bll.SupplierBll;
 import com.soinsoftware.vissa.model.BankAccount;
 import com.soinsoftware.vissa.model.BankAccountType;
-import com.soinsoftware.vissa.model.DocumentType;
+import com.soinsoftware.vissa.model.DocumentIdType;
 import com.soinsoftware.vissa.model.PaymentMethod;
 import com.soinsoftware.vissa.model.PaymentType;
 import com.soinsoftware.vissa.model.Person;
 import com.soinsoftware.vissa.model.PersonType;
 import com.soinsoftware.vissa.model.Supplier;
+import com.vaadin.data.provider.ConfigurableFilterDataProvider;
 import com.vaadin.data.provider.ListDataProvider;
 import com.vaadin.navigator.View;
 import com.vaadin.navigator.ViewChangeListener.ViewChangeEvent;
 import com.vaadin.server.FontAwesome;
 import com.vaadin.server.Page;
+import com.vaadin.server.SerializablePredicate;
 import com.vaadin.ui.Button;
 import com.vaadin.ui.ComboBox;
 import com.vaadin.ui.FormLayout;
+import com.vaadin.ui.Grid;
 import com.vaadin.ui.HorizontalLayout;
 import com.vaadin.ui.Label;
 import com.vaadin.ui.Notification;
@@ -37,9 +41,10 @@ public class SupplierLayout extends VerticalLayout implements View {
 	private static final long serialVersionUID = 5076502522106126046L;
 
 	private final SupplierBll bll;
+	
 
 	private TextField txtDocumentId;
-	private ComboBox<DocumentType> cbDocumentType;
+	private ComboBox<DocumentIdType> cbDocumentType;
 	private TextField txtName;
 	private TextField txtLastName;
 	private ComboBox<PaymentType> cbPaymentType;
@@ -49,11 +54,15 @@ public class SupplierLayout extends VerticalLayout implements View {
 	private ComboBox<BankAccountType> cbaAccountType;
 	private ComboBox<BankAccount> cbBank;
 	private ComboBox<Object> cbAccountStatus;
+	
 	Supplier supplier = new Supplier();
+	private ConfigurableFilterDataProvider<Person, Void, SerializablePredicate<Person>> filterDataProvider;
+	
 
 	public SupplierLayout() throws IOException {
 		super();
 		bll = SupplierBll.getInstance();
+		
 	}
 
 	@Override
@@ -73,10 +82,10 @@ public class SupplierLayout extends VerticalLayout implements View {
 		cbDocumentType.setDescription("Tipo");
 		cbDocumentType.setEmptySelectionAllowed(false);
 		
-		ListDataProvider<DocumentType> dataProvider = new ListDataProvider<>(
-				Arrays.asList(DocumentType.CC, DocumentType.CE, DocumentType.NIT, DocumentType.PASSPORT));
+		ListDataProvider<DocumentIdType> dataProvider = new ListDataProvider<>(
+				Arrays.asList(DocumentIdType.CC, DocumentIdType.CE, DocumentIdType.NIT, DocumentIdType.PASSPORT));
 		cbDocumentType.setDataProvider(dataProvider);
-		cbDocumentType.setItemCaptionGenerator(DocumentType::getDisplay);
+		cbDocumentType.setItemCaptionGenerator(DocumentIdType::getDisplay);
 		
 		txtName = new TextField("Nombres");
 		txtLastName = new TextField("Apellidos");
@@ -166,11 +175,12 @@ public class SupplierLayout extends VerticalLayout implements View {
 		addComponent(form);
 	}
 
+
 	private void save(Supplier supplier) {
 		System.out.println("save");
 
 		// ***
-		DocumentType docType = cbDocumentType.getSelectedItem().get();
+		DocumentIdType docType = cbDocumentType.getSelectedItem().get();
 		System.out.println("docType=" + docType);
 
 		String docId = txtDocumentId.getValue();

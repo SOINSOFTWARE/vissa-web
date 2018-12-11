@@ -9,7 +9,7 @@ import com.soinsoftware.vissa.bll.PersonBll;
 import com.soinsoftware.vissa.bll.SupplierBll;
 import com.soinsoftware.vissa.model.BankAccount;
 import com.soinsoftware.vissa.model.BankAccountType;
-import com.soinsoftware.vissa.model.DocumentType;
+import com.soinsoftware.vissa.model.DocumentIdType;
 import com.soinsoftware.vissa.model.PaymentMethod;
 import com.soinsoftware.vissa.model.PaymentType;
 import com.soinsoftware.vissa.model.Person;
@@ -46,7 +46,7 @@ public class SupplierListLayout extends VerticalLayout implements View {
 
 	private Grid<Person> grid;
 	private TextField txtDocumentId;
-	private ComboBox<DocumentType> cbDocumentType;
+	private ComboBox<DocumentIdType> cbDocumentType;
 	private TextField txtName;
 	private TextField txtLastName;
 	private ComboBox<PaymentType> cbPaymentType;
@@ -111,7 +111,7 @@ public class SupplierListLayout extends VerticalLayout implements View {
 		System.out.println("save");
 
 		// ***
-		DocumentType docType = cbDocumentType.getSelectedItem().get();
+		DocumentIdType docType = cbDocumentType.getSelectedItem().get();
 		System.out.println("docType=" + docType);
 
 		String docId = txtDocumentId.getValue();

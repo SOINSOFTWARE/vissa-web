@@ -15,8 +15,11 @@ import com.vaadin.navigator.Navigator;
 import com.vaadin.navigator.ViewChangeListener;
 import com.vaadin.server.ClassResource;
 import com.vaadin.server.FontAwesome;
+import com.vaadin.server.Resource;
 import com.vaadin.server.Responsive;
+import com.vaadin.server.ThemeResource;
 import com.vaadin.server.VaadinRequest;
+import com.vaadin.server.VaadinService;
 import com.vaadin.server.VaadinServlet;
 import com.vaadin.shared.ui.ContentMode;
 import com.vaadin.ui.Alignment;
@@ -49,7 +52,7 @@ public class VissaUI extends UI {
 
 	private static final long serialVersionUID = 7412593442523938389L;
 	private static final Logger log = Logger.getLogger(VissaUI.class);
-	private static final String KEY_BREED = "breed";
+	private static final String KEY_PRODUCTS = "products";
 	private static final String KEY_COMPANY_DATA = "companyData";
 	private static final String KEY_DRENCHING = "drenching";
 	private static final String KEY_PURCHASES = "Compras";
@@ -58,12 +61,12 @@ public class VissaUI extends UI {
 	private static final String KEY_SUPPLIER = "supplier";
 	private static final String KEY_SUPPLIER_LIST = "supplierList";
 	private static final String KEY_VACCINE = "vaccine";
-	private static final String VALUE_BREED = "Productos";
+	private static final String VALUE_PRODUCTS = "Productos";
 	private static final String VALUE_COMPANY_DATA = "Datos de la compañía";
 	private static final String VALUE_CONFIGURATIONS = "Configuración";
 	private static final String VALUE_DRENCHING = "Productos antiparasitarios";
 	private static final String VALUE_PURCHASES = "Compras";
-	private static final String VALUE_FOOD_BRAND = "Alimentos de mascotas";
+	private static final String VALUE_FOOD_BRAND = "Clientes";
 	private static final String VALUE_SALES = "Ventas";
 	private static final String VALUE_SUPPLIER = "Proveedores";
 	private static final String VALUE_SUPPLIER_LIST = "Lista de provedores";
@@ -102,21 +105,21 @@ public class VissaUI extends UI {
 		menuItems.put(KEY_SALES, VALUE_SALES);
 		menuItems.put(KEY_COMPANY_DATA, VALUE_COMPANY_DATA);
 		menuItems.put(KEY_SUPPLIER, VALUE_SUPPLIER);
-		menuItems.put(KEY_BREED, VALUE_BREED);
+		menuItems.put(KEY_PRODUCTS, VALUE_PRODUCTS);
 		menuItems.put(KEY_FOOD_BRAND, VALUE_FOOD_BRAND);
-		menuItems.put(KEY_VACCINE, VALUE_VACCINE);
-		menuItems.put(KEY_DRENCHING, VALUE_DRENCHING);
+	//	menuItems.put(KEY_VACCINE, VALUE_VACCINE);
+		//menuItems.put(KEY_DRENCHING, VALUE_DRENCHING);
 	}
 
 	private void buildMenuIconItems() {
 		menuIconItems.put(KEY_PURCHASES, FontAwesome.LIST);
-		menuIconItems.put(KEY_SALES, FontAwesome.AMBULANCE);
+		menuIconItems.put(KEY_SALES, FontAwesome.LIST);
 		menuIconItems.put(KEY_COMPANY_DATA, FontAwesome.BOOK);
 		menuIconItems.put(KEY_SUPPLIER, FontAwesome.BOOKMARK);
-		menuIconItems.put(KEY_BREED, FontAwesome.TAGS);
+		menuIconItems.put(KEY_PRODUCTS, FontAwesome.TAGS);
 		menuIconItems.put(KEY_FOOD_BRAND, FontAwesome.NEWSPAPER_O);
-		menuIconItems.put(KEY_VACCINE, FontAwesome.PRODUCT_HUNT);
-		menuIconItems.put(KEY_DRENCHING, FontAwesome.PRODUCT_HUNT);
+	//	menuIconItems.put(KEY_VACCINE, FontAwesome.PRODUCT_HUNT);
+		//menuIconItems.put(KEY_DRENCHING, FontAwesome.PRODUCT_HUNT);
 	}
 
 	private CssLayout buildMenu(ValoMenuLayout root) {
@@ -163,7 +166,16 @@ public class VissaUI extends UI {
 		Company company = getUser().getCompany();
 		MenuBar settings = new MenuBar();
 		settings.addStyleName("user-menu");
-		MenuItem settingsItem = settings.addItem(company.getName(), new ClassResource("new-logo-white.png"), null);
+		String basepath = VaadinService.getCurrent()
+                .getBaseDirectory().getAbsolutePath();
+		System.out.println("basepath="+basepath);
+	//	MenuItem settingsItem = settings.addItem(company.getName(), new ClassResource("logoKisam.png"), null);
+		MenuItem settingsItem = settings.addItem(company.getName());
+		Resource res = new ClassResource(this.getClass(), "../logoKisam.png");
+		ThemeResource  tem =new ThemeResource(basepath);
+	
+		
+		settingsItem.setIcon(tem);
 		settingsItem.addItem("Cerrar session", e -> buildUI(null));
 		return settings;
 	}
@@ -200,6 +212,7 @@ public class VissaUI extends UI {
 		Navigator navigator = new Navigator(this, viewContainer);
 		navigator.addView(KEY_SALES, DefaultView.class);
 		navigator.addView(KEY_SUPPLIER, SupplierLayout.class);
+		navigator.addView(KEY_PRODUCTS, ProductLayout.class);
 		navigator.addView(KEY_PURCHASES, PurchaseLayout.class);
 		navigator.addView(KEY_SUPPLIER_LIST, SupplierListLayout.class);
 		navigator.setErrorView(DefaultView.class);
