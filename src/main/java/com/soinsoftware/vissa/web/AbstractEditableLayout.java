@@ -7,8 +7,6 @@ import org.vaadin.dialogs.ConfirmDialog;
 
 import com.soinsoftware.vissa.bll.AbstractBll;
 import com.soinsoftware.vissa.exception.ModelValidationException;
-
-import com.soinsoftware.vissa.model.CommonData;
 import com.soinsoftware.vissa.util.ViewHelper;
 import com.vaadin.navigator.View;
 import com.vaadin.navigator.ViewChangeListener.ViewChangeEvent;
@@ -17,6 +15,7 @@ import com.vaadin.server.Page;
 import com.vaadin.server.Resource;
 import com.vaadin.ui.AbstractOrderedLayout;
 import com.vaadin.ui.Button;
+import com.vaadin.ui.Component;
 import com.vaadin.ui.HorizontalLayout;
 import com.vaadin.ui.Label;
 import com.vaadin.ui.Notification;
@@ -162,7 +161,7 @@ public abstract class AbstractEditableLayout<E> extends VerticalLayout implement
 		} catch (HibernateException ex) {
 			log.error(ex);
 			//bll.rollback();
-			ViewHelper.showNotification("Los datos no pudieron ser salvados, contacte al desarrollador (3007200405)",
+			ViewHelper.showNotification("Los datos no pudieron ser salvados, contacte al administrador (3007200405)",
 					Notification.Type.ERROR_MESSAGE);
 		}
 	}
@@ -183,12 +182,12 @@ public abstract class AbstractEditableLayout<E> extends VerticalLayout implement
 	}
 
 	protected abstract AbstractOrderedLayout buildListView();
-
+	
 	protected abstract AbstractOrderedLayout buildEditionView(E entity);
 
 	protected abstract Panel buildGridPanel();
 
-	protected abstract Panel buildEditionPanel(E entity);
+	protected abstract Component buildEditionComponent(E entity);
 
 	protected abstract void fillGridData();
 

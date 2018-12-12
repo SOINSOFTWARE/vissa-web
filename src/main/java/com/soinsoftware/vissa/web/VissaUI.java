@@ -54,7 +54,7 @@ public class VissaUI extends UI {
 	private static final Logger log = Logger.getLogger(VissaUI.class);
 	private static final String KEY_PRODUCTS = "products";
 	private static final String KEY_COMPANY_DATA = "companyData";
-	private static final String KEY_DRENCHING = "drenching";
+	private static final String KEY_INVENTORY = "inventory";
 	private static final String KEY_PURCHASES = "Compras";
 	private static final String KEY_FOOD_BRAND = "foodBrand";
 	private static final String KEY_SALES = "Ventas";
@@ -64,9 +64,9 @@ public class VissaUI extends UI {
 	private static final String VALUE_PRODUCTS = "Productos";
 	private static final String VALUE_COMPANY_DATA = "Datos de la compañía";
 	private static final String VALUE_CONFIGURATIONS = "Configuración";
-	private static final String VALUE_DRENCHING = "Productos antiparasitarios";
+	private static final String VALUE_INVENTORY = "Inventario";
 	private static final String VALUE_PURCHASES = "Compras";
-	private static final String VALUE_FOOD_BRAND = "Clientes";
+	private static final String VALUE_CUSTOMERS = "Clientes";
 	private static final String VALUE_SALES = "Ventas";
 	private static final String VALUE_SUPPLIER = "Proveedores";
 	private static final String VALUE_SUPPLIER_LIST = "Lista de provedores";
@@ -106,7 +106,8 @@ public class VissaUI extends UI {
 		menuItems.put(KEY_COMPANY_DATA, VALUE_COMPANY_DATA);
 		menuItems.put(KEY_SUPPLIER, VALUE_SUPPLIER);
 		menuItems.put(KEY_PRODUCTS, VALUE_PRODUCTS);
-		menuItems.put(KEY_FOOD_BRAND, VALUE_FOOD_BRAND);
+		menuItems.put(KEY_FOOD_BRAND, VALUE_CUSTOMERS);
+		menuItems.put(KEY_INVENTORY, VALUE_INVENTORY);
 	//	menuItems.put(KEY_VACCINE, VALUE_VACCINE);
 		//menuItems.put(KEY_DRENCHING, VALUE_DRENCHING);
 	}
@@ -114,6 +115,7 @@ public class VissaUI extends UI {
 	private void buildMenuIconItems() {
 		menuIconItems.put(KEY_PURCHASES, FontAwesome.LIST);
 		menuIconItems.put(KEY_SALES, FontAwesome.LIST);
+		menuIconItems.put(KEY_INVENTORY, FontAwesome.PRODUCT_HUNT);
 		menuIconItems.put(KEY_COMPANY_DATA, FontAwesome.BOOK);
 		menuIconItems.put(KEY_SUPPLIER, FontAwesome.BOOKMARK);
 		menuIconItems.put(KEY_PRODUCTS, FontAwesome.TAGS);
@@ -214,6 +216,7 @@ public class VissaUI extends UI {
 		navigator.addView(KEY_SUPPLIER, SupplierLayout.class);
 		navigator.addView(KEY_PRODUCTS, ProductLayout.class);
 		navigator.addView(KEY_PURCHASES, PurchaseLayout.class);
+		navigator.addView(KEY_INVENTORY, InventoryLayout.class);
 		navigator.addView(KEY_SUPPLIER_LIST, SupplierListLayout.class);
 		navigator.setErrorView(DefaultView.class);
 

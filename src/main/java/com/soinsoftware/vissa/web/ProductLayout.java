@@ -19,6 +19,7 @@ import com.vaadin.server.SerializablePredicate;
 import com.vaadin.ui.AbstractOrderedLayout;
 import com.vaadin.ui.Button;
 import com.vaadin.ui.ComboBox;
+import com.vaadin.ui.Component;
 import com.vaadin.ui.FormLayout;
 import com.vaadin.ui.Grid;
 import com.vaadin.ui.Grid.SelectionMode;
@@ -83,7 +84,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 	protected AbstractOrderedLayout buildEditionView(Product entity) {
 		VerticalLayout layout = ViewHelper.buildVerticalLayout(false, false);
 		Panel buttonPanel = buildButtonPanelForEdition(entity);
-		Panel dataPanel = buildEditionPanel(entity);
+		Component dataPanel = buildEditionComponent(entity);
 		layout.addComponents(buttonPanel, dataPanel);
 		return layout;
 	}
@@ -100,26 +101,29 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 	}
 
 	@Override
-	protected Panel buildEditionPanel(Product product) {
+	protected Component buildEditionComponent(Product product) {
 		/// 1. Informacion producto
 		txtCode = new TextField("Código del producto");
+		txtCode.setWidth("50%");
 		txtCode.setValue(product != null ? product.getCode() : "");
 		txtName = new TextField("Nombre del producto");
+		txtName.setWidth("50%");
 		txtName.setValue(product != null ? product.getName() : "");
 		txtDescription = new TextField("Descripción");
-		System.out.println("desc="+product.getDescription());
+		txtDescription.setWidth("50%");
 		txtDescription.setValue(product != null && product.getDescription() != null ? product.getDescription() : "");
 
 		cbCategory = new ComboBox<>("Categoría");
-		cbCategory.setDescription("Categoría");
+		//cbCategory.setDescription("Categoría");
+		cbCategory.setWidth("50%");
 		cbCategory.setEmptySelectionAllowed(false);
 		ListDataProvider<ProductCategory> categoryDataProv = new ListDataProvider<>(categoryBll.selectAll());
 		cbCategory.setDataProvider(categoryDataProv);
-		cbCategory.setItemCaptionGenerator(ProductCategory::getName);
+		cbCategory.setItemCaptionGenerator(ProductCategory::getName);		
 		cbCategory.setValue(product != null ? product.getCategory() : null);
 
 		cbType = new ComboBox<>("Tipo de producto");
-		cbType.setDescription("Tipo de producto");
+		cbType.setWidth("50%");
 		cbType.setEmptySelectionAllowed(false);
 		ListDataProvider<ProductType> typeDataProv = new ListDataProvider<>(typeBll.selectAll());
 		cbType.setDataProvider(typeDataProv);
@@ -127,6 +131,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		cbType.setValue(product != null ? product.getType() : null);
 
 		cbMeasurementUnit = new ComboBox<>("Unidad de medida");
+		cbMeasurementUnit.setWidth("50%");
 		cbMeasurementUnit.setDescription("Unidad de medida");
 		cbMeasurementUnit.setEmptySelectionAllowed(false);
 		ListDataProvider<MeasurementUnit> measurementDataProv = new ListDataProvider<>(measurementUnitBll.selectAll());
@@ -135,38 +140,40 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		cbMeasurementUnit.setValue(product != null ? product.getMeasurementUnit() : null);
 
 		txtEan = new TextField("EAN");
-		txtEan.setValue(product != null ? product.getEanCode() : "");
+		txtEan.setWidth("50%");
+		txtEan.setValue(product != null && product.getEanCode() != null ? product.getEanCode() : "");
 
-		txtSalePrice = new TextField("Precio de venta");
-		String salePrice = product.getSalePrice() != null ? String.valueOf(product.getSalePrice()) : "";
-		txtSalePrice.setValue(product != null ? salePrice : "");
-		
-		txtPurchasePrice = new TextField("Precio de compra");
-		String purchasePrice = product.getPurchasePrice() != null ? String.valueOf(product.getPurchasePrice()) : "";
-		txtPurchasePrice.setValue(product != null ? purchasePrice : "");
-		
-		txtSaleTax = new TextField("Impuesto de venta");
-		String saleTax = product.getSaleTax() != null ? String.valueOf(product.getSaleTax()) : "";
-		txtSaleTax.setValue(product != null ? saleTax : "");
-		
-		txtPurchaseTax = new TextField("Impuesto de compra");
-		String purchaseTax = product.getPurchaseTax() != null ? String.valueOf(product.getPurchaseTax()) : "";
-		txtPurchaseTax.setValue(product != null ? purchaseTax : "");
+		txtSalePrice = new TextField("Precio de venta");	
+		txtSalePrice.setWidth("50%");
+		txtSalePrice.setValue(product != null && product.getSalePrice() != null ? String.valueOf(product.getSalePrice()) : "");
+
+		txtPurchasePrice = new TextField("Precio de compra");	
+		txtPurchasePrice.setWidth("50%");
+		txtPurchasePrice.setValue(product != null && product.getPurchasePrice() != null ? String.valueOf(product.getPurchasePrice()) : "");
+
+		txtSaleTax = new TextField("Impuesto de venta");		
+		txtSaleTax.setWidth("50%");
+		txtSaleTax.setValue(product != null && product.getSaleTax() != null ? String.valueOf(product.getSaleTax()) : "");
+
+		txtPurchaseTax = new TextField("Impuesto de compra");		
+		txtPurchaseTax.setWidth("50%");
+		txtPurchaseTax.setValue(product != null && product.getPurchaseTax() != null ? String.valueOf(product.getPurchaseTax()) : "");
 
 		// -------------------------------------------------------------------------
 
 		final FormLayout form = new FormLayout();
-		form.setMargin(false);
-		form.setWidth("800px");
+		form.setMargin(true);
+		form.setCaption ("Datos del producto");
+		form.setCaptionAsHtml(true);
+		form.setSizeFull();
+		form.setWidth("50%");
 		form.addStyleName(ValoTheme.FORMLAYOUT_LIGHT);
 
 		form.addComponents(txtCode, txtName, txtDescription, cbCategory, cbType, cbMeasurementUnit, txtSalePrice,
 				txtPurchasePrice, txtSaleTax, txtPurchaseTax);
 
-		VerticalLayout layout = ViewHelper.buildVerticalLayout(true, true);
-		layout.setWidth("40%");
-		layout.addComponent(form);
-		return ViewHelper.buildPanel(null, layout);
+		
+		return form;
 	}
 
 	@Override
@@ -216,7 +223,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 
 	@Override
 	protected void delete(Product entity) {
-		entity = Product.builder(entity).archived(false).build();
+		entity = Product.builder(entity).archived(true).build();
 		save(productBll, entity, "Produto borrado");
 	}
 
