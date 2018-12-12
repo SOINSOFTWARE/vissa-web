@@ -7,6 +7,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
+import com.soinsoftware.vissa.bll.PaymentMethodBll;
+import com.soinsoftware.vissa.bll.PaymentTypeBll;
 import com.soinsoftware.vissa.bll.PersonBll;
 import com.soinsoftware.vissa.bll.ProductBll;
 import com.soinsoftware.vissa.bll.SupplierBll;
@@ -45,6 +47,8 @@ public class PurchaseLayout extends VerticalLayout implements View {
 	private final SupplierBll supplierBll;
 	private final PersonBll personBll;
 	private final ProductBll productBll;
+	private final PaymentMethodBll payMethodBll;
+	private final PaymentTypeBll payTypeBll;
 
 	private TextField txtDocNumber;
 	private TextField txtRefSupplier;
@@ -74,6 +78,8 @@ public class PurchaseLayout extends VerticalLayout implements View {
 		supplierBll = SupplierBll.getInstance();
 		personBll = PersonBll.getInstance();
 		productBll = ProductBll.getInstance();
+		payMethodBll = PaymentMethodBll.getInstance();
+		payTypeBll = PaymentTypeBll.getInstance();
 		itemsList  = new ArrayList<>(); 
 	}
 
@@ -103,9 +109,9 @@ public class PurchaseLayout extends VerticalLayout implements View {
 
 		cbPaymentType = new ComboBox<PaymentType>("Forma de pago");
 		ListDataProvider<PaymentType> dataProvider3 = new ListDataProvider<>(
-				Arrays.asList(PaymentType.PRE_PAID, PaymentType.PAID, PaymentType.POST_PAID));
+				payTypeBll.selectAll());
 		cbPaymentType.setDataProvider(dataProvider3);
-		cbPaymentType.setItemCaptionGenerator(PaymentType::getDisplay);
+		cbPaymentType.setItemCaptionGenerator(PaymentType::getName);
 
 		txtPaymentTerm = new TextField("Plazo");
 
@@ -294,7 +300,8 @@ public class PurchaseLayout extends VerticalLayout implements View {
 		}
 
 		DocumentDetail  docDetail = new DocumentDetail();
-		docDetail.setProduct(productSelected);
+		DocumentDetail.Builder docDetailBuilder = DocumentDetail.builder();
+		docDetail = docDetailBuilder.product(productSelected).archived(false).build();
 		itemsList.add(docDetail);
 		fillDocDetailGridData(itemsList);
 		productSubWindow.close();

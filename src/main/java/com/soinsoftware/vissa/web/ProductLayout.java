@@ -8,7 +8,6 @@ import com.soinsoftware.vissa.bll.ProductBll;
 import com.soinsoftware.vissa.bll.ProductCategoryBll;
 import com.soinsoftware.vissa.bll.ProductTypeBll;
 import com.soinsoftware.vissa.model.MeasurementUnit;
-import com.soinsoftware.vissa.model.Person;
 import com.soinsoftware.vissa.model.Product;
 import com.soinsoftware.vissa.model.ProductCategory;
 import com.soinsoftware.vissa.model.ProductType;
@@ -58,8 +57,8 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 	private TextField txtPurchaseTax;
 
 	Product product = new Product();
-	private ConfigurableFilterDataProvider<Product, Void, SerializablePredicate<Product>> filterDataProvider;
-	private ConfigurableFilterDataProvider<Product, Void, SerializablePredicate<Person>> filterProductDataProv;
+	private ConfigurableFilterDataProvider<Product, Void, SerializablePredicate<Product>> filterProductDataProvider;
+	
 
 	public ProductLayout() throws IOException {
 		super("Productos");
@@ -89,6 +88,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		return layout;
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
 	protected Panel buildGridPanel() {
 		grid = ViewHelper.buildGrid(SelectionMode.SINGLE);
@@ -179,8 +179,8 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 	@Override
 	protected void fillGridData() {
 		ListDataProvider<Product> dataProvider = new ListDataProvider<>(productBll.selectAll());
-		filterDataProvider = dataProvider.withConfigurableFilter();
-		grid.setDataProvider(filterDataProvider);
+		filterProductDataProvider = dataProvider.withConfigurableFilter();
+		grid.setDataProvider(filterProductDataProvider);
 
 	}
 
@@ -245,7 +245,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 	}
 
 	private void refreshGrid() {
-		filterDataProvider.setFilter(filterGrid());
+		filterProductDataProvider.setFilter(filterGrid());
 		grid.getDataProvider().refreshAll();
 	}
 

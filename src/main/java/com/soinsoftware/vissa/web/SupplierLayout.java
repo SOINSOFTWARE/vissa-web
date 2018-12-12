@@ -2,9 +2,9 @@ package com.soinsoftware.vissa.web;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Date;
 
-import com.soinsoftware.vissa.bll.PersonBll;
+import com.soinsoftware.vissa.bll.PaymentMethodBll;
+import com.soinsoftware.vissa.bll.PaymentTypeBll;
 import com.soinsoftware.vissa.bll.SupplierBll;
 import com.soinsoftware.vissa.model.BankAccount;
 import com.soinsoftware.vissa.model.BankAccountType;
@@ -14,21 +14,17 @@ import com.soinsoftware.vissa.model.PaymentType;
 import com.soinsoftware.vissa.model.Person;
 import com.soinsoftware.vissa.model.PersonType;
 import com.soinsoftware.vissa.model.Supplier;
-import com.vaadin.data.provider.ConfigurableFilterDataProvider;
 import com.vaadin.data.provider.ListDataProvider;
 import com.vaadin.navigator.View;
 import com.vaadin.navigator.ViewChangeListener.ViewChangeEvent;
 import com.vaadin.server.FontAwesome;
 import com.vaadin.server.Page;
-import com.vaadin.server.SerializablePredicate;
 import com.vaadin.ui.Button;
 import com.vaadin.ui.ComboBox;
 import com.vaadin.ui.FormLayout;
-import com.vaadin.ui.Grid;
 import com.vaadin.ui.HorizontalLayout;
 import com.vaadin.ui.Label;
 import com.vaadin.ui.Notification;
-import com.vaadin.ui.Panel;
 import com.vaadin.ui.TextField;
 import com.vaadin.ui.VerticalLayout;
 import com.vaadin.ui.themes.ValoTheme;
@@ -40,7 +36,9 @@ public class SupplierLayout extends VerticalLayout implements View {
 	 */
 	private static final long serialVersionUID = 5076502522106126046L;
 
-	private final SupplierBll bll;
+	private final SupplierBll supplierBll;
+	private final PaymentMethodBll payMethodBll;
+	private final PaymentTypeBll payTypeBll;
 	
 
 	private TextField txtDocumentId;
@@ -56,12 +54,14 @@ public class SupplierLayout extends VerticalLayout implements View {
 	private ComboBox<Object> cbAccountStatus;
 	
 	Supplier supplier = new Supplier();
-	private ConfigurableFilterDataProvider<Person, Void, SerializablePredicate<Person>> filterDataProvider;
+	
 	
 
 	public SupplierLayout() throws IOException {
 		super();
-		bll = SupplierBll.getInstance();
+		supplierBll = SupplierBll.getInstance();
+		payMethodBll = PaymentMethodBll.getInstance();
+		payTypeBll = PaymentTypeBll.getInstance();
 		
 	}
 
@@ -92,16 +92,14 @@ public class SupplierLayout extends VerticalLayout implements View {
 
 		// 2. Condiciones comerciales
 		cbPaymentType = new ComboBox<>("Tipo de pago");
-		ListDataProvider<PaymentType> dataProvider3 = new ListDataProvider<>(
-				Arrays.asList(PaymentType.PRE_PAID, PaymentType.POST_PAID,PaymentType.POST_PAID));
+		ListDataProvider<PaymentType> dataProvider3 = new ListDataProvider<>(payTypeBll.selectAll());
 		cbPaymentType.setDataProvider(dataProvider3);
-		cbPaymentType.setItemCaptionGenerator(PaymentType::getDisplay);
+		cbPaymentType.setItemCaptionGenerator(PaymentType::getName);
 		
 		cbPaymentMethod = new ComboBox<>("Forma de pago");
-		ListDataProvider<PaymentMethod> dataProvider4 = new ListDataProvider<>(
-				Arrays.asList(PaymentMethod.CASH, PaymentMethod.BANK_TRANSFER,PaymentMethod.BANK_DEPOSIT));
+		ListDataProvider<PaymentMethod> dataProvider4 = new ListDataProvider<>(payMethodBll.selectAll());
 		cbPaymentMethod.setDataProvider(dataProvider4);
-		cbPaymentMethod.setItemCaptionGenerator(PaymentMethod::getDisplay);
+		cbPaymentMethod.setItemCaptionGenerator(PaymentMethod::getName);
 		
 		txtPaymentTerm = new TextField("Plazo");
 
@@ -191,7 +189,7 @@ public class SupplierLayout extends VerticalLayout implements View {
 
 		person = Person.builder().documentType(docType).documentNumber(docId).name(name).lastName(lastName).type(PersonType.SUPPLIER).build();
 		supplier = Supplier.builder().person(person).build();
-		bll.save(supplier);
+		supplierBll.save(supplier);
 
 		new Notification("Proveedor guardado", Notification.Type.TRAY_NOTIFICATION).show(Page.getCurrent());
 	}
