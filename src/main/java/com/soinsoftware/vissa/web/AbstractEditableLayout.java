@@ -27,6 +27,7 @@ import com.vaadin.ui.VerticalLayout;
 @SuppressWarnings("deprecation")
 public abstract class AbstractEditableLayout<E> extends VerticalLayout implements View {
 
+	//
 	private static final long serialVersionUID = -7958396636831213220L;
 	protected static final Logger log = Logger.getLogger(AbstractEditableLayout.class);
 
