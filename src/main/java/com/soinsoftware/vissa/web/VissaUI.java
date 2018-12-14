@@ -1,5 +1,6 @@
 package com.soinsoftware.vissa.web;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -13,11 +14,9 @@ import com.soinsoftware.vissa.manager.VissaManagerFactory;
 import com.vaadin.annotations.VaadinServletConfiguration;
 import com.vaadin.navigator.Navigator;
 import com.vaadin.navigator.ViewChangeListener;
-import com.vaadin.server.ClassResource;
+import com.vaadin.server.FileResource;
 import com.vaadin.server.FontAwesome;
-import com.vaadin.server.Resource;
 import com.vaadin.server.Responsive;
-import com.vaadin.server.ThemeResource;
 import com.vaadin.server.VaadinRequest;
 import com.vaadin.server.VaadinService;
 import com.vaadin.server.VaadinServlet;
@@ -171,14 +170,9 @@ public class VissaUI extends UI {
 		settings.addStyleName("user-menu");
 		String basepath = VaadinService.getCurrent()
                 .getBaseDirectory().getAbsolutePath();
-		System.out.println("basepath="+basepath);
-	//	MenuItem settingsItem = settings.addItem(company.getName(), new ClassResource("logoKisam.png"), null);
-		MenuItem settingsItem = settings.addItem(company.getName());
-		Resource res = new ClassResource(this.getClass(), "../logoKisam.png");
-		ThemeResource  tem =new ThemeResource(basepath);
-	
-		
-		settingsItem.setIcon(tem);
+		FileResource resource = new FileResource(new File(basepath +
+                "/WEB-INF/logoKisam.png"));
+		MenuItem settingsItem = settings.addItem(company.getName(), resource, null);
 		settingsItem.addItem("Cerrar session", e -> buildUI(null));
 		return settings;
 	}
