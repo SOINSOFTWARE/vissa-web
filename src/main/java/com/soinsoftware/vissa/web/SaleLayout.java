@@ -66,7 +66,7 @@ import com.vaadin.ui.VerticalLayout;
 import com.vaadin.ui.Window;
 import com.vaadin.ui.themes.ValoTheme;
 
-public class PurchaseLayout extends VerticalLayout implements View {
+public class SaleLayout extends VerticalLayout implements View {
 
 	/**
 	 * 
@@ -112,7 +112,7 @@ public class PurchaseLayout extends VerticalLayout implements View {
 	List<DocumentDetail> itemsList = null;
 	protected static final Logger log = Logger.getLogger(AbstractEditableLayout.class);
 
-	public PurchaseLayout() throws IOException {
+	public SaleLayout() throws IOException {
 		super();
 		supplierBll = SupplierBll.getInstance();
 		personBll = PersonBll.getInstance();
@@ -134,7 +134,7 @@ public class PurchaseLayout extends VerticalLayout implements View {
 		View.super.enter(event);
 
 		setMargin(true);
-		Label tittle = new Label("Pedido");
+		Label tittle = new Label("Venta");
 		tittle.addStyleName(ValoTheme.LABEL_H1);
 		addComponent(tittle);
 
@@ -142,12 +142,12 @@ public class PurchaseLayout extends VerticalLayout implements View {
 		/// 1. Informacion encabezado facuta
 		txtDocNumber = new TextField("Número de factura");
 		txtDocNumber.setEnabled(false);
-
+		txtDocNumber.setValue("FV-"+documentBll.selectMaxDoc());
 		txtRefSupplier = new TextField("Referencia proveedor");
-		txtSupplier = new TextField("Proveedor");
+		txtSupplier = new TextField("Cliente");
 		txtSupplier.setWidth("250px");
 
-		Button searchSupplierButton = new Button("Buscar proveedor", FontAwesome.SEARCH);
+		Button searchSupplierButton = new Button("Buscar Cliente", FontAwesome.SEARCH);
 		searchSupplierButton.addClickListener(e -> searchSupplier(""));
 		searchSupplierButton.addStyleName(ValoTheme.BUTTON_ICON_ONLY);
 
@@ -162,10 +162,6 @@ public class PurchaseLayout extends VerticalLayout implements View {
 		ListDataProvider<DocumentType> dataProviderD = new ListDataProvider<>(docTypeBll.selectAll());
 		cbDocumentType.setDataProvider(dataProviderD);
 		cbDocumentType.setItemCaptionGenerator(DocumentType::getName);
-		cbDocumentType.addValueChangeListener(e -> {
-			numDoc(cbDocumentType.getValue());
-		});
-		
 
 		ListDataProvider<PaymentType> dataProvider3 = new ListDataProvider<>(payTypeBll.selectAll());
 		cbPaymentType.setDataProvider(dataProvider3);
@@ -190,8 +186,7 @@ public class PurchaseLayout extends VerticalLayout implements View {
 
 		HorizontalLayout headerLayout = new HorizontalLayout();
 
-		headerLayout.addComponents(cbDocumentType, txtDocNumber, txtRefSupplier, txtSupplier, searchSupplierButton,
-				dtPurchaseDate);
+		headerLayout.addComponents(txtDocNumber, txtSupplier, searchSupplierButton, dtPurchaseDate);
 
 		HorizontalLayout headerLayout2 = new HorizontalLayout();
 		headerLayout2.addComponents(cbPaymentType, txtPaymentTerm, dtExpirationDate, cbPaymentMethod);
@@ -345,12 +340,6 @@ public class PurchaseLayout extends VerticalLayout implements View {
 		dtExpirationDate.setValue(lDate2);
 
 	}
-	
-	private void numDoc(DocumentType val) {
-		System.out.println("numDoc" + val.getCode());
-		txtDocNumber.setValue(val.getCode() + "-" + documentBll.selectMaxDoc());
-
-	}
 
 	@Transactional(rollbackFor = Exception.class)
 	private void saveButtonAction(Document entity) {
@@ -361,8 +350,8 @@ public class PurchaseLayout extends VerticalLayout implements View {
 			docBuilder = Document.builder(entity);
 		}
 		DocumentType.Builder docTypeBuilder = DocumentType.builder();
-		docTypeBuilder.id(BigInteger.valueOf(1));
-		docTypeBuilder.code("CO").name("Factura de Venta");
+		docTypeBuilder.id(BigInteger.valueOf(4));
+		docTypeBuilder.code("VF").name("Factura de Venta");
 		Date docDate = Date.from(dtPurchaseDate.getValue().atStartOfDay(ZoneId.systemDefault()).toInstant());
 
 		Set<DocumentDetail> details = new HashSet<>();
@@ -376,7 +365,7 @@ public class PurchaseLayout extends VerticalLayout implements View {
 
 		Set<DocumentDetail> set = new HashSet<DocumentDetail>(list);
 
-		entity = docBuilder.code(txtDocNumber.getValue()).documentType(cbDocumentType.getValue()).person(personSelected)
+		entity = docBuilder.code(txtDocNumber.getValue()).documentType(docTypeBuilder.build()).person(personSelected)
 				.documentDate(docDate).paymentMethod(cbPaymentMethod.getValue()).paymentType(cbPaymentType.getValue())
 				.paymentTerm(txtPaymentTerm.getValue()).build();
 
@@ -400,11 +389,8 @@ public class PurchaseLayout extends VerticalLayout implements View {
 
 		System.out.println("entity=" + entity.getId());
 
+		// Guardar Detail
 		for (DocumentDetail detObj : list) {
-			if(detObj.getDescription() == null ) {
-				ViewHelper.showNotification("Cantidad no ingresada", Notification.Type.ERROR_MESSAGE);
-			}
-			// Guardar Detail
 			DocumentDetail.Builder detailBuilder = DocumentDetail.builder();
 			// Document.Builder docuBuilder = Document.builder();
 			// Document doc = docuBuilder.id(entity.getId()).build();
@@ -418,19 +404,18 @@ public class PurchaseLayout extends VerticalLayout implements View {
 			InventoryTransaction.Builder invBuilder = InventoryTransaction.builder();
 			Document.Builder docuBuilder = Document.builder();
 			Document doc = docuBuilder.id(entity.getId()).documentDate(entity.getDocumentDate()).build();
-			InventoryTransactionType txType = InventoryTransactionType.ENTRADA;
-			ProductStock ps = stockBll.select(detObj.getProduct());			
+			InventoryTransactionType txType = InventoryTransactionType.SALIDA;
+			ProductStock ps = stockBll.select(detObj.getProduct());
 			int initialStock = ps != null ? ps.getStock() : 0;
-			System.out.println("initialStock="+initialStock);
-			System.out.println("cant="+cant);
-			int finalStock = initialStock != 0 ? initialStock - cant: cant;
-			System.out.println("finalStock="+finalStock);
+			System.out.println("initialStock=" + initialStock);
+			System.out.println("cant=" + cant);
+			int finalStock = initialStock != 0 ? initialStock - cant : cant;
+			System.out.println("finalStock=" + finalStock);
 			InventoryTransaction inv = invBuilder.product(detObj.getProduct()).transactionType(txType)
 					.initialStock(initialStock).quantity(cant).finalStock(finalStock).document(entity).build();
 
 			// Actualizar stock
 			ProductStock.Builder stockBuilder = ProductStock.builder();
-
 			ProductStock stock = stockBuilder.product(detObj.getProduct()).stock(finalStock).stockDate(new Date())
 					.build();
 
@@ -513,10 +498,8 @@ public class PurchaseLayout extends VerticalLayout implements View {
 		productGrid.addColumn(Product::getCode).setCaption("Código");
 		productGrid.addColumn(Product::getName).setCaption("Nombre");
 		productGrid.addColumn(Product::getDescription).setCaption("Descripción");
-		productGrid.addColumn(Product::getMeasurementUnit).setCaption("Unidad de medida");
 		productGrid.addColumn(Product::getPurchasePrice).setCaption("Precio de compra");
 		productGrid.addColumn(Product::getSalePrice).setCaption("Precio de venta");
-
 		productGrid.setSelectionMode(SelectionMode.SINGLE);
 		productGrid.setSizeFull();
 
@@ -586,7 +569,7 @@ public class PurchaseLayout extends VerticalLayout implements View {
 		backButton.addStyleName(ValoTheme.BUTTON_DANGER);
 		Button selectButton = new Button("Seleccionar", FontAwesome.CHECK);
 		selectButton.addStyleName(ValoTheme.BUTTON_PRIMARY);
-		Button productButton = new Button("Crear proveedor", FontAwesome.PLUS);
+		Button productButton = new Button("Crear cliente", FontAwesome.PLUS);
 		productButton.addStyleName(ValoTheme.BUTTON_FRIENDLY);
 
 		HorizontalLayout buttonLayout = new HorizontalLayout();

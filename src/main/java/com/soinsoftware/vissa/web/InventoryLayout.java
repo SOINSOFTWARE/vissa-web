@@ -101,7 +101,7 @@ public class InventoryLayout extends AbstractEditableLayout<Product> {
 		
 		inventoryGrid.addColumn(InventoryTransaction::getInitialStock).setCaption("Cantidad inicial");
 		inventoryGrid.addColumn(InventoryTransaction::getQuantity).setCaption("Cantidad del movimiento");
-		inventoryGrid.addColumn(InventoryTransaction::getInitialStock).setCaption("Cantidad final");
+		inventoryGrid.addColumn(InventoryTransaction::getFinalStock).setCaption("Cantidad final");
 	
 		fillGridData();
 		return ViewHelper.buildPanel(null, inventoryGrid);

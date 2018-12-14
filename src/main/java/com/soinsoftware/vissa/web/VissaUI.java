@@ -207,7 +207,7 @@ public class VissaUI extends UI {
 	private void buildNavigator(ValoMenuLayout root, CssLayout menu, CssLayout menuItemsLayout) {
 		ComponentContainer viewContainer = root.getContentContainer();
 		Navigator navigator = new Navigator(this, viewContainer);
-		navigator.addView(KEY_SALES, DefaultView.class);
+		navigator.addView(KEY_SALES, SaleLayout.class);
 		navigator.addView(KEY_SUPPLIER, SupplierLayout.class);
 		navigator.addView(KEY_PRODUCTS, ProductLayout.class);
 		navigator.addView(KEY_PURCHASES, PurchaseLayout.class);
