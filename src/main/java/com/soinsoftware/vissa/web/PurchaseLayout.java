@@ -7,6 +7,9 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
+import javax.swing.DefaultCellEditor;
+import javax.swing.JTextField;
+
 import com.soinsoftware.vissa.bll.PaymentMethodBll;
 import com.soinsoftware.vissa.bll.PaymentTypeBll;
 import com.soinsoftware.vissa.bll.PersonBll;
@@ -14,12 +17,14 @@ import com.soinsoftware.vissa.bll.ProductBll;
 import com.soinsoftware.vissa.bll.SupplierBll;
 import com.soinsoftware.vissa.model.BankAccount;
 import com.soinsoftware.vissa.model.DocumentDetail;
+import com.soinsoftware.vissa.model.PaymentMethod;
 import com.soinsoftware.vissa.model.PaymentType;
 import com.soinsoftware.vissa.model.Person;
 import com.soinsoftware.vissa.model.Product;
 import com.soinsoftware.vissa.model.Supplier;
 import com.vaadin.data.provider.ConfigurableFilterDataProvider;
 import com.vaadin.data.provider.ListDataProvider;
+import com.vaadin.icons.VaadinIcons;
 import com.vaadin.navigator.View;
 import com.vaadin.navigator.ViewChangeListener.ViewChangeEvent;
 import com.vaadin.server.FontAwesome;
@@ -57,6 +62,7 @@ public class PurchaseLayout extends VerticalLayout implements View {
 	private ComboBox<PaymentType> cbPaymentType;
 	private TextField txtPaymentTerm;
 	private DateField dtExpirationDate;
+	private ComboBox<PaymentMethod> cbPaymentMethod;
 	private ComboBox<BankAccount> cbCurrency;
 	private Grid<Person> personGrid;
 	private Grid<Product> productGrid;	
@@ -100,6 +106,7 @@ public class PurchaseLayout extends VerticalLayout implements View {
 		txtDocNumber.setValue("12313");
 		txtRefSupplier = new TextField("Referencia proveedor");
 		txtSupplier = new TextField("Proveedor");
+		txtSupplier.setWidth("250px");
 
 		Button searchSupplierButton = new Button("Buscar proveedor", FontAwesome.SEARCH);
 		searchSupplierButton.addClickListener(e -> searchSupplier(""));
@@ -108,6 +115,7 @@ public class PurchaseLayout extends VerticalLayout implements View {
 		dtPurchaseDate = new DateField("Fecha");
 
 		cbPaymentType = new ComboBox<PaymentType>("Forma de pago");
+		cbPaymentType.setWidth("250px");
 		ListDataProvider<PaymentType> dataProvider3 = new ListDataProvider<>(
 				payTypeBll.selectAll());
 		cbPaymentType.setDataProvider(dataProvider3);
@@ -117,13 +125,22 @@ public class PurchaseLayout extends VerticalLayout implements View {
 
 		dtExpirationDate = new DateField("Fecha de Vencimiento");
 
+		cbPaymentMethod = new ComboBox<PaymentMethod>("Método de pago");
+		cbPaymentMethod.setWidth("250px");
+		ListDataProvider<PaymentMethod> payMethoddataProvider = new ListDataProvider<>(payMethodBll.selectAll());
+		cbPaymentMethod.setDataProvider(payMethoddataProvider);
+		cbPaymentMethod.setItemCaptionGenerator(PaymentMethod::getName);
+
 		cbCurrency = new ComboBox<>("Moneda");
 
 		HorizontalLayout headerLayout = new HorizontalLayout();
-		// headerLayout.setSpacing(true);
-		// headerLayout.setMargin(true);
-		headerLayout.addComponents(txtDocNumber, txtRefSupplier, txtSupplier, searchSupplierButton, dtPurchaseDate,
-				cbPaymentType, txtPaymentTerm, dtExpirationDate);
+	
+		headerLayout.addComponents(txtDocNumber, txtRefSupplier, txtSupplier, searchSupplierButton, dtPurchaseDate);
+		
+		
+		HorizontalLayout headerLayout2 = new HorizontalLayout();
+		headerLayout2.addComponents(
+				cbPaymentType, txtPaymentTerm,  dtExpirationDate, cbPaymentMethod);
 
 		headerLayout.setComponentAlignment(searchSupplierButton, Alignment.BOTTOM_CENTER);
 
@@ -206,12 +223,28 @@ public class PurchaseLayout extends VerticalLayout implements View {
 		}).setCaption("Precio");
 		
 		docDetailGrid.addColumn(DocumentDetail::getDescription).setCaption("Descripcion");
-		docDetailGrid.addColumn(DocumentDetail::getQuantity).setCaption("Cantidad");
+		
+		JTextField field = new JTextField();
+		 DefaultCellEditor editor1 = new DefaultCellEditor(field);
+	        editor1.setClickCountToStart(1);
+	        TextField tf = new TextField();
+	     
+	//	docDetailGrid.addColumn(DocumentDetail::getQuantity).setCaption("Cantidad").setEditorComponent(tf,DocumentDetail::setQuantity);
+	
+		
+		
+	        Button button = new Button(VaadinIcons.CLOSE);
+	        button.addStyleName(ValoTheme.BUTTON_SMALL);
+	        
+	      //.addComponentColumn(this::button);
+
+		
 		docDetailGrid.addColumn(DocumentDetail::getSubtotal).setCaption("Subtotal");
 
 		// grid2.setSelectionMode(SelectionMode.SINGLE);
 		// grid2.setColumnReorderingAllowed(true);
-		docDetailGrid.setEnabled(true);
+		docDetailGrid.getEditor().setEnabled(true);
+		
 
 		ListDataProvider<DocumentDetail> dataProvider4 = new ListDataProvider<>(Arrays.asList(new DocumentDetail()));
 		ConfigurableFilterDataProvider<DocumentDetail, Void, SerializablePredicate<DocumentDetail>> filterDataProvider3 = dataProvider4
@@ -224,7 +257,7 @@ public class PurchaseLayout extends VerticalLayout implements View {
 		// itemsLayout.setMargin(true);
 		itemsLayout.setSizeFull();
 		itemsLayout.addComponents(docDetailGrid);
-		addComponents(buttonLayout, filterLayout, headerLayout, itemsButtonLayout, itemsLayout);
+		addComponents(buttonLayout, filterLayout, headerLayout, headerLayout2, itemsButtonLayout, itemsLayout);
 	}
 
 	private void save(Supplier supplier) {
@@ -339,7 +372,7 @@ public class PurchaseLayout extends VerticalLayout implements View {
 		backButton.addStyleName(ValoTheme.BUTTON_DANGER);
 		Button selectButton = new Button("Seleccionar", FontAwesome.CHECK);
 		selectButton.addStyleName(ValoTheme.BUTTON_PRIMARY);
-		Button productButton = new Button("Crear producto", FontAwesome.PLUS);
+		Button productButton = new Button("Crear proveedor", FontAwesome.PLUS);
 		productButton.addStyleName(ValoTheme.BUTTON_FRIENDLY);
 
 		HorizontalLayout buttonLayout = new HorizontalLayout();

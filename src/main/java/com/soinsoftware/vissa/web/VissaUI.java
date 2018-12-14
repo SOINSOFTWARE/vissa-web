@@ -103,11 +103,12 @@ public class VissaUI extends UI {
 	private void buildMenuItems() {
 		menuItems.put(KEY_PURCHASES, VALUE_PURCHASES);
 		menuItems.put(KEY_SALES, VALUE_SALES);
+		menuItems.put(KEY_INVENTORY, VALUE_INVENTORY);
 		menuItems.put(KEY_COMPANY_DATA, VALUE_COMPANY_DATA);
 		menuItems.put(KEY_SUPPLIER, VALUE_SUPPLIER);
 		menuItems.put(KEY_PRODUCTS, VALUE_PRODUCTS);
 		menuItems.put(KEY_FOOD_BRAND, VALUE_CUSTOMERS);
-		menuItems.put(KEY_INVENTORY, VALUE_INVENTORY);
+		
 	//	menuItems.put(KEY_VACCINE, VALUE_VACCINE);
 		//menuItems.put(KEY_DRENCHING, VALUE_DRENCHING);
 	}
