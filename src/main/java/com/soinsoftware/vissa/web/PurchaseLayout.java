@@ -73,7 +73,7 @@ public class PurchaseLayout extends VerticalLayout implements View {
 	 */
 	private static final long serialVersionUID = 5076502522106126046L;
 
-	private final SupplierBll supplierBll;
+
 	private final PersonBll personBll;
 	private final ProductBll productBll;
 	private final PaymentMethodBll payMethodBll;
@@ -114,7 +114,7 @@ public class PurchaseLayout extends VerticalLayout implements View {
 
 	public PurchaseLayout() throws IOException {
 		super();
-		supplierBll = SupplierBll.getInstance();
+
 		personBll = PersonBll.getInstance();
 		productBll = ProductBll.getInstance();
 		payMethodBll = PaymentMethodBll.getInstance();

@@ -210,7 +210,7 @@ public class VissaUI extends UI {
 		navigator.addView(KEY_SALES, SaleLayout.class);
 		navigator.addView(KEY_SUPPLIER, SupplierLayout.class);
 		navigator.addView(KEY_PRODUCTS, ProductLayout.class);
-		navigator.addView(KEY_PURCHASES, PurchaseLayout.class);
+		navigator.addView(KEY_PURCHASES, PurchaLayout.class);
 		navigator.addView(KEY_INVENTORY, InventoryLayout.class);
 		navigator.addView(KEY_SUPPLIER_LIST, SupplierListLayout.class);
 		navigator.setErrorView(DefaultView.class);
