@@ -10,6 +10,7 @@ import com.vaadin.ui.HorizontalLayout;
 import com.vaadin.ui.Notification;
 import com.vaadin.ui.Panel;
 import com.vaadin.ui.VerticalLayout;
+import com.vaadin.ui.Window;
 import com.vaadin.ui.Grid.SelectionMode;
 
 /**
@@ -56,5 +57,13 @@ public class ViewHelper {
 	
 	public static void showNotification(String caption, Notification.Type type) {
 		new Notification(caption, type).show(Page.getCurrent());
+	}
+	
+	public static Window  buildSubwindow() {		
+		Window subdwindow = new Window();
+		subdwindow.setModal(true);
+		subdwindow.center();
+		subdwindow.setWidth("75%");	
+		return subdwindow;
 	}
 }
