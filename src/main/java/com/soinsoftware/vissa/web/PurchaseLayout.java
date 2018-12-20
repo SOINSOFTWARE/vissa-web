@@ -411,7 +411,7 @@ public class PurchaseLayout extends VerticalLayout implements View {
 			Integer cant = Integer.parseInt(detObj.getDescription());
 			Product prod = detObj.getProduct();
 			Double subtotal = cant * prod.getSalePrice();
-			DocumentDetail detail = detailBuilder.product(prod).document(entity).quantity(cant)
+			DocumentDetail detail = detailBuilder.product(prod).document(entity).quantity(cant+"")
 					.description(detObj.getDescription()).subtotal(subtotal).build();
 
 			// Guardar inventario
