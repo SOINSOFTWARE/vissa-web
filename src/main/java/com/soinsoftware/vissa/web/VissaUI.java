@@ -75,17 +75,10 @@ public class VissaUI extends UI {
 
 	@Override
 	protected void init(VaadinRequest vaadinRequest) {
-		try {
-			VissaManagerFactory.getInstance();
-			getPage().setTitle("Vissa ERP");
-			addStyleName(ValoTheme.UI_WITH_MENU);
-			Responsive.makeResponsive(this);
-			buildUI(getUser());
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		
+		getPage().setTitle("Vissa ERP");
+		addStyleName(ValoTheme.UI_WITH_MENU);
+		Responsive.makeResponsive(this);
+		buildUI(getUser());
 	}
 
 	private void buildValoMenuLayout() {

@@ -258,7 +258,7 @@ public class SaleLayout extends VerticalLayout implements View {
 		}).setCaption("Nombre");
 		docDetailGrid.addColumn(documentDetail -> {
 			if (documentDetail.getProduct() != null) {
-				return documentDetail.getProduct().getMeasurementUnit();
+				return documentDetail.getProduct().getMeasurementUnit().getName();
 			} else {
 				return null;
 			}
@@ -415,9 +415,9 @@ public class SaleLayout extends VerticalLayout implements View {
 					.initialStock(initialStock).quantity(cant).finalStock(finalStock).document(entity).build();
 
 			// Actualizar stock
-			ProductStock.Builder stockBuilder = ProductStock.builder();
-			ProductStock stock = stockBuilder.product(detObj.getProduct()).stock(finalStock).stockDate(new Date())
-					.build();
+			ProductStock stock = stockBll.select(detObj.getProduct());			
+			stock.setStock(finalStock);
+			stock.setStockDate(new Date());
 
 			try {
 

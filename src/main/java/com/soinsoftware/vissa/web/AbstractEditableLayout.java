@@ -23,6 +23,7 @@ import com.vaadin.ui.Panel;
 import com.vaadin.ui.TabSheet;
 import com.vaadin.ui.TabSheet.Tab;
 import com.vaadin.ui.VerticalLayout;
+import com.vaadin.ui.themes.ValoTheme;
 
 @SuppressWarnings("deprecation")
 public abstract class AbstractEditableLayout<E> extends VerticalLayout implements View {
@@ -36,7 +37,7 @@ public abstract class AbstractEditableLayout<E> extends VerticalLayout implement
 	
 	public AbstractEditableLayout(String pageTitle) {
 		super();
-		this.pageTitle = pageTitle;
+		this.pageTitle = pageTitle;		
 	}
 
 	@Override
@@ -53,7 +54,7 @@ public abstract class AbstractEditableLayout<E> extends VerticalLayout implement
 		addComponent(h1);
 	}
 
-	private void addListTab() {
+	protected void addListTab() {
 		AbstractOrderedLayout layout = buildListView();
 		tabSheet = new TabSheet();
 		tabSheet.addStyleName("framed");
@@ -62,49 +63,49 @@ public abstract class AbstractEditableLayout<E> extends VerticalLayout implement
 		addComponent(tabSheet);
 	}
 
-	protected Panel buildButtonPanelForLists(boolean validateCompany) {
+	protected Panel buildButtonPanelForLists() {
 		HorizontalLayout layout = ViewHelper.buildHorizontalLayout(true, true);
-		Button btNew = buildButtonForNewAction();
-		Button btEdit = buildButtonForEditAction(validateCompany);
-		Button btDelete = buildButtonForDeleteAction(validateCompany);
+		Button btNew = buildButtonForNewAction(ValoTheme.BUTTON_PRIMARY);
+		Button btEdit = buildButtonForEditAction(ValoTheme.BUTTON_FRIENDLY);
+		Button btDelete = buildButtonForDeleteAction(ValoTheme.BUTTON_DANGER);
 		layout.addComponents(btNew, btEdit, btDelete);
 		return ViewHelper.buildPanel(null, layout);
 	}
 
 	protected Panel buildButtonPanelForEdition(E entity) {
 		HorizontalLayout layout = ViewHelper.buildHorizontalLayout(true, true);
-		Button btCancel = buildButtonForCancelAction();
-		Button btSave = buildButtonForSaveAction(entity);
+		Button btCancel = buildButtonForCancelAction(ValoTheme.BUTTON_DANGER);
+		Button btSave = buildButtonForSaveAction(entity, ValoTheme.BUTTON_PRIMARY);
 		layout.addComponents(btCancel, btSave);
 		return ViewHelper.buildPanel(null, layout);
 	}
 
-	protected Button buildButtonForNewAction() {
-		Button button = ViewHelper.buildButton("Nuevo", FontAwesome.PLUS, "primary");
+	protected Button buildButtonForNewAction(String style) {
+		Button button = ViewHelper.buildButton("Nuevo", FontAwesome.PLUS, style);
 		button.addClickListener(e -> newButtonAction());
 		return button;
 	}
 
-	protected Button buildButtonForEditAction(boolean validateCompany) {
-		Button button = ViewHelper.buildButton("Editar", FontAwesome.EDIT, "friendly");
-		button.addClickListener(e -> editButtonAction(validateCompany));
+	protected Button buildButtonForEditAction(String style) {
+		Button button = ViewHelper.buildButton("Editar", FontAwesome.EDIT, style);
+		button.addClickListener(e -> editButtonAction());
 		return button;
 	}
 
-	protected Button buildButtonForDeleteAction(boolean validateCompany) {
-		Button button = ViewHelper.buildButton("Borrar", FontAwesome.ERASER, "danger");
-		button.addClickListener(e -> deleteButtonAction(validateCompany));
+	protected Button buildButtonForDeleteAction(String style) {
+		Button button = ViewHelper.buildButton("Borrar", FontAwesome.ERASER, style);
+		button.addClickListener(e -> deleteButtonAction());
 		return button;
 	}
 
-	protected Button buildButtonForCancelAction() {
-		Button button = ViewHelper.buildButton("Cancelar", FontAwesome.CLOSE, "danger");
+	protected Button buildButtonForCancelAction(String style) {
+		Button button = ViewHelper.buildButton("Cancelar", FontAwesome.CLOSE, style);
 		button.addClickListener(e -> cancelButtonAction());
 		return button;
 	}
 
-	protected Button buildButtonForSaveAction(E entity) {
-		Button button = ViewHelper.buildButton("Guardar", FontAwesome.SAVE, "primary");
+	protected Button buildButtonForSaveAction(E entity, String style) {
+		Button button = ViewHelper.buildButton("Guardar", FontAwesome.SAVE, style);
 		button.addClickListener(e -> saveButtonAction(entity));
 		return button;
 	}
@@ -113,17 +114,16 @@ public abstract class AbstractEditableLayout<E> extends VerticalLayout implement
 		showEditionTab(null, "Nueva", FontAwesome.PLUS);
 	}
 
-	protected void editButtonAction(boolean validateCompany) {
+	protected void editButtonAction() {
 		E entity = getSelected();
-		if (entity != null) {
-			
+		if (entity != null) {			
 			showEditionTab(entity, "Editar", FontAwesome.EDIT);
 		} else {
 			ViewHelper.showNotification("No has seleccionado ningún registro", Notification.Type.TRAY_NOTIFICATION);
 		}
 	}
 
-	protected void deleteButtonAction(boolean validateCompany) {
+	protected void deleteButtonAction() {
 		E entity = getSelected();
 		if (entity != null) {
 			
