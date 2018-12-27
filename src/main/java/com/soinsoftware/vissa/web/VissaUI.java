@@ -16,6 +16,7 @@ import com.soinsoftware.vissa.bll.UserBll;
 import com.soinsoftware.vissa.model.Person;
 import com.soinsoftware.vissa.model.User;
 import com.soinsoftware.vissa.util.ViewHelper;
+import com.vaadin.annotations.Theme;
 import com.vaadin.annotations.VaadinServletConfiguration;
 import com.vaadin.navigator.Navigator;
 import com.vaadin.navigator.ViewChangeListener;
@@ -53,6 +54,7 @@ import com.vaadin.ui.themes.ValoTheme;
  * initialize non-component functionality.
  */
 @SuppressWarnings("deprecation")
+@Theme("mytheme")
 public class VissaUI extends UI {
 
 	private static final long serialVersionUID = 7412593442523938389L;
@@ -205,7 +207,7 @@ public class VissaUI extends UI {
 		navigator.addView(KEY_SALES, SaleLayout.class);
 		navigator.addView(KEY_SUPPLIER, SupplierLayout.class);
 		navigator.addView(KEY_PRODUCTS, ProductLayout.class);
-		navigator.addView(KEY_PURCHASES, PurchaLayout.class);
+		navigator.addView(KEY_PURCHASES, PurchaseLayout.class);
 		navigator.addView(KEY_INVENTORY, InventoryLayout.class);
 		navigator.addView(KEY_SUPPLIER_LIST, SupplierListLayout.class);
 		navigator.setErrorView(DefaultView.class);
