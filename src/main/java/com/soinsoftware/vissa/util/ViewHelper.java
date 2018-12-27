@@ -59,11 +59,11 @@ public class ViewHelper {
 		new Notification(caption, type).show(Page.getCurrent());
 	}
 	
-	public static Window  buildSubwindow() {		
+	public static Window  buildSubwindow(String width) {		
 		Window subdwindow = new Window();
 		subdwindow.setModal(true);
 		subdwindow.center();
-		subdwindow.setWidth("75%");	
+		subdwindow.setWidth(width);	
 		return subdwindow;
 	}
 }
