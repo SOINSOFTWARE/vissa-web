@@ -180,8 +180,4 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 
 	}
 
-	private void refreshGrid() {
-		lotGrid.getDataProvider().refreshAll();
-	}
-
 }
