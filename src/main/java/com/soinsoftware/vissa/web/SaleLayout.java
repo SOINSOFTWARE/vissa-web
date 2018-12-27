@@ -39,7 +39,7 @@ import com.soinsoftware.vissa.model.PaymentMethod;
 import com.soinsoftware.vissa.model.PaymentType;
 import com.soinsoftware.vissa.model.Person;
 import com.soinsoftware.vissa.model.Product;
-import com.soinsoftware.vissa.model.ProductStock;
+import com.soinsoftware.vissa.model.ProductStockBk;
 import com.soinsoftware.vissa.model.Supplier;
 import com.soinsoftware.vissa.util.ViewHelper;
 import com.vaadin.data.Binder;
@@ -405,7 +405,7 @@ public class SaleLayout extends VerticalLayout implements View {
 			Document.Builder docuBuilder = Document.builder();
 			Document doc = docuBuilder.id(entity.getId()).documentDate(entity.getDocumentDate()).build();
 			InventoryTransactionType txType = InventoryTransactionType.SALIDA;
-			ProductStock ps = stockBll.select(detObj.getProduct());
+			ProductStockBk ps = stockBll.select(detObj.getProduct());
 			int initialStock = ps != null ? ps.getStock() : 0;
 			System.out.println("initialStock=" + initialStock);
 			System.out.println("cant=" + cant);
@@ -415,7 +415,7 @@ public class SaleLayout extends VerticalLayout implements View {
 					.initialStock(initialStock).quantity(cant).finalStock(finalStock).document(entity).build();
 
 			// Actualizar stock
-			ProductStock stock = stockBll.select(detObj.getProduct());			
+			ProductStockBk stock = stockBll.select(detObj.getProduct());			
 			stock.setStock(finalStock);
 			stock.setStockDate(new Date());
 
