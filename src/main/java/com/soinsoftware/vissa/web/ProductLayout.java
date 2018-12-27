@@ -5,31 +5,27 @@ import java.util.Date;
 import java.util.Set;
 
 import org.apache.log4j.Logger;
-import org.hibernate.HibernateException;
 
 import com.soinsoftware.vissa.bll.MeasurementUnitBll;
 import com.soinsoftware.vissa.bll.ProductBll;
 import com.soinsoftware.vissa.bll.ProductCategoryBll;
-import com.soinsoftware.vissa.bll.ProductStockBll;
 import com.soinsoftware.vissa.bll.ProductTypeBll;
-import com.soinsoftware.vissa.exception.ModelValidationException;
 import com.soinsoftware.vissa.model.MeasurementUnit;
 import com.soinsoftware.vissa.model.Product;
 import com.soinsoftware.vissa.model.ProductCategory;
-import com.soinsoftware.vissa.model.ProductStock;
 import com.soinsoftware.vissa.model.ProductType;
 import com.soinsoftware.vissa.util.ViewHelper;
 import com.vaadin.data.provider.ConfigurableFilterDataProvider;
 import com.vaadin.data.provider.ListDataProvider;
 import com.vaadin.server.SerializablePredicate;
 import com.vaadin.ui.AbstractOrderedLayout;
+import com.vaadin.ui.Button;
 import com.vaadin.ui.ComboBox;
 import com.vaadin.ui.Component;
 import com.vaadin.ui.FormLayout;
 import com.vaadin.ui.Grid;
 import com.vaadin.ui.Grid.SelectionMode;
 import com.vaadin.ui.HorizontalLayout;
-import com.vaadin.ui.Notification;
 import com.vaadin.ui.Panel;
 import com.vaadin.ui.TextField;
 import com.vaadin.ui.VerticalLayout;
@@ -46,7 +42,6 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 	protected static final Logger log = Logger.getLogger(ProductLayout.class);
 
 	private final ProductBll productBll;
-	private final ProductStockBll productStockBll;
 	private final ProductCategoryBll categoryBll;
 	private final ProductTypeBll typeBll;
 	private final MeasurementUnitBll measurementUnitBll;
@@ -54,6 +49,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 	private Grid<Product> productGrid;
 
 	private TextField txFilterByName;
+	private TextField txFilterByCode;
 	private TextField txtCode;
 	private TextField txtName;
 	private TextField txtDescription;
@@ -69,22 +65,43 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 	private TextField txtPurchaseTax;
 	private TextField txtStock;
 	private TextField txtStockDate;
+	private boolean listMode;
 
 	private ConfigurableFilterDataProvider<Product, Void, SerializablePredicate<Product>> filterProductDataProvider;
+
+	public ProductLayout(boolean list) throws IOException {
+		super("Productos");
+		listMode = list;
+		productBll = ProductBll.getInstance();
+		categoryBll = ProductCategoryBll.getInstance();
+		typeBll = ProductTypeBll.getInstance();
+		measurementUnitBll = MeasurementUnitBll.getInstance();
+		if (listMode) {
+			addListTab();
+		}
+	}
 
 	public ProductLayout() throws IOException {
 		super("Productos");
 		productBll = ProductBll.getInstance();
-		productStockBll = ProductStockBll.getInstance();
 		categoryBll = ProductCategoryBll.getInstance();
 		typeBll = ProductTypeBll.getInstance();
 		measurementUnitBll = MeasurementUnitBll.getInstance();
+		if (listMode) {
+			addListTab();
+		}
+		listMode = false;
 	}
 
 	@Override
 	protected AbstractOrderedLayout buildListView() {
 		VerticalLayout layout = ViewHelper.buildVerticalLayout(false, false);
-		Panel buttonPanel = buildButtonPanelForLists();
+		Panel buttonPanel = null;
+		if (listMode) {
+			buttonPanel = buildButtonPanelListMode();
+		} else {
+			buttonPanel = buildButtonPanelForLists();
+		}
 		Panel filterPanel = buildFilterPanel();
 		Panel dataPanel = buildGridPanel();
 		layout.addComponents(buttonPanel, filterPanel, dataPanel);
@@ -102,13 +119,16 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 
 	@Override
 	protected Panel buildGridPanel() {
+		VerticalLayout layout = ViewHelper.buildVerticalLayout(true, true);
 		productGrid = ViewHelper.buildGrid(SelectionMode.SINGLE);
 		productGrid.addColumn(Product::getCode).setCaption("Codigo");
 		productGrid.addColumn(Product::getName).setCaption("Nombre");
-		productGrid.addColumn(Product::getDescription).setCaption("Descripción");
 		productGrid.addColumn(Product::getSalePrice).setCaption("Precio de venta");
+		productGrid.addColumn(Product::getStock).setCaption("Stock");
+
+		layout.addComponent(ViewHelper.buildPanel(null, productGrid));
 		fillGridData();
-		return ViewHelper.buildPanel(null, productGrid);
+		return ViewHelper.buildPanel(null, layout);
 	}
 
 	@Override
@@ -182,18 +202,13 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		// Product Stock
 		txtStock = new TextField("Stock");
 		txtStock.setWidth("50%");
-		ProductStock prodStock = null;
-		if (product != null) {
-			prodStock = productStockBll.select(product);
-		}
-		txtStock.setValue(
-				prodStock != null && prodStock.getStock() != null ? String.valueOf(prodStock.getStock()) : "");
+		txtStock.setValue(product != null && product.getStock() != null ? String.valueOf(product.getStock()) : "");
 
 		txtStockDate = new TextField("Fecha actualización Stock");
 		txtStockDate.setWidth("50%");
 		txtStockDate.setEnabled(false);
-		txtStockDate.setValue(
-				prodStock != null && prodStock.getStock() != null ? String.valueOf(prodStock.getStockDate()) : "");
+		txtStockDate
+				.setValue(product != null && product.getStock() != null ? String.valueOf(product.getStockDate()) : "");
 
 		// ----------------------------------------------------------------------------------
 
@@ -217,11 +232,21 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 			lotPanel.setMargin(false);
 			lotPanel.setSpacing(false);
 		} catch (IOException e) {
-			e.printStackTrace();
+			log.error("Error al cargar lotes del producto. Exception: " + e);
+
 		}
 
 		layout.addComponents(form, lotPanel);
 		return layout;
+	}
+
+	protected Panel buildButtonPanelListMode() {
+		HorizontalLayout layout = ViewHelper.buildHorizontalLayout(true, true);
+		Button btNew = buildButtonForNewAction(ValoTheme.BUTTON_TINY);
+		Button btEdit = buildButtonForEditAction(ValoTheme.BUTTON_TINY);
+		Button btDelete = buildButtonForDeleteAction(ValoTheme.BUTTON_TINY);
+		layout.addComponents(btNew, btEdit, btDelete);
+		return ViewHelper.buildPanel(null, layout);
 	}
 
 	@Override
@@ -252,45 +277,19 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		Double purchaseTax = txtPurchaseTax.getValue() != null && txtPurchaseTax.getValue() != ""
 				? Double.parseDouble(txtPurchaseTax.getValue())
 				: null;
+		Integer stock = txtStock.getValue() != null && txtStock.getValue() != "" ? Integer.parseInt(txtStock.getValue())
+				: null;
 		entity = productBuilder.code(txtCode.getValue()).name(txtName.getValue()).description(txtDescription.getValue())
 				.category(cbCategory.getSelectedItem().get()).type(cbType.getSelectedItem().get())
 				.measurementUnit(cbMeasurementUnit.getSelectedItem().get()).eanCode(txtEan.getValue())
 				.salePrice(salePrice).purchasePrice(purchasePrice).saleTax(saleTax).purchaseTax(purchaseTax)
-				.archived(false).build();
+				.stock(stock).stockDate(new Date()).archived(false).build();
 		save(productBll, entity, "Producto guardado");
-		
-		//Actualizar stock de producto
-		ProductStock stock = productStockBll.select(entity);
-		saveStock(stock);
-	}
-
-	protected void saveStock(ProductStock entity) {
-		ProductStock.Builder stockBuiler = null;
-		if (entity == null) {
-			stockBuiler = ProductStock.builder();
-		} else {
-			stockBuiler = ProductStock.builder(entity);
-		}
-
-		entity = stockBuiler.stock(Integer.parseInt(txtStock.getValue())).stockDate(new Date()).archived(false).build();
-
-		try {
-			productStockBll.save(entity);
-
-		} catch (ModelValidationException ex) {
-			log.error(ex);
-			ViewHelper.showNotification(ex.getMessage(), Notification.Type.ERROR_MESSAGE);
-		} catch (HibernateException ex) {
-			log.error(ex);
-			// bll.rollback();
-			ViewHelper.showNotification("Los datos no pudieron ser salvados, contacte al administrador (3007200405)",
-					Notification.Type.ERROR_MESSAGE);
-		}
 
 	}
 
 	@Override
-	protected Product getSelected() {
+	public Product getSelected() {
 		Product prod = null;
 		Set<Product> products = productGrid.getSelectedItems();
 		if (products != null && !products.isEmpty()) {
@@ -309,7 +308,9 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		HorizontalLayout layout = ViewHelper.buildHorizontalLayout(true, true);
 		txFilterByName = new TextField("Nombre");
 		txFilterByName.addValueChangeListener(e -> refreshGrid());
-		layout.addComponent(txFilterByName);
+		txFilterByCode = new TextField("Código");
+		txFilterByCode.addValueChangeListener(e -> refreshGrid());
+		layout.addComponents(txFilterByCode, txFilterByName);
 		return ViewHelper.buildPanel("Filtrar por", layout);
 	}
 
@@ -320,8 +321,10 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 
 	private SerializablePredicate<Product> filterGrid() {
 		SerializablePredicate<Product> columnPredicate = null;
-		columnPredicate = product -> (product.getName().toLowerCase().contains(txFilterByName.getValue().toLowerCase())
-				|| txFilterByName.getValue().trim().isEmpty());
+		String codeFilter = txFilterByCode.getValue().trim();
+		String nameFilter = txFilterByName.getValue().trim();
+		columnPredicate = product -> (product.getName().toLowerCase().contains(nameFilter.toLowerCase())
+				&& product.getCode().toLowerCase().contains(codeFilter.toLowerCase()));
 		return columnPredicate;
 	}
 
