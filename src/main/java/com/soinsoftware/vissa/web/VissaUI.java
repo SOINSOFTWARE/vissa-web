@@ -2,6 +2,8 @@ package com.soinsoftware.vissa.web;
 
 import java.io.File;
 import java.io.IOException;
+import java.security.NoSuchAlgorithmException;
+import java.security.spec.InvalidKeySpecException;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map.Entry;
@@ -10,7 +12,10 @@ import javax.servlet.annotation.WebServlet;
 
 import org.apache.log4j.Logger;
 
-import com.soinsoftware.vissa.manager.VissaManagerFactory;
+import com.soinsoftware.vissa.bll.UserBll;
+import com.soinsoftware.vissa.model.Person;
+import com.soinsoftware.vissa.model.User;
+import com.soinsoftware.vissa.util.ViewHelper;
 import com.vaadin.annotations.VaadinServletConfiguration;
 import com.vaadin.navigator.Navigator;
 import com.vaadin.navigator.ViewChangeListener;
@@ -30,6 +35,7 @@ import com.vaadin.ui.HorizontalLayout;
 import com.vaadin.ui.Label;
 import com.vaadin.ui.MenuBar;
 import com.vaadin.ui.MenuBar.MenuItem;
+import com.vaadin.ui.Notification;
 import com.vaadin.ui.Panel;
 import com.vaadin.ui.PasswordField;
 import com.vaadin.ui.TextField;
@@ -59,7 +65,6 @@ public class VissaUI extends UI {
 	private static final String KEY_SALES = "Ventas";
 	private static final String KEY_SUPPLIER = "supplier";
 	private static final String KEY_SUPPLIER_LIST = "supplierList";
-	private static final String KEY_VACCINE = "vaccine";
 	private static final String VALUE_PRODUCTS = "Productos";
 	private static final String VALUE_COMPANY_DATA = "Datos de la compañía";
 	private static final String VALUE_CONFIGURATIONS = "Configuración";
@@ -69,7 +74,6 @@ public class VissaUI extends UI {
 	private static final String VALUE_SALES = "Ventas";
 	private static final String VALUE_SUPPLIER = "Proveedores";
 	private static final String VALUE_SUPPLIER_LIST = "Lista de provedores";
-	private static final String VALUE_VACCINE = "Productos de vacunación";
 	private LinkedHashMap<String, String> menuItems = new LinkedHashMap<String, String>();
 	private LinkedHashMap<String, FontAwesome> menuIconItems = new LinkedHashMap<String, FontAwesome>();
 
@@ -100,9 +104,9 @@ public class VissaUI extends UI {
 		menuItems.put(KEY_SUPPLIER, VALUE_SUPPLIER);
 		menuItems.put(KEY_PRODUCTS, VALUE_PRODUCTS);
 		menuItems.put(KEY_FOOD_BRAND, VALUE_CUSTOMERS);
-		
-	//	menuItems.put(KEY_VACCINE, VALUE_VACCINE);
-		//menuItems.put(KEY_DRENCHING, VALUE_DRENCHING);
+
+		// menuItems.put(KEY_VACCINE, VALUE_VACCINE);
+		// menuItems.put(KEY_DRENCHING, VALUE_DRENCHING);
 	}
 
 	private void buildMenuIconItems() {
@@ -113,8 +117,8 @@ public class VissaUI extends UI {
 		menuIconItems.put(KEY_SUPPLIER, FontAwesome.BOOKMARK);
 		menuIconItems.put(KEY_PRODUCTS, FontAwesome.TAGS);
 		menuIconItems.put(KEY_FOOD_BRAND, FontAwesome.NEWSPAPER_O);
-	//	menuIconItems.put(KEY_VACCINE, FontAwesome.PRODUCT_HUNT);
-		//menuIconItems.put(KEY_DRENCHING, FontAwesome.PRODUCT_HUNT);
+		// menuIconItems.put(KEY_VACCINE, FontAwesome.PRODUCT_HUNT);
+		// menuIconItems.put(KEY_DRENCHING, FontAwesome.PRODUCT_HUNT);
 	}
 
 	private CssLayout buildMenu(ValoMenuLayout root) {
@@ -158,14 +162,12 @@ public class VissaUI extends UI {
 	}
 
 	private MenuBar buildMenuBar() {
-		Company company = getUser().getCompany();
+		Person person = getUser().getPerson();
 		MenuBar settings = new MenuBar();
 		settings.addStyleName("user-menu");
-		String basepath = VaadinService.getCurrent()
-                .getBaseDirectory().getAbsolutePath();
-		FileResource resource = new FileResource(new File(basepath +
-                "/WEB-INF/logoKisam.png"));
-		MenuItem settingsItem = settings.addItem(company.getName(), resource, null);
+		String basepath = VaadinService.getCurrent().getBaseDirectory().getAbsolutePath();
+		FileResource resource = new FileResource(new File(basepath + "/WEB-INF/logoKisam.png"));
+		MenuItem settingsItem = settings.addItem(person.getName() + " " + person.getLastName(), resource, null);
 		settingsItem.addItem("Cerrar session", e -> buildUI(null));
 		return settings;
 	}
@@ -281,12 +283,16 @@ public class VissaUI extends UI {
 	}
 
 	private void authenticate(String username, String password) {
-		//User user = userBll.select(username, password);
-		User user = new User();
-		if (user == null) {
-			showNotification("Login failed!");
-		} else {
-			buildUI(user);
+		try {
+			User user = UserBll.getInstance().select(User.builder().login(username).password(password).build());
+			if (user == null) {
+				ViewHelper.showNotification("Usuario o contraseña invalidos.", Notification.Type.ERROR_MESSAGE);
+			} else {
+				buildUI(user);
+			}
+		} catch (NoSuchAlgorithmException | InvalidKeySpecException | IOException ex) {
+			log.error(ex);
+			ViewHelper.showNotification("Contacte al administrador (3002007694)", Notification.Type.ERROR_MESSAGE);
 		}
 	}
 
@@ -294,29 +300,5 @@ public class VissaUI extends UI {
 	@VaadinServletConfiguration(ui = VissaUI.class, productionMode = false)
 	public static class MyUIServlet extends VaadinServlet {
 		private static final long serialVersionUID = -2743165194104880059L;
-	}
-	
-	class User {
-		private Company company;
-		
-		public User() {
-			company = new Company();
-		}
-		
-		public Company getCompany() {
-			return company;
-		}
-	}
-	
-	class Company {
-		private String name;
-		
-		public Company() {
-			name = "Vissa";
-		}
-		
-		public String getName() {
-			return name;
-		}
 	}
 }

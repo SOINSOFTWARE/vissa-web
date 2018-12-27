@@ -162,7 +162,7 @@ public abstract class AbstractEditableLayout<E> extends VerticalLayout implement
 		} catch (HibernateException ex) {
 			log.error(ex);
 			//bll.rollback();
-			ViewHelper.showNotification("Los datos no pudieron ser salvados, contacte al administrador (3007200405)",
+			ViewHelper.showNotification("Los datos no pudieron ser salvados, contacte al administrador (3002007694)",
 					Notification.Type.ERROR_MESSAGE);
 		}
 	}
