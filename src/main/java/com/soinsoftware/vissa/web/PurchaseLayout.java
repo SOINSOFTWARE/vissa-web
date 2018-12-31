@@ -175,7 +175,7 @@ public class PurchaseLayout extends VerticalLayout implements View {
 		editBtn.addStyleName(ValoTheme.BUTTON_FRIENDLY);
 		// editBtn.addClickListener(e -> saveButtonAction(null));
 
-		Button deleteBtn = new Button("Delete", FontAwesome.ERASER);
+		Button deleteBtn = new Button("Cancelar", FontAwesome.ERASER);
 		deleteBtn.addStyleName(ValoTheme.BUTTON_DANGER);
 		// deleteBtn.addClickListener(e -> saveButtonAction(document));
 
@@ -213,7 +213,7 @@ public class PurchaseLayout extends VerticalLayout implements View {
 		cbDocumentType.setDataProvider(docTypeDataProv);
 		cbDocumentType.setItemCaptionGenerator(DocumentType::getName);
 		cbDocumentType.addValueChangeListener(e -> {
-			getMaxDocNumber(cbDocumentType.getValue());
+			getNextDocumentNumber(cbDocumentType.getValue());
 		});
 		cbDocumentType.setEmptySelectionAllowed(false);
 		cbDocumentType.setEmptySelectionCaption("Seleccione");
@@ -305,14 +305,14 @@ public class PurchaseLayout extends VerticalLayout implements View {
 			}
 		}).setCaption("Nombre");
 		docDetailGrid.addColumn(documentDetail -> {
-			if (documentDetail.getProduct() != null) {
+			if (documentDetail.getProduct() != null &&  documentDetail.getProduct().getMeasurementUnit()!= null  ) {
 				return documentDetail.getProduct().getMeasurementUnit().getName();
 			} else {
 				return null;
 			}
 		}).setCaption("Unidad de medida");
 		docDetailGrid.addColumn(documentDetail -> {
-			if (documentDetail.getProduct() != null) {
+			if (documentDetail.getProduct() != null && documentDetail.getProduct().getSalePrice()!= null) {
 				return documentDetail.getProduct().getSalePrice();
 			} else {
 				return null;
@@ -320,24 +320,16 @@ public class PurchaseLayout extends VerticalLayout implements View {
 		}).setCaption("Precio");
 
 		// Columna cantidad editable
-		TextField quantityField = new TextField();
 
-		Binder<DocumentDetail> binder = docDetailGrid.getEditor().getBinder();
+		docDetailGrid.addColumn(DocumentDetail::getQuantity).setCaption("Cantidad")
+			.setEditorComponent(new TextField(), DocumentDetail::setQuantity);
 
-		Binding<DocumentDetail, String> doneBinding = binder.bind(quantityField, DocumentDetail::getQuantity,
-				DocumentDetail::setQuantity);
-
-		docDetailGrid.addColumn(DocumentDetail::getQuantity).setCaption("Cantidad").setEditorBinding(doneBinding);
-
-		quantityField.addValueChangeListener(e -> {
-			setSubtotal(quantityField.getValue());
-		});
 
 		docDetailGrid.addColumn(documentDetail -> {
 			if (documentDetail.getSubtotal() != 0) {
 				return documentDetail.getSubtotal();
 			} else {
-				return subtotal;
+				return "";
 			}
 		}).setCaption("Subtotal");
 
@@ -446,8 +438,8 @@ public class PurchaseLayout extends VerticalLayout implements View {
 	 * 
 	 * @param val
 	 */
-	private void getMaxDocNumber(DocumentType val) {
-		txtDocNumber.setValue(val.getCode() + "-" + documentBll.selectMaxDoc());
+	private void getNextDocumentNumber(DocumentType val) {
+		txtDocNumber.setValue(val.getCode() + "-" + documentBll.selectNextDocumentNumber());
 	}
 
 	/**
@@ -484,9 +476,7 @@ public class PurchaseLayout extends VerticalLayout implements View {
 		 * itemSelected2);
 		 */
 		subtotal = productSelected.getSalePrice() * Integer.parseInt(val);
-		docDetailGrid.getDataProvider().refreshAll();
 		System.out.println("subtotal" + subtotal);
-
 	}
 
 	/**
@@ -551,9 +541,7 @@ public class PurchaseLayout extends VerticalLayout implements View {
 		 */
 
 		if (productSelected != null) {
-			DocumentDetail docDetail = new DocumentDetail();
-			DocumentDetail.Builder docDetailBuilder = DocumentDetail.builder();
-			docDetail = docDetailBuilder.product(productSelected).archived(false).build();
+			DocumentDetail docDetail = DocumentDetail.builder().product(productSelected).build();
 			itemsList.add(docDetail);
 			fillDocDetailGridData(itemsList);
 			productSubwindow.close();
