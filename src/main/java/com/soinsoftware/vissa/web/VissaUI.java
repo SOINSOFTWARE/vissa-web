@@ -7,6 +7,7 @@ import java.security.spec.InvalidKeySpecException;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map.Entry;
+import java.util.Set;
 
 import javax.servlet.annotation.WebServlet;
 
@@ -18,7 +19,11 @@ import com.soinsoftware.vissa.model.User;
 import com.soinsoftware.vissa.util.ViewHelper;
 import com.vaadin.annotations.Theme;
 import com.vaadin.annotations.VaadinServletConfiguration;
+import com.vaadin.client.metadata.Property;
+import com.vaadin.data.TreeData;
+import com.vaadin.data.provider.TreeDataProvider;
 import com.vaadin.navigator.Navigator;
+import com.vaadin.navigator.View;
 import com.vaadin.navigator.ViewChangeListener;
 import com.vaadin.server.FileResource;
 import com.vaadin.server.FontAwesome;
@@ -40,6 +45,8 @@ import com.vaadin.ui.Notification;
 import com.vaadin.ui.Panel;
 import com.vaadin.ui.PasswordField;
 import com.vaadin.ui.TextField;
+import com.vaadin.ui.Tree;
+import com.vaadin.ui.Tree.TreeContextClickEvent;
 import com.vaadin.ui.UI;
 import com.vaadin.ui.VerticalLayout;
 import com.vaadin.ui.themes.ValoTheme;
@@ -59,25 +66,26 @@ public class VissaUI extends UI {
 
 	private static final long serialVersionUID = 7412593442523938389L;
 	private static final Logger log = Logger.getLogger(VissaUI.class);
-	private static final String KEY_PRODUCTS = "products";
+	private static final String KEY_PRODUCTS = "Productos";
 	private static final String KEY_COMPANY_DATA = "companyData";
-	private static final String KEY_INVENTORY = "inventory";
+	private static final String KEY_INVENTORY = "Inventario";
+	private static final String KEY_INVENTORY_MOV = "Movimientos";
 	private static final String KEY_PURCHASES = "Compras";
 	private static final String KEY_FOOD_BRAND = "foodBrand";
 	private static final String KEY_SALES = "Ventas";
-	private static final String KEY_SUPPLIER = "supplier";
+	private static final String KEY_SUPPLIER = "Proveedores";
+	private static final String KEY_CUSTOMERS = "Clientes";
+	private static final String KEY_SALE_INVOICES = "Facturas";
+	private static final String KEY_PURCHASE_INVOICES = "Facturas de Compra";
 	private static final String KEY_SUPPLIER_LIST = "supplierList";
-	private static final String VALUE_PRODUCTS = "Productos";
-	private static final String VALUE_COMPANY_DATA = "Datos de la compañía";
-	private static final String VALUE_CONFIGURATIONS = "Configuración";
-	private static final String VALUE_INVENTORY = "Inventario";
-	private static final String VALUE_PURCHASES = "Compras";
-	private static final String VALUE_CUSTOMERS = "Clientes";
-	private static final String VALUE_SALES = "Ventas";
-	private static final String VALUE_SUPPLIER = "Proveedores";
-	private static final String VALUE_SUPPLIER_LIST = "Lista de provedores";
+	
 	private LinkedHashMap<String, String> menuItems = new LinkedHashMap<String, String>();
 	private LinkedHashMap<String, FontAwesome> menuIconItems = new LinkedHashMap<String, FontAwesome>();
+	TreeDataProvider dataProvider;
+	TreeData<String> treeData;
+	Tree<String> tree;
+	ValoMenuLayout root;
+	Navigator navigator;
 
 	@Override
 	protected void init(VaadinRequest vaadinRequest) {
@@ -88,7 +96,7 @@ public class VissaUI extends UI {
 	}
 
 	private void buildValoMenuLayout() {
-		ValoMenuLayout root = new ValoMenuLayout();
+		root = new ValoMenuLayout();
 		CssLayout menu = buildMenu(root);
 		if (getPage().getWebBrowser().isIE() && getPage().getWebBrowser().getBrowserMajorVersion() == 9) {
 			menu.setWidth("320px");
@@ -98,19 +106,25 @@ public class VissaUI extends UI {
 		setContent(root);
 	}
 
-	private void buildMenuItems() {
-		menuItems.put(KEY_PURCHASES, VALUE_PURCHASES);
-		menuItems.put(KEY_SALES, VALUE_SALES);
-		menuItems.put(KEY_INVENTORY, VALUE_INVENTORY);
-		menuItems.put(KEY_COMPANY_DATA, VALUE_COMPANY_DATA);
-		menuItems.put(KEY_SUPPLIER, VALUE_SUPPLIER);
-		menuItems.put(KEY_PRODUCTS, VALUE_PRODUCTS);
-		menuItems.put(KEY_FOOD_BRAND, VALUE_CUSTOMERS);
+	private void buildMenuItems2() {
 
-		// menuItems.put(KEY_VACCINE, VALUE_VACCINE);
-		// menuItems.put(KEY_DRENCHING, VALUE_DRENCHING);
+		// Parents items
+		treeData.addItem(null, KEY_PURCHASES);
+		treeData.addItem(null, KEY_SALES);
+		treeData.addItem(null, KEY_INVENTORY);
+
+		// Couple of childless root items
+		treeData.addItem(KEY_PURCHASES, KEY_PURCHASE_INVOICES);
+		treeData.addItem(KEY_PURCHASES, KEY_SUPPLIER);
+		
+		treeData.addItem(KEY_SALES, KEY_SALE_INVOICES);
+		treeData.addItem(KEY_SALES, KEY_CUSTOMERS);
+
+		treeData.addItem(KEY_INVENTORY, KEY_PRODUCTS);
+		treeData.addItem(KEY_INVENTORY, KEY_INVENTORY_MOV);
 	}
 
+	
 	private void buildMenuIconItems() {
 		menuIconItems.put(KEY_PURCHASES, FontAwesome.LIST);
 		menuIconItems.put(KEY_SALES, FontAwesome.LIST);
@@ -119,19 +133,23 @@ public class VissaUI extends UI {
 		menuIconItems.put(KEY_SUPPLIER, FontAwesome.BOOKMARK);
 		menuIconItems.put(KEY_PRODUCTS, FontAwesome.TAGS);
 		menuIconItems.put(KEY_FOOD_BRAND, FontAwesome.NEWSPAPER_O);
-		// menuIconItems.put(KEY_VACCINE, FontAwesome.PRODUCT_HUNT);
-		// menuIconItems.put(KEY_DRENCHING, FontAwesome.PRODUCT_HUNT);
+	
 	}
 
 	private CssLayout buildMenu(ValoMenuLayout root) {
 		CssLayout menu = new CssLayout();
-		CssLayout menuItemsLayout = buildMenuItemsLayout();
+
+		Component menuItemsLayout = buildMenuItemsLayout2(root);
+		// Tree menuItemsLayout = buildMenuItemsLayout2();
 		menu.addComponent(buildTopLayout());
 		menu.addComponent(buildShowMenuButton(menu));
 		menu.addComponent(buildMenuBar());
 		menu.addComponent(menuItemsLayout);
-
-		buildNavigator(root, menu, menuItemsLayout);
+		
+		menu.setWidth("100%");
+		menu.setSizeFull();
+		
+		// buildNavigator(root, menu, menuItemsLayout);
 		return menu;
 	}
 
@@ -174,72 +192,48 @@ public class VissaUI extends UI {
 		return settings;
 	}
 
-	private CssLayout buildMenuItemsLayout() {
-		buildMenuItems();
-		buildMenuIconItems();
-		CssLayout menuItemsLayout = new CssLayout();
-		menuItemsLayout.setPrimaryStyleName("valo-menuitems");
+	@SuppressWarnings("unchecked")
+	private Component buildMenuItemsLayout2(ValoMenuLayout root) {
+		VerticalLayout layout = ViewHelper.buildVerticalLayout(false, false);
+		
 
-		Label label = null;
-		for (final Entry<String, String> item : menuItems.entrySet()) {
-			if (item.getKey().equals(KEY_COMPANY_DATA)) {
-				label = new Label(VALUE_CONFIGURATIONS, ContentMode.HTML);
-				label.setPrimaryStyleName(ValoTheme.MENU_SUBTITLE);
-				label.addStyleName(ValoTheme.LABEL_H4);
-				label.setSizeUndefined();
-				menuItemsLayout.addComponent(label);
-			}
-			Button b = new Button(item.getValue(), e -> getNavigator().navigateTo(item.getKey()));
-			b.setCaptionAsHtml(true);
-			b.setPrimaryStyleName(ValoTheme.MENU_ITEM);
-			if (menuIconItems.containsKey(item.getKey())) {
-				b.setIcon(menuIconItems.get(item.getKey()));
-			}
-			menuItemsLayout.addComponent(b);
-		}
-		label.setValue(label.getValue() + " <span class=\"valo-menu-badge\"></span>");
-		return menuItemsLayout;
+		tree = new Tree<>();
+		treeData = new TreeData<>();
+
+		buildMenuItems2();
+
+		buildNavigator();
+		dataProvider = new TreeDataProvider<>(treeData);
+		tree.setDataProvider(dataProvider);
+		tree.setStyleName("valo-menuitems");
+		tree.setWidth("100%");
+		
+		tree.addItemClickListener(e -> selectItem(e));
+		layout.addComponent(tree);
+		return tree;
+
 	}
 
-	private void buildNavigator(ValoMenuLayout root, CssLayout menu, CssLayout menuItemsLayout) {
+	private void selectItem(Tree.ItemClick<String> event) {
+		String item = event.getItem();
+		UI.getCurrent().getNavigator().navigateTo(item);
+	}
+
+	
+
+	private void buildNavigator() {
+
 		ComponentContainer viewContainer = root.getContentContainer();
-		Navigator navigator = new Navigator(this, viewContainer);
-		navigator.addView(KEY_SALES, SaleLayout.class);
+		Navigator navigator = new Navigator(this, viewContainer);	
 		navigator.addView(KEY_SUPPLIER, SupplierLayout.class);
-		navigator.addView(KEY_PRODUCTS, ProductLayout.class);
-		navigator.addView(KEY_PURCHASES, PurchaseLayout.class);
-		navigator.addView(KEY_INVENTORY, InventoryLayout.class);
+		navigator.addView(KEY_PRODUCTS, ProductLayout.class);	
 		navigator.addView(KEY_SUPPLIER_LIST, SupplierListLayout.class);
+		navigator.addView(KEY_PURCHASE_INVOICES, PurchaseLayout.class);
+		navigator.addView(KEY_SALE_INVOICES, SaleLayout.class);
+		navigator.addView(KEY_INVENTORY_MOV, InventoryLayout.class);
 		navigator.setErrorView(DefaultView.class);
+		UI.getCurrent().setNavigator(navigator);
 
-		navigator.addViewChangeListener(new ViewChangeListener() {
-			private static final long serialVersionUID = -7939732210155999013L;
-
-			@Override
-			public boolean beforeViewChange(final ViewChangeEvent event) {
-				return true;
-			}
-
-			@Override
-			public void afterViewChange(final ViewChangeEvent event) {
-				for (final Iterator<Component> it = menuItemsLayout.iterator(); it.hasNext();) {
-					it.next().removeStyleName("selected");
-				}
-				for (final Entry<String, String> item : menuItems.entrySet()) {
-					if (event.getViewName().equals(item.getKey())) {
-						for (final Iterator<Component> it = menuItemsLayout.iterator(); it.hasNext();) {
-							final Component c = it.next();
-							if (c.getCaption() != null && c.getCaption().startsWith(item.getValue())) {
-								c.addStyleName("selected");
-								break;
-							}
-						}
-						break;
-					}
-				}
-				menu.removeStyleName("valo-menu-visible");
-			}
-		});
 	}
 
 	private void buildUI(User user) {
@@ -272,13 +266,13 @@ public class VissaUI extends UI {
 
 		Button loginButton = new Button("Ingresar", e -> authenticate(txtUsername.getValue(), txtPassword.getValue()));
 		loginButton.setSizeFull();
-		loginButton.addStyleName("friendly");
+		loginButton.addStyleName("mystyle");
 		layout.addComponent(loginButton);
 
 		contentLayout.addComponent(layout);
 		contentLayout.setComponentAlignment(layout, Alignment.TOP_CENTER);
 
-		Panel loginPanel = new Panel("<center><h1>Inicio de sesión - Vissa ERP</h1></center>");
+		Panel loginPanel = new Panel("<center><h1>Inicio de sesión - Vissa</h1></center>");
 		loginPanel.addStyleName("well");
 		loginPanel.setContent(contentLayout);
 		setContent(loginPanel);
@@ -288,7 +282,7 @@ public class VissaUI extends UI {
 		try {
 			User user = UserBll.getInstance().select(User.builder().login(username).password(password).build());
 			if (user == null) {
-				ViewHelper.showNotification("Usuario o contraseña invalidos.", Notification.Type.ERROR_MESSAGE);
+				ViewHelper.showNotification("Usuario o contraseña inválidos.", Notification.Type.ERROR_MESSAGE);
 			} else {
 				buildUI(user);
 			}

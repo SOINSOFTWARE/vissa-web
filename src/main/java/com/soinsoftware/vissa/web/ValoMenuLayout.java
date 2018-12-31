@@ -31,7 +31,7 @@ public class ValoMenuLayout extends HorizontalLayout {
     } 
  
     public void addMenu(Component menu) { 
-        menu.addStyleName("valo-menu-part"); 
+        menu.addStyleName("valo-menu-part-my"); 
         menuArea.addComponent(menu); 
     }
 }

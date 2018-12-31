@@ -5,6 +5,7 @@ import com.vaadin.server.Page;
 import com.vaadin.server.Resource;
 import com.vaadin.ui.Button;
 import com.vaadin.ui.Component;
+import com.vaadin.ui.FormLayout;
 import com.vaadin.ui.Grid;
 import com.vaadin.ui.HorizontalLayout;
 import com.vaadin.ui.Notification;
@@ -12,6 +13,7 @@ import com.vaadin.ui.Panel;
 import com.vaadin.ui.VerticalLayout;
 import com.vaadin.ui.Window;
 import com.vaadin.ui.Grid.SelectionMode;
+import com.vaadin.ui.themes.ValoTheme;
 
 /**
  * @author Carlos Rodriguez
@@ -53,6 +55,17 @@ public class ViewHelper {
 		panel.setContent(content);
 		panel.addStyleName("well");
 		return panel;
+	}
+	
+	public static FormLayout buildForm(String caption,  boolean margin, boolean spacing) {
+		final FormLayout form = new FormLayout();
+		form.setMargin(margin);
+		form.setCaption(caption);
+		form.setCaptionAsHtml(true);
+		form.setSizeFull();
+		form.setWidth("50%");
+		form.addStyleName(ValoTheme.FORMLAYOUT_LIGHT);
+		return form;
 	}
 	
 	public static void showNotification(String caption, Notification.Type type) {
