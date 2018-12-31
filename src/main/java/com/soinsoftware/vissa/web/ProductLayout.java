@@ -138,7 +138,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		txtCode = new TextField("Código del producto");
 		txtCode.setWidth("50%");
 		txtCode.setEnabled(false);
-		txtCode.setValue(product != null ? product.getCode() : "");
+		txtCode.setValue(product != null ? product.getCode() :  productBll.selectNextProductCode());
 
 		txtName = new TextField("Nombre del producto");
 		txtName.setWidth("50%");
@@ -158,6 +158,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		cbCategory.setValue(product != null ? product.getCategory() : null);
 
 		cbType = new ComboBox<>("Tipo de producto");
+		cbType.setEmptySelectionCaption("Seleccione");
 		cbType.setWidth("50%");
 		cbType.setEmptySelectionAllowed(false);
 		ListDataProvider<ProductType> typeDataProv = new ListDataProvider<>(typeBll.selectAll());
@@ -166,6 +167,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		cbType.setValue(product != null ? product.getType() : null);
 
 		cbMeasurementUnit = new ComboBox<>("Unidad de medida");
+		cbMeasurementUnit.setEmptySelectionCaption("Seleccione");
 		cbMeasurementUnit.setWidth("50%");
 		cbMeasurementUnit.setDescription("Unidad de medida");
 		cbMeasurementUnit.setEmptySelectionAllowed(false);
@@ -251,7 +253,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 
 	@Override
 	protected void fillGridData() {
-		ListDataProvider<Product> dataProvider = new ListDataProvider<>(productBll.selectAll());
+		ListDataProvider<Product> dataProvider = new ListDataProvider<>(productBll.selectAll(false));
 		filterProductDataProvider = dataProvider.withConfigurableFilter();
 		productGrid.setDataProvider(filterProductDataProvider);
 
@@ -265,6 +267,13 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		} else {
 			productBuilder = Product.builder(entity);
 		}
+		
+		ProductCategory category = cbCategory.getSelectedItem().isPresent() ? cbCategory.getSelectedItem().get() : null;
+		MeasurementUnit measurementUnit = cbMeasurementUnit.getSelectedItem().isPresent()
+				? cbMeasurementUnit.getSelectedItem().get()
+				: null;
+		ProductType type = cbType.getSelectedItem().isPresent() ? cbType.getSelectedItem().get() : null;
+
 		Double salePrice = txtSalePrice.getValue() != null && txtSalePrice.getValue() != ""
 				? Double.parseDouble(txtSalePrice.getValue())
 				: null;
@@ -280,8 +289,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		Integer stock = txtStock.getValue() != null && txtStock.getValue() != "" ? Integer.parseInt(txtStock.getValue())
 				: null;
 		entity = productBuilder.code(txtCode.getValue()).name(txtName.getValue()).description(txtDescription.getValue())
-				.category(cbCategory.getSelectedItem().get()).type(cbType.getSelectedItem().get())
-				.measurementUnit(cbMeasurementUnit.getSelectedItem().get()).eanCode(txtEan.getValue())
+				.category(category).type(type).measurementUnit(measurementUnit).eanCode(txtEan.getValue())
 				.salePrice(salePrice).purchasePrice(purchasePrice).saleTax(saleTax).purchaseTax(purchaseTax)
 				.stock(stock).stockDate(new Date()).archived(false).build();
 		save(productBll, entity, "Producto guardado");
@@ -327,5 +335,6 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 				&& product.getCode().toLowerCase().contains(codeFilter.toLowerCase()));
 		return columnPredicate;
 	}
-
+	
+	
 }
