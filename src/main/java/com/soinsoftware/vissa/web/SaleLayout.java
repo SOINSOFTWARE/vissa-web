@@ -142,7 +142,7 @@ public class SaleLayout extends VerticalLayout implements View {
 		/// 1. Informacion encabezado facuta
 		txtDocNumber = new TextField("Número de factura");
 		txtDocNumber.setEnabled(false);
-		txtDocNumber.setValue("FV-"+documentBll.selectMaxDoc());
+		txtDocNumber.setValue("FV-"+documentBll.selectNextDocumentNumber());
 		txtRefSupplier = new TextField("Referencia proveedor");
 		txtSupplier = new TextField("Cliente");
 		txtSupplier.setWidth("250px");
