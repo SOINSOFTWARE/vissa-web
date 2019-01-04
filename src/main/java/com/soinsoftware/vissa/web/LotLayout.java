@@ -90,8 +90,8 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 	protected Panel buildButtonPanelForLists() {
 		HorizontalLayout layout = ViewHelper.buildHorizontalLayout(true, true);
 		Button btNew = buildButtonForNewAction(ValoTheme.BUTTON_SMALL);
-		Button btEdit = buildButtonForEditAction(ValoTheme.BUTTON_TINY);
-		Button btDelete = buildButtonForDeleteAction(ValoTheme.BUTTON_TINY);
+		Button btEdit = buildButtonForEditAction(ValoTheme.BUTTON_SMALL);
+		Button btDelete = buildButtonForDeleteAction(ValoTheme.BUTTON_SMALL);
 		layout.addComponents(btNew, btEdit, btDelete);
 		return ViewHelper.buildPanel(null, layout);
 	}
