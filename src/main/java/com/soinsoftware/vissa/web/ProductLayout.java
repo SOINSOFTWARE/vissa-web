@@ -14,6 +14,7 @@ import com.soinsoftware.vissa.model.MeasurementUnit;
 import com.soinsoftware.vissa.model.Product;
 import com.soinsoftware.vissa.model.ProductCategory;
 import com.soinsoftware.vissa.model.ProductType;
+import com.soinsoftware.vissa.util.DateUtil;
 import com.soinsoftware.vissa.util.ViewHelper;
 import com.vaadin.data.provider.ConfigurableFilterDataProvider;
 import com.vaadin.data.provider.ListDataProvider;
@@ -121,7 +122,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 	protected Panel buildGridPanel() {
 		VerticalLayout layout = ViewHelper.buildVerticalLayout(true, true);
 		productGrid = ViewHelper.buildGrid(SelectionMode.SINGLE);
-		productGrid.addColumn(Product::getCode).setCaption("Codigo");
+		productGrid.addColumn(Product::getCode).setCaption("Código");
 		productGrid.addColumn(Product::getName).setCaption("Nombre");
 		productGrid.addColumn(Product::getSalePrice).setCaption("Precio de venta");
 		productGrid.addColumn(Product::getStock).setCaption("Stock");
@@ -138,7 +139,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		txtCode = new TextField("Código del producto");
 		txtCode.setWidth("50%");
 		txtCode.setEnabled(false);
-		txtCode.setValue(product != null ? product.getCode() :  productBll.selectNextProductCode());
+		txtCode.setValue(product != null ? product.getCode() : productBll.selectNextProductCode());
 
 		txtName = new TextField("Nombre del producto");
 		txtName.setWidth("50%");
@@ -151,7 +152,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		cbCategory = new ComboBox<>("Categoría");
 		cbCategory.setEmptySelectionCaption("Seleccione");
 		cbCategory.setWidth("50%");
-		cbCategory.setEmptySelectionAllowed(false);
+		cbCategory.setEmptySelectionAllowed(true);
 		ListDataProvider<ProductCategory> categoryDataProv = new ListDataProvider<>(categoryBll.selectAll());
 		cbCategory.setDataProvider(categoryDataProv);
 		cbCategory.setItemCaptionGenerator(ProductCategory::getName);
@@ -160,7 +161,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		cbType = new ComboBox<>("Tipo de producto");
 		cbType.setEmptySelectionCaption("Seleccione");
 		cbType.setWidth("50%");
-		cbType.setEmptySelectionAllowed(false);
+		cbType.setEmptySelectionAllowed(true);
 		ListDataProvider<ProductType> typeDataProv = new ListDataProvider<>(typeBll.selectAll());
 		cbType.setDataProvider(typeDataProv);
 		cbType.setItemCaptionGenerator(ProductType::getName);
@@ -170,7 +171,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		cbMeasurementUnit.setEmptySelectionCaption("Seleccione");
 		cbMeasurementUnit.setWidth("50%");
 		cbMeasurementUnit.setDescription("Unidad de medida");
-		cbMeasurementUnit.setEmptySelectionAllowed(false);
+		cbMeasurementUnit.setEmptySelectionAllowed(true);
 		ListDataProvider<MeasurementUnit> measurementDataProv = new ListDataProvider<>(measurementUnitBll.selectAll());
 		cbMeasurementUnit.setDataProvider(measurementDataProv);
 		cbMeasurementUnit.setItemCaptionGenerator(MeasurementUnit::getName);
@@ -209,9 +210,12 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		txtStockDate = new TextField("Fecha actualización Stock");
 		txtStockDate.setWidth("50%");
 		txtStockDate.setEnabled(false);
-		txtStockDate
-				.setValue(product != null && product.getStock() != null ? String.valueOf(product.getStockDate()) : "");
+	//	txtStockDate
+		//		.setValue(product != null && product.getStock() != null ? String.valueOf(product.getStockDate()) : "");
 
+		txtStock.addValueChangeListener(e -> {
+			updateStockDate(txtStock.getValue());
+		});
 		// ----------------------------------------------------------------------------------
 
 		final FormLayout form = new FormLayout();
@@ -222,8 +226,8 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		form.setWidth("50%");
 		form.addStyleName(ValoTheme.FORMLAYOUT_LIGHT);
 
-		form.addComponents(txtCode, txtName, txtDescription, cbCategory, cbType, cbMeasurementUnit, txtSalePrice,
-				txtPurchasePrice, txtSaleTax, txtPurchaseTax, txtStock, txtStockDate);
+		form.addComponents(txtCode, txtName, txtDescription, cbCategory, cbType, cbMeasurementUnit, txtEan,
+				txtSalePrice, txtPurchasePrice, txtSaleTax, txtPurchaseTax, txtStock, txtStockDate);
 
 		// ---Panel de lotes
 		LotLayout lotPanel = null;
@@ -240,6 +244,13 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 
 		layout.addComponents(form, lotPanel);
 		return layout;
+	}
+	
+	private void updateStockDate(String val) {
+		log.info("updateStockDate" + val);
+		if(val != null && !val.isEmpty()) {
+			txtStockDate.setValue(DateUtil.dateToString(new Date()));
+		}		
 	}
 
 	protected Panel buildButtonPanelListMode() {
@@ -267,31 +278,31 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		} else {
 			productBuilder = Product.builder(entity);
 		}
-		
+
 		ProductCategory category = cbCategory.getSelectedItem().isPresent() ? cbCategory.getSelectedItem().get() : null;
 		MeasurementUnit measurementUnit = cbMeasurementUnit.getSelectedItem().isPresent()
 				? cbMeasurementUnit.getSelectedItem().get()
 				: null;
 		ProductType type = cbType.getSelectedItem().isPresent() ? cbType.getSelectedItem().get() : null;
 
-		Double salePrice = txtSalePrice.getValue() != null && txtSalePrice.getValue() != ""
+		Double salePrice = txtSalePrice.getValue() != null && !txtSalePrice.getValue().isEmpty()
 				? Double.parseDouble(txtSalePrice.getValue())
 				: null;
-		Double purchasePrice = txtPurchasePrice.getValue() != null && txtPurchasePrice.getValue() != ""
+		Double purchasePrice = txtPurchasePrice.getValue() != null && !txtPurchasePrice.isEmpty()
 				? Double.parseDouble(txtPurchasePrice.getValue())
 				: null;
-		Double saleTax = txtSaleTax.getValue() != null && txtSaleTax.getValue() != ""
+		Double saleTax = txtSaleTax.getValue() != null && !txtSaleTax.getValue().isEmpty()
 				? Double.parseDouble(txtSaleTax.getValue())
 				: null;
-		Double purchaseTax = txtPurchaseTax.getValue() != null && txtPurchaseTax.getValue() != ""
+		Double purchaseTax = txtPurchaseTax.getValue() != null && !txtPurchaseTax.getValue().isEmpty()
 				? Double.parseDouble(txtPurchaseTax.getValue())
 				: null;
-		Integer stock = txtStock.getValue() != null && txtStock.getValue() != "" ? Integer.parseInt(txtStock.getValue())
+		Integer stock = txtStock.getValue() != null && !txtStock.isEmpty() ? Integer.parseInt(txtStock.getValue())
 				: null;
 		entity = productBuilder.code(txtCode.getValue()).name(txtName.getValue()).description(txtDescription.getValue())
 				.category(category).type(type).measurementUnit(measurementUnit).eanCode(txtEan.getValue())
 				.salePrice(salePrice).purchasePrice(purchasePrice).saleTax(saleTax).purchaseTax(purchaseTax)
-				.stock(stock).stockDate(new Date()).archived(false).build();
+				.stock(stock).stockDate(DateUtil.stringToDate(txtStockDate.getValue())).archived(false).build();
 		save(productBll, entity, "Producto guardado");
 
 	}
@@ -335,6 +346,5 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 				&& product.getCode().toLowerCase().contains(codeFilter.toLowerCase()));
 		return columnPredicate;
 	}
-	
-	
+
 }
