@@ -21,13 +21,15 @@ public class DateUtil {
 
 	public static Date localDateToDate(LocalDate localDate) {
 
-		Date date = null;
+		Date parseDate = null;
 		try {
-			date = Date.from(localDate.atStartOfDay(ZoneId.systemDefault()).toInstant());
+			Date date = Date.from(localDate.atStartOfDay(ZoneId.systemDefault()).toInstant());
+			SimpleDateFormat parseador = new SimpleDateFormat(Commons.FORMAT_DATE);
+			parseDate = parseador.parse(dateToString(date));
 		} catch (Exception e) {
 			log.error("Error al convertir LocalDate " + localDate + " a Date");
 		}
-		return date;
+		return parseDate;
 	}
 
 	/**
@@ -38,6 +40,7 @@ public class DateUtil {
 	 */
 
 	public static LocalDate dateToLocalDate(Date date) {
+
 		LocalDate localDate = null;
 		try {
 			localDate = date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
@@ -56,12 +59,30 @@ public class DateUtil {
 	public static String dateToString(Date date) {
 		String dateStr = null;
 		try {
-			SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
+			SimpleDateFormat sdf = new SimpleDateFormat(Commons.FORMAT_DATE);
 			dateStr = sdf.format(date);
 		} catch (Exception e) {
 			log.error("Error al convertir Date " + date + " a String");
 		}
 		return dateStr;
+
+	}
+
+	/**
+	 * Metodo para convertir un Strig a Date
+	 * 
+	 * @param date
+	 * @return
+	 */
+	public static Date stringToDate(String dateStr) {
+		Date date = null;
+		try {
+			SimpleDateFormat sdf = new SimpleDateFormat(Commons.FORMAT_DATE);
+			date = sdf.parse(dateStr);
+		} catch (Exception e) {
+			log.error("Error al convertir String " + dateStr + " a Date");
+		}
+		return date;
 
 	}
 
