@@ -34,7 +34,7 @@ import com.soinsoftware.vissa.model.Document;
 import com.soinsoftware.vissa.model.DocumentDetail;
 import com.soinsoftware.vissa.model.DocumentType;
 import com.soinsoftware.vissa.model.InventoryTransaction;
-import com.soinsoftware.vissa.model.InventoryTransactionType;
+import com.soinsoftware.vissa.model.TransactionType;
 import com.soinsoftware.vissa.model.PaymentMethod;
 import com.soinsoftware.vissa.model.PaymentType;
 import com.soinsoftware.vissa.model.Person;
@@ -404,7 +404,7 @@ public class SaleLayout extends VerticalLayout implements View {
 			InventoryTransaction.Builder invBuilder = InventoryTransaction.builder();
 			Document.Builder docuBuilder = Document.builder();
 			Document doc = docuBuilder.id(entity.getId()).documentDate(entity.getDocumentDate()).build();
-			InventoryTransactionType txType = InventoryTransactionType.SALIDA;
+			TransactionType txType = TransactionType.SALIDA;
 			ProductStockBk ps = stockBll.select(detObj.getProduct());
 			int initialStock = ps != null ? ps.getStock() : 0;
 			System.out.println("initialStock=" + initialStock);
