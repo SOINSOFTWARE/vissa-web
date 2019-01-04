@@ -15,7 +15,9 @@ import org.apache.log4j.Logger;
 
 import com.soinsoftware.vissa.bll.UserBll;
 import com.soinsoftware.vissa.model.Person;
+import com.soinsoftware.vissa.model.TransactionType;
 import com.soinsoftware.vissa.model.User;
+import com.soinsoftware.vissa.util.Commons;
 import com.soinsoftware.vissa.util.ViewHelper;
 import com.vaadin.annotations.Theme;
 import com.vaadin.annotations.VaadinServletConfiguration;
@@ -61,6 +63,7 @@ import com.vaadin.ui.themes.ValoTheme;
  * initialize non-component functionality.
  */
 @SuppressWarnings("deprecation")
+
 @Theme("mytheme")
 public class VissaUI extends UI {
 
@@ -75,12 +78,13 @@ public class VissaUI extends UI {
 	private static final String KEY_SALES = "Ventas";
 	private static final String KEY_SUPPLIER = "Proveedores";
 	private static final String KEY_CUSTOMERS = "Clientes";
-	private static final String KEY_SALE_INVOICES = "Facturas";
+	private static final String KEY_SALE_INVOICES = "Facturas de Venta";
 	private static final String KEY_PURCHASE_INVOICES = "Facturas de Compra";
 	private static final String KEY_SUPPLIER_LIST = "supplierList";
-	
+
 	private LinkedHashMap<String, String> menuItems = new LinkedHashMap<String, String>();
 	private LinkedHashMap<String, FontAwesome> menuIconItems = new LinkedHashMap<String, FontAwesome>();
+
 	TreeDataProvider dataProvider;
 	TreeData<String> treeData;
 	Tree<String> tree;
@@ -112,19 +116,21 @@ public class VissaUI extends UI {
 		treeData.addItem(null, KEY_PURCHASES);
 		treeData.addItem(null, KEY_SALES);
 		treeData.addItem(null, KEY_INVENTORY);
+		
 
 		// Couple of childless root items
 		treeData.addItem(KEY_PURCHASES, KEY_PURCHASE_INVOICES);
 		treeData.addItem(KEY_PURCHASES, KEY_SUPPLIER);
-		
+
 		treeData.addItem(KEY_SALES, KEY_SALE_INVOICES);
 		treeData.addItem(KEY_SALES, KEY_CUSTOMERS);
 
 		treeData.addItem(KEY_INVENTORY, KEY_PRODUCTS);
+		
 		treeData.addItem(KEY_INVENTORY, KEY_INVENTORY_MOV);
+		
 	}
 
-	
 	private void buildMenuIconItems() {
 		menuIconItems.put(KEY_PURCHASES, FontAwesome.LIST);
 		menuIconItems.put(KEY_SALES, FontAwesome.LIST);
@@ -133,7 +139,7 @@ public class VissaUI extends UI {
 		menuIconItems.put(KEY_SUPPLIER, FontAwesome.BOOKMARK);
 		menuIconItems.put(KEY_PRODUCTS, FontAwesome.TAGS);
 		menuIconItems.put(KEY_FOOD_BRAND, FontAwesome.NEWSPAPER_O);
-	
+
 	}
 
 	private CssLayout buildMenu(ValoMenuLayout root) {
@@ -145,10 +151,10 @@ public class VissaUI extends UI {
 		menu.addComponent(buildShowMenuButton(menu));
 		menu.addComponent(buildMenuBar());
 		menu.addComponent(menuItemsLayout);
-		
+
 		menu.setWidth("100%");
 		menu.setSizeFull();
-		
+
 		// buildNavigator(root, menu, menuItemsLayout);
 		return menu;
 	}
@@ -195,7 +201,6 @@ public class VissaUI extends UI {
 	@SuppressWarnings("unchecked")
 	private Component buildMenuItemsLayout2(ValoMenuLayout root) {
 		VerticalLayout layout = ViewHelper.buildVerticalLayout(false, false);
-		
 
 		tree = new Tree<>();
 		treeData = new TreeData<>();
@@ -207,7 +212,10 @@ public class VissaUI extends UI {
 		tree.setDataProvider(dataProvider);
 		tree.setStyleName("valo-menuitems");
 		tree.setWidth("100%");
-		
+		tree.expand(KEY_PURCHASES);
+		tree.expand(KEY_SALES);
+		tree.expand(KEY_INVENTORY);
+
 		tree.addItemClickListener(e -> selectItem(e));
 		layout.addComponent(tree);
 		return tree;
@@ -216,17 +224,21 @@ public class VissaUI extends UI {
 
 	private void selectItem(Tree.ItemClick<String> event) {
 		String item = event.getItem();
+		if (item.equals(KEY_SALE_INVOICES)) {
+			Commons.DOCUMENT_TYPE = TransactionType.SALIDA.getName();
+		}
+		if (item.equals(KEY_PURCHASE_INVOICES)) {
+			Commons.DOCUMENT_TYPE = TransactionType.ENTRADA.getName();
+		}
 		UI.getCurrent().getNavigator().navigateTo(item);
 	}
-
-	
 
 	private void buildNavigator() {
 
 		ComponentContainer viewContainer = root.getContentContainer();
-		Navigator navigator = new Navigator(this, viewContainer);	
+		Navigator navigator = new Navigator(this, viewContainer);
 		navigator.addView(KEY_SUPPLIER, SupplierLayout.class);
-		navigator.addView(KEY_PRODUCTS, ProductLayout.class);	
+		navigator.addView(KEY_PRODUCTS, ProductLayout.class);
 		navigator.addView(KEY_SUPPLIER_LIST, SupplierListLayout.class);
 		navigator.addView(KEY_PURCHASE_INVOICES, PurchaseLayout.class);
 		navigator.addView(KEY_SALE_INVOICES, SaleLayout.class);
