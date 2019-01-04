@@ -170,7 +170,8 @@ public abstract class AbstractEditableLayout<E> extends VerticalLayout implement
 	private void afterSave(String caption) {
 		fillGridData();
 		cancelButtonAction();
-		ViewHelper.showNotification(caption, Notification.Type.TRAY_NOTIFICATION);
+	//	ViewHelper.showNotification("No ha seleccionado un producto", Notification.TYPE_WARNING_MESSAGE);
+		ViewHelper.showNotification(caption, Notification.Type.WARNING_MESSAGE);
 	}
 
 	private void showDeleteConfirmationDialog(E entity) {
