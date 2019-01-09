@@ -2,25 +2,29 @@ package com.soinsoftware.vissa.web;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Date;
 import java.util.Set;
 
 import org.apache.log4j.Logger;
+import org.springframework.transaction.annotation.Transactional;
 
+import com.soinsoftware.vissa.bll.CityBll;
+import com.soinsoftware.vissa.bll.CountryBll;
 import com.soinsoftware.vissa.bll.PaymentMethodBll;
 import com.soinsoftware.vissa.bll.PaymentTypeBll;
 import com.soinsoftware.vissa.bll.PersonBll;
+import com.soinsoftware.vissa.bll.StateBll;
 import com.soinsoftware.vissa.bll.SupplierBll;
 import com.soinsoftware.vissa.model.BankAccount;
 import com.soinsoftware.vissa.model.BankAccountType;
+import com.soinsoftware.vissa.model.City;
+import com.soinsoftware.vissa.model.Country;
+import com.soinsoftware.vissa.model.Customer;
 import com.soinsoftware.vissa.model.DocumentIdType;
-import com.soinsoftware.vissa.model.MeasurementUnit;
 import com.soinsoftware.vissa.model.PaymentMethod;
 import com.soinsoftware.vissa.model.PaymentType;
 import com.soinsoftware.vissa.model.Person;
-import com.soinsoftware.vissa.model.Product;
-import com.soinsoftware.vissa.model.ProductCategory;
-import com.soinsoftware.vissa.model.ProductType;
+import com.soinsoftware.vissa.model.PersonType;
+import com.soinsoftware.vissa.model.State;
 import com.soinsoftware.vissa.model.Supplier;
 import com.soinsoftware.vissa.util.ViewHelper;
 import com.vaadin.data.provider.ConfigurableFilterDataProvider;
@@ -34,6 +38,7 @@ import com.vaadin.ui.FormLayout;
 import com.vaadin.ui.Grid;
 import com.vaadin.ui.Grid.SelectionMode;
 import com.vaadin.ui.HorizontalLayout;
+import com.vaadin.ui.Notification;
 import com.vaadin.ui.Panel;
 import com.vaadin.ui.TextField;
 import com.vaadin.ui.VerticalLayout;
@@ -53,6 +58,9 @@ public class SupplierLayout extends AbstractEditableLayout<Supplier> {
 	private final PersonBll personBll;
 	private final PaymentMethodBll payMethodBll;
 	private final PaymentTypeBll payTypeBll;
+	private final CountryBll countryBll;
+	private final StateBll stateBll;
+	private final CityBll cityBll;
 
 	private TextField txFilterByName;
 	private TextField txFilterByCode;
@@ -62,6 +70,16 @@ public class SupplierLayout extends AbstractEditableLayout<Supplier> {
 	private ComboBox<DocumentIdType> cbDocumentType;
 	private TextField txtName;
 	private TextField txtLastName;
+	private TextField txtContactName;
+	private TextField txtAddress;
+	private ComboBox<Country> cbCountry;
+	private ComboBox<State> cbState;
+	private ComboBox<City> cbCity;
+	private TextField txtMobile;
+	private TextField txtPhone;
+	private TextField txtEmail;
+	private TextField txtWebSite;
+
 	private ComboBox<PaymentType> cbPaymentType;
 	private ComboBox<PaymentMethod> cbPaymentMethod;
 	private TextField txtPaymentTerm;
@@ -72,6 +90,8 @@ public class SupplierLayout extends AbstractEditableLayout<Supplier> {
 
 	private boolean listMode;
 	private String personType;
+	private Supplier supplier;
+	private Customer customer;
 
 	private ConfigurableFilterDataProvider<Supplier, Void, SerializablePredicate<Supplier>> filterDataProvider;
 
@@ -82,6 +102,9 @@ public class SupplierLayout extends AbstractEditableLayout<Supplier> {
 		payMethodBll = PaymentMethodBll.getInstance();
 		payTypeBll = PaymentTypeBll.getInstance();
 		personBll = PersonBll.getInstance();
+		countryBll = CountryBll.getInstance();
+		stateBll = StateBll.getInstance();
+		cityBll = CityBll.getInstance();
 		personType = type;
 		if (listMode) {
 			addListTab();
@@ -94,6 +117,10 @@ public class SupplierLayout extends AbstractEditableLayout<Supplier> {
 		personBll = PersonBll.getInstance();
 		payMethodBll = PaymentMethodBll.getInstance();
 		payTypeBll = PaymentTypeBll.getInstance();
+		countryBll = CountryBll.getInstance();
+		stateBll = StateBll.getInstance();
+		cityBll = CityBll.getInstance();
+
 		if (listMode) {
 			addListTab();
 		}
@@ -158,7 +185,7 @@ public class SupplierLayout extends AbstractEditableLayout<Supplier> {
 	@Override
 	protected Component buildEditionComponent(Supplier supplier) {
 		VerticalLayout layout = ViewHelper.buildVerticalLayout(false, false);
-		
+
 		/// 1. Informacion basica de la persona
 		cbDocumentType = new ComboBox<>("Tipo de documento");
 		cbDocumentType.setDescription("Tipo");
@@ -187,6 +214,65 @@ public class SupplierLayout extends AbstractEditableLayout<Supplier> {
 		basicForm.addComponents(cbDocumentType, txtDocumentId, txtName, txtLastName);
 		Panel basicPanel = ViewHelper.buildPanel("Datos basicos", basicForm);
 
+		// 2. Datos de contacto
+		txtContactName = new TextField("Nombre de contacto");
+		txtContactName.setValue(
+				supplier != null && supplier.getPerson() != null ? supplier.getPerson().getContactName() : "");
+
+		txtAddress = new TextField("Dirección");
+		txtAddress.setValue(supplier != null && supplier.getPerson() != null ? supplier.getPerson().getAddress() : "");
+
+		cbCountry = new ComboBox<>("País");
+		ListDataProvider<Country> countryDataProv = new ListDataProvider<>(countryBll.selectAll());
+		cbCountry.setDataProvider(countryDataProv);
+		cbCountry.setItemCaptionGenerator(Country::getName);
+		cbCountry.setValue(supplier != null && supplier.getPerson() != null
+				? supplier.getPerson().getCity().getState().getCountry()
+				: null);
+
+		cbState = new ComboBox<>("Departamento");
+		ListDataProvider<State> stateDataProv = new ListDataProvider<>(stateBll.selectAll());
+		cbState.setDataProvider(stateDataProv);
+		cbState.setItemCaptionGenerator(State::getName);
+		cbState.setValue(
+				supplier != null && supplier.getPerson() != null ? supplier.getPerson().getCity().getState() : null);
+
+		cbCity = new ComboBox<>("Ciudad");
+		ListDataProvider<City> cityDataProv = new ListDataProvider<>(cityBll.selectAll());
+		cbCity.setDataProvider(cityDataProv);
+		cbCity.setItemCaptionGenerator(City::getName);
+		cbCity.setValue(supplier != null && supplier.getPerson() != null ? supplier.getPerson().getCity() : null);
+
+		cbCountry.addValueChangeListener(e -> {
+			selectCountry();
+		});
+
+		cbState.addValueChangeListener(e -> {
+			selectState();
+		});
+
+		cbCity.addValueChangeListener(e -> {
+			selectCity();
+		});
+
+		txtMobile = new TextField("Teléfono móvil");
+		txtMobile.setValue(supplier != null && supplier.getPerson() != null ? supplier.getPerson().getMobile() : "");
+
+		txtPhone = new TextField("Teléfono fijo");
+		txtPhone.setValue(supplier != null && supplier.getPerson() != null ? supplier.getPerson().getPhone() : "");
+
+		txtEmail = new TextField("Correo electrónico");
+		txtEmail.setValue(supplier != null && supplier.getPerson() != null ? supplier.getPerson().getEmail() : "");
+
+		txtWebSite = new TextField("Sitio web");
+		txtWebSite.setValue(supplier != null && supplier.getPerson() != null ? supplier.getPerson().getWebSite() : "");
+
+		FormLayout contactForm = ViewHelper.buildForm("Datos de contacto", true, false);
+		contactForm.addComponents(txtContactName, txtAddress, cbCountry, cbState, cbCity, txtMobile, txtPhone, txtEmail,
+				txtWebSite);
+		Panel contactPanel = ViewHelper.buildPanel("Datos de contacto", contactForm);
+
+		// 3. Condiciones comerciales
 		cbPaymentType = new ComboBox<>("Tipo de pago");
 		ListDataProvider<PaymentType> payTypeDataProv = new ListDataProvider<>(payTypeBll.selectAll());
 		cbPaymentType.setDataProvider(payTypeDataProv);
@@ -222,12 +308,42 @@ public class SupplierLayout extends AbstractEditableLayout<Supplier> {
 		cbAccountStatus = new ComboBox<>("Estado");
 
 		FormLayout bankForm = ViewHelper.buildForm("Datos bancarios", false, false);
-		bankForm.addComponents(cbPaymentType, txtAccountNumber, cbBank, cbAccountStatus);
+		bankForm.addComponents(cbAccountType, txtAccountNumber, cbBank, cbAccountStatus);
 		Panel bankPanel = ViewHelper.buildPanel("Datos bancarios", bankForm);
 		// ----------------------------------------------------------------------------------
 
-		layout.addComponents(basicPanel, paymentPanel, bankPanel);
+		layout.addComponents(basicPanel, contactPanel, paymentPanel, bankPanel);
 		return layout;
+	}
+
+	private void selectCountry() {
+		Country country = cbCountry.getSelectedItem().isPresent() ? cbCountry.getSelectedItem().get() : null;
+		if (country != null) {
+			ListDataProvider<State> stateDataProv = new ListDataProvider<>(stateBll.select(country));
+			cbState.setDataProvider(stateDataProv);
+			cbState.setItemCaptionGenerator(State::getName);
+		}
+
+	}
+
+	private void selectState() {
+		if (cbCountry.getSelectedItem().isPresent() && cbState.getSelectedItem().isPresent()) {
+			State state = cbState.getSelectedItem().get();
+			ListDataProvider<City> cityDataProv = new ListDataProvider<>(cityBll.select(state));
+			cbCity.setDataProvider(cityDataProv);
+			cbCity.setItemCaptionGenerator(City::getName);
+		} else if (!cbCountry.getSelectedItem().isPresent() && cbState.getSelectedItem().isPresent()) {
+			ViewHelper.showNotification("Debe seleccionar un pais", Notification.Type.ERROR_MESSAGE);
+		}
+
+	}
+
+	private void selectCity() {
+
+		if (!cbState.getSelectedItem().isPresent() && cbCity.getSelectedItem().isPresent()) {
+			ViewHelper.showNotification("Debe seleccionar un departamento", Notification.Type.ERROR_MESSAGE);
+		}
+
 	}
 
 	protected Panel buildButtonPanelListMode() {
@@ -248,6 +364,7 @@ public class SupplierLayout extends AbstractEditableLayout<Supplier> {
 	}
 
 	@Override
+	@Transactional(rollbackFor = Exception.class)
 	protected void saveButtonAction(Supplier supplier) {
 		Person person = null;
 		Supplier.Builder supplierBuilder = null;
@@ -267,6 +384,8 @@ public class SupplierLayout extends AbstractEditableLayout<Supplier> {
 
 		String lastName = txtLastName.getValue() != null ? txtLastName.getValue() : null;
 
+		City city = cbCity.getSelectedItem().isPresent() ? cbCity.getSelectedItem().get() : null;
+
 		PaymentType paymentType = cbPaymentType.getSelectedItem().isPresent() ? cbPaymentType.getSelectedItem().get()
 				: null;
 		PaymentMethod paymentMethod = cbPaymentMethod.getSelectedItem().isPresent()
@@ -278,10 +397,22 @@ public class SupplierLayout extends AbstractEditableLayout<Supplier> {
 				: null;
 
 		person = personBuilder.documentType(cbDocumentType.getValue()).documentNumber(txtDocumentId.getValue())
-				.name(txtName.getValue()).lastName(lastName).build();
+				.name(txtName.getValue()).lastName(lastName).type(PersonType.SUPPLIER)
+				.contactName(txtContactName.getValue()).address(txtAddress.getValue()).city(city)
+				.mobile(txtMobile.getValue()).phone(txtPhone.getValue()).email(txtEmail.getValue())
+				.webSite(txtWebSite.getValue()).build();
+
 		supplier = supplierBuilder.person(person).paymentType(paymentType).paymentMethod(paymentMethod)
 				.paymentTerm(txtPaymentTerm.getValue()).build();
-		save(supplierBll, supplier, "Persona guardada");
+
+		try {
+			personBll.save(person);
+			save(supplierBll, supplier, "Persona guardada");
+		} catch (Exception e) {
+			log.error("Error al guardar persona: Exception: " + e.getMessage());
+			ViewHelper.showNotification("Se presentó un error al guardar la persona", Notification.Type.ERROR_MESSAGE);
+		}
+
 	}
 
 	@Override

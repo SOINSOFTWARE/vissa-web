@@ -25,6 +25,7 @@ import com.soinsoftware.vissa.bll.PaymentMethodBll;
 import com.soinsoftware.vissa.bll.PaymentTypeBll;
 import com.soinsoftware.vissa.bll.PersonBll;
 import com.soinsoftware.vissa.bll.ProductBll;
+import com.soinsoftware.vissa.common.CommonsUtil;
 import com.soinsoftware.vissa.exception.ModelValidationException;
 import com.soinsoftware.vissa.model.Document;
 import com.soinsoftware.vissa.model.DocumentDetail;
@@ -94,6 +95,7 @@ public class PurchaseLayout extends VerticalLayout implements View {
 	private ComboBox<DocumentType> cbDocumentType;
 	private TextField txtPaymentTerm;
 	private DateField dtExpirationDate;
+	private TextField txtTotal;
 	private ComboBox<PaymentMethod> cbPaymentMethod;
 	private ComboBox<DocumentStatus> cbDocumentStatus;
 	private Grid<DocumentDetail> detailGrid;
@@ -133,7 +135,13 @@ public class PurchaseLayout extends VerticalLayout implements View {
 		View.super.enter(event);
 
 		// setMargin(true);
-		Label tittle = new Label("Pedido");
+		String title = "";
+		if(transactionType.equals(TransactionType.ENTRADA)) {
+			title = "Pedido";
+		}else {
+			title = "Venta";
+		}
+		Label tittle = new Label(title);
 		tittle.addStyleName(ValoTheme.LABEL_H1);
 		addComponent(tittle);
 
@@ -227,9 +235,15 @@ public class PurchaseLayout extends VerticalLayout implements View {
 		txtDocNumber = new TextField("Número de factura");
 		txtDocNumber.setEnabled(false);
 
-		txtReference = new TextField("Referencia proveedor");
+		txtReference = new TextField("Referencia");
 
-		txtPerson = new TextField("Proveedor");
+		String title = "";
+		if(transactionType.equals(TransactionType.ENTRADA)) {
+			title = "Proveedor";
+		}else {
+			title = "Cliente";
+		}
+		txtPerson = new TextField(title);
 		txtPerson.setWidth("250px");
 		txtPerson.setEnabled(false);
 
@@ -276,6 +290,9 @@ public class PurchaseLayout extends VerticalLayout implements View {
 		cbDocumentStatus.setItemCaptionGenerator(DocumentStatus::getName);
 		cbDocumentStatus.setSelectedItem(docStatusBll.select("Nueva").get(0));
 
+		txtTotal = new TextField("Total Factura");
+		txtTotal.setEnabled(false);
+
 		HorizontalLayout headerLayout1 = ViewHelper.buildHorizontalLayout(false, false);
 
 		headerLayout1.addComponents(cbDocumentType, txtDocNumber, txtReference, txtPerson, searchSupplierButton,
@@ -283,7 +300,8 @@ public class PurchaseLayout extends VerticalLayout implements View {
 		headerLayout1.setComponentAlignment(searchSupplierButton, Alignment.BOTTOM_CENTER);
 
 		HorizontalLayout headerLayout2 = ViewHelper.buildHorizontalLayout(false, false);
-		headerLayout2.addComponents(cbPaymentType, txtPaymentTerm, dtExpirationDate, cbPaymentMethod, cbDocumentStatus);
+		headerLayout2.addComponents(cbPaymentType, txtPaymentTerm, dtExpirationDate, cbPaymentMethod, cbDocumentStatus,
+				txtTotal);
 
 		layout.addComponents(headerLayout1, headerLayout2);
 
@@ -301,6 +319,8 @@ public class PurchaseLayout extends VerticalLayout implements View {
 		Button searchProductBt = new Button("Buscar productos", FontAwesome.PLUS);
 		searchProductBt.addStyleName(ValoTheme.BUTTON_SMALL);
 		searchProductBt.addClickListener(e -> buildProductWindow());
+
+		HorizontalLayout buttonLayout = ViewHelper.buildHorizontalLayout(true, false);
 
 		detailGrid = new Grid<>();
 		detailGrid.setSizeFull();
@@ -337,9 +357,11 @@ public class PurchaseLayout extends VerticalLayout implements View {
 		}).setCaption("Precio");
 
 		// Columna cantidad editable
-
-		detailGrid.addColumn(DocumentDetail::getQuantity).setCaption("Cantidad").setEditorComponent(new TextField(),
+		TextField txtCant = new TextField();
+		detailGrid.addColumn(DocumentDetail::getQuantity).setCaption("Cantidad").setEditorComponent(txtCant,
 				DocumentDetail::setQuantity);
+
+		txtCant.addValueChangeListener(e -> setTotalDocument(txtCant.getValue()));
 
 		detailGrid.addColumn(documentDetail -> {
 			if (documentDetail.getSubtotal() != 0) {
@@ -365,6 +387,15 @@ public class PurchaseLayout extends VerticalLayout implements View {
 		return ViewHelper.buildPanel("Productos", layout);
 	}
 
+	private void setTotalDocument(String val) {
+		log.info ("Total:" + val);
+		log.info (CommonsUtil.documentTotal);
+		if (val != null && !val.isEmpty()) {
+			txtTotal.setValue(String.valueOf(CommonsUtil.documentTotal));
+		}
+
+	}
+
 	/**
 	 * Metodo para construir la venta modal de personas
 	 * 
@@ -380,7 +411,7 @@ public class PurchaseLayout extends VerticalLayout implements View {
 		backBtn.addStyleName(ValoTheme.BUTTON_DANGER);
 		Button selectBtn = new Button("Seleccionar", FontAwesome.CHECK);
 		selectBtn.addStyleName(ValoTheme.BUTTON_PRIMARY);
-		Button newBtn = new Button("Crear proveedor", FontAwesome.PLUS);
+		Button newBtn = new Button("Crear", FontAwesome.PLUS);
 		newBtn.addStyleName(ValoTheme.BUTTON_FRIENDLY);
 
 		HorizontalLayout buttonLayout = ViewHelper.buildHorizontalLayout(true, true);
@@ -620,10 +651,14 @@ public class PurchaseLayout extends VerticalLayout implements View {
 				.collect(Collectors.toList());
 		log.info("personSelected:" + personSelected);
 
-		documentEntity = docBuilder.code(txtDocNumber.getValue()).documentType(cbDocumentType.getValue())
-				.person(personSelected).documentDate(docDate).paymentMethod(cbPaymentMethod.getValue())
-				.paymentType(cbPaymentType.getValue()).paymentTerm(txtPaymentTerm.getValue())
-				.status(cbDocumentStatus.getValue()).build();
+		DocumentStatus documentStatus = docStatusBll.select("Registrada").get(0);
+
+		documentEntity = docBuilder.code(txtDocNumber.getValue())
+				.reference(txtReference.getValue() != null ? txtReference.getValue() : "")
+				.documentType(cbDocumentType.getValue()).person(personSelected).documentDate(docDate)
+				.paymentMethod(cbPaymentMethod.getValue()).paymentType(cbPaymentType.getValue())
+				.paymentTerm(txtPaymentTerm.getValue())
+				.expirationDate(DateUtil.localDateToDate(dtExpirationDate.getValue())).status(documentStatus).build();
 
 		// Guardar documento
 		try {
@@ -734,13 +769,13 @@ public class PurchaseLayout extends VerticalLayout implements View {
 			if (document != null) {
 				cbDocumentType.setValue(document.getDocumentType());
 				txtDocNumber.setValue(document.getCode());
-				txtReference.setValue(document.getReference());
+				txtReference.setValue(document.getReference() != null ? document.getReference() : "");
 				dtDocumentDate.setValue(DateUtil.dateToLocalDate(document.getDocumentDate()));
 				cbPaymentType.setValue(document.getPaymentType());
 				cbPaymentMethod.setValue(document.getPaymentMethod());
 				txtPaymentTerm.setValue(document.getPaymentTerm() != null ? document.getPaymentTerm() : "");
 				txtPerson.setValue(document.getPerson().getName() + " " + document.getPerson().getLastName());
-
+				dtExpirationDate.setValue(DateUtil.dateToLocalDate(document.getExpirationDate()));
 				Set<DocumentDetail> detailSet = document.getDetails();
 
 				itemsList = new ArrayList<>();
