@@ -7,6 +7,8 @@ import java.util.Set;
 import org.apache.log4j.Logger;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.soinsoftware.vissa.bll.BankAccountBll;
+import com.soinsoftware.vissa.bll.BankBll;
 import com.soinsoftware.vissa.bll.CityBll;
 import com.soinsoftware.vissa.bll.CountryBll;
 import com.soinsoftware.vissa.bll.PaymentMethodBll;
@@ -14,7 +16,9 @@ import com.soinsoftware.vissa.bll.PaymentTypeBll;
 import com.soinsoftware.vissa.bll.PersonBll;
 import com.soinsoftware.vissa.bll.StateBll;
 import com.soinsoftware.vissa.bll.SupplierBll;
+import com.soinsoftware.vissa.model.Bank;
 import com.soinsoftware.vissa.model.BankAccount;
+import com.soinsoftware.vissa.model.BankAccountStatus;
 import com.soinsoftware.vissa.model.BankAccountType;
 import com.soinsoftware.vissa.model.City;
 import com.soinsoftware.vissa.model.Country;
@@ -61,6 +65,8 @@ public class SupplierLayout extends AbstractEditableLayout<Supplier> {
 	private final CountryBll countryBll;
 	private final StateBll stateBll;
 	private final CityBll cityBll;
+	private final BankBll bankBll;
+	private final BankAccountBll bankAccountBll;
 
 	private TextField txFilterByName;
 	private TextField txFilterByCode;
@@ -85,8 +91,8 @@ public class SupplierLayout extends AbstractEditableLayout<Supplier> {
 	private TextField txtPaymentTerm;
 	private TextField txtAccountNumber;
 	private ComboBox<BankAccountType> cbAccountType;
-	private ComboBox<BankAccount> cbBank;
-	private ComboBox<Object> cbAccountStatus;
+	private ComboBox<Bank> cbBank;
+	private ComboBox<BankAccountStatus> cbAccountStatus;
 
 	private boolean listMode;
 	private String personType;
@@ -105,6 +111,8 @@ public class SupplierLayout extends AbstractEditableLayout<Supplier> {
 		countryBll = CountryBll.getInstance();
 		stateBll = StateBll.getInstance();
 		cityBll = CityBll.getInstance();
+		bankBll = BankBll.getInstance();
+		bankAccountBll = BankAccountBll.getInstance();
 		personType = type;
 		if (listMode) {
 			addListTab();
@@ -120,6 +128,8 @@ public class SupplierLayout extends AbstractEditableLayout<Supplier> {
 		countryBll = CountryBll.getInstance();
 		stateBll = StateBll.getInstance();
 		cityBll = CityBll.getInstance();
+		bankBll = BankBll.getInstance();
+		bankAccountBll = BankAccountBll.getInstance();
 
 		if (listMode) {
 			addListTab();
@@ -217,12 +227,15 @@ public class SupplierLayout extends AbstractEditableLayout<Supplier> {
 		// 2. Datos de contacto
 		txtContactName = new TextField("Nombre de contacto");
 		txtContactName.setValue(
-				supplier != null && supplier.getPerson() != null ? supplier.getPerson().getContactName() : "");
+				supplier != null && supplier.getPerson() != null && supplier.getPerson().getContactName() != null
+						? supplier.getPerson().getContactName()
+						: "");
 
 		txtAddress = new TextField("Dirección");
 		txtAddress.setValue(supplier != null && supplier.getPerson() != null ? supplier.getPerson().getAddress() : "");
 
 		cbCountry = new ComboBox<>("País");
+		cbCountry.setEmptySelectionCaption("Seleccione");
 		ListDataProvider<Country> countryDataProv = new ListDataProvider<>(countryBll.selectAll());
 		cbCountry.setDataProvider(countryDataProv);
 		cbCountry.setItemCaptionGenerator(Country::getName);
@@ -231,6 +244,7 @@ public class SupplierLayout extends AbstractEditableLayout<Supplier> {
 				: null);
 
 		cbState = new ComboBox<>("Departamento");
+		cbState.setEmptySelectionCaption("Seleccione");
 		ListDataProvider<State> stateDataProv = new ListDataProvider<>(stateBll.selectAll());
 		cbState.setDataProvider(stateDataProv);
 		cbState.setItemCaptionGenerator(State::getName);
@@ -238,6 +252,7 @@ public class SupplierLayout extends AbstractEditableLayout<Supplier> {
 				supplier != null && supplier.getPerson() != null ? supplier.getPerson().getCity().getState() : null);
 
 		cbCity = new ComboBox<>("Ciudad");
+		cbCity.setEmptySelectionCaption("Seleccione");
 		ListDataProvider<City> cityDataProv = new ListDataProvider<>(cityBll.selectAll());
 		cbCity.setDataProvider(cityDataProv);
 		cbCity.setItemCaptionGenerator(City::getName);
@@ -274,38 +289,55 @@ public class SupplierLayout extends AbstractEditableLayout<Supplier> {
 
 		// 3. Condiciones comerciales
 		cbPaymentType = new ComboBox<>("Tipo de pago");
+		cbPaymentType.setEmptySelectionCaption("Seleccione");
 		ListDataProvider<PaymentType> payTypeDataProv = new ListDataProvider<>(payTypeBll.selectAll());
 		cbPaymentType.setDataProvider(payTypeDataProv);
 		cbPaymentType.setItemCaptionGenerator(PaymentType::getName);
 		cbPaymentType.setValue(supplier != null ? supplier.getPaymentType() : null);
 
 		cbPaymentMethod = new ComboBox<>("Forma de pago");
+		cbPaymentMethod.setEmptySelectionCaption("Seleccione");
 		ListDataProvider<PaymentMethod> payMetDataProv = new ListDataProvider<>(payMethodBll.selectAll());
 		cbPaymentMethod.setDataProvider(payMetDataProv);
 		cbPaymentMethod.setItemCaptionGenerator(PaymentMethod::getName);
 		cbPaymentMethod.setValue(supplier != null ? supplier.getPaymentMethod() : null);
 
 		txtPaymentTerm = new TextField("Plazo");
-		txtPaymentTerm.setValue(supplier != null ? supplier.getPaymentTerm() : "");
+		txtPaymentTerm.setValue(supplier != null && supplier.getPaymentTerm() != null ? supplier.getPaymentTerm() : "");
 
 		FormLayout paymentForm = ViewHelper.buildForm("Datos para pagos", true, false);
 		paymentForm.addComponents(cbPaymentType, cbPaymentMethod, txtPaymentTerm);
 		Panel paymentPanel = ViewHelper.buildPanel("Datos para pagos", paymentForm);
 
-		// 3. Transferencia bancaria
-
+		// 3. Datos bancarios
 		cbAccountType = new ComboBox<>("Tipo de cuenta");
+		cbAccountType.setEmptySelectionCaption("Seleccione");
 		ListDataProvider<BankAccountType> accTypeDataProv = new ListDataProvider<>(
 				Arrays.asList(BankAccountType.values()));
 		cbAccountType.setDataProvider(accTypeDataProv);
 		cbAccountType.setItemCaptionGenerator(BankAccountType::getDisplay);
 
 		txtAccountNumber = new TextField("Número de cuenta");
-		// txtAccountNumber.setValue(supplier != null ? supplier.get() : "");
 
 		cbBank = new ComboBox<>("Entidad financiera");
+		cbBank.setEmptySelectionCaption("Seleccione");
+		ListDataProvider<Bank> bankDataProv = new ListDataProvider<>(bankBll.selectAll());
+		cbBank.setDataProvider(bankDataProv);
+		cbBank.setItemCaptionGenerator(Bank::getName);
 
 		cbAccountStatus = new ComboBox<>("Estado");
+		cbAccountStatus.setEmptySelectionCaption("Seleccione");
+		ListDataProvider<BankAccountStatus> accStatusDataProv = new ListDataProvider<>(
+				Arrays.asList(BankAccountStatus.values()));
+		cbAccountStatus.setDataProvider(accStatusDataProv);
+		cbAccountStatus.setItemCaptionGenerator(BankAccountStatus::getDisplay);
+
+		if (supplier != null && supplier.getPerson() != null && supplier.getPerson().getBankAccount() != null) {
+			cbAccountType.setValue(supplier.getPerson().getBankAccount().getType());
+			txtAccountNumber.setValue(supplier.getPerson().getBankAccount().getAccountNumber());
+			cbBank.setValue(supplier.getPerson().getBankAccount().getBank());
+			cbAccountStatus.setValue(supplier.getPerson().getBankAccount().getStatus());
+		}
 
 		FormLayout bankForm = ViewHelper.buildForm("Datos bancarios", false, false);
 		bankForm.addComponents(cbAccountType, txtAccountNumber, cbBank, cbAccountStatus);
@@ -392,24 +424,62 @@ public class SupplierLayout extends AbstractEditableLayout<Supplier> {
 				? cbPaymentMethod.getSelectedItem().get()
 				: null;
 
+		// Construir objeto con datos bancarios
+		BankAccount bankAccount = null;
+
+		BankAccount.Builder bankAccountBuilder = null;
+		if (supplier.getPerson() != null && supplier.getPerson().getBankAccount() != null) {
+			bankAccount = supplier.getPerson().getBankAccount();
+			bankAccountBuilder = BankAccount.builder(bankAccount);
+		} else {
+			bankAccountBuilder = BankAccount.builder();
+		}
+
 		BankAccountType accountType = cbAccountType.getSelectedItem().isPresent()
 				? cbAccountType.getSelectedItem().get()
 				: null;
+		Bank bank = cbBank.getSelectedItem().isPresent() ? cbBank.getSelectedItem().get() : null;
+		BankAccountStatus accountStatus = cbAccountStatus.getSelectedItem().isPresent()
+				? cbAccountStatus.getSelectedItem().get()
+				: null;
+
+		// objeto cuenta bancaria
+		bankAccount = bankAccountBuilder.type(accountType).account(txtAccountNumber.getValue()).bank(bank)
+				.status(accountStatus).build();
+
+		try {
+			if (bankAccount != null && bankAccount.getType() != null) {
+				bankAccountBll.save(bankAccount);
+			} else {
+				bankAccount = null;
+			}
+
+		} catch (Exception e) {
+			log.error("Error al guardar datos bancarios de la persona: Exception: " + e.getMessage());
+			e.printStackTrace();
+			ViewHelper.showNotification("Se presentó un error al guardar los dato bancarios de la persona",
+					Notification.Type.ERROR_MESSAGE);
+		}
+
+		// objeto persona
 
 		person = personBuilder.documentType(cbDocumentType.getValue()).documentNumber(txtDocumentId.getValue())
 				.name(txtName.getValue()).lastName(lastName).type(PersonType.SUPPLIER)
 				.contactName(txtContactName.getValue()).address(txtAddress.getValue()).city(city)
 				.mobile(txtMobile.getValue()).phone(txtPhone.getValue()).email(txtEmail.getValue())
-				.webSite(txtWebSite.getValue()).build();
+				.webSite(txtWebSite.getValue()).bankAccount(bankAccount).build();
 
+		// objeto proveedor
 		supplier = supplierBuilder.person(person).paymentType(paymentType).paymentMethod(paymentMethod)
 				.paymentTerm(txtPaymentTerm.getValue()).build();
 
 		try {
 			personBll.save(person);
 			save(supplierBll, supplier, "Persona guardada");
+			
 		} catch (Exception e) {
 			log.error("Error al guardar persona: Exception: " + e.getMessage());
+			e.printStackTrace();
 			ViewHelper.showNotification("Se presentó un error al guardar la persona", Notification.Type.ERROR_MESSAGE);
 		}
 
