@@ -129,7 +129,7 @@ public abstract class AbstractEditableLayout<E> extends VerticalLayout implement
 			
 			showDeleteConfirmationDialog(entity);
 		} else {
-			ViewHelper.showNotification("No has seleccionado ningún registro", Notification.Type.TRAY_NOTIFICATION);
+			ViewHelper.showNotification("No has seleccionado ningún registro", Notification.Type.WARNING_MESSAGE);
 		}
 	}
 
@@ -170,7 +170,7 @@ public abstract class AbstractEditableLayout<E> extends VerticalLayout implement
 	private void afterSave(String caption) {
 		fillGridData();
 		cancelButtonAction();
-	//	ViewHelper.showNotification("No ha seleccionado un producto", Notification.TYPE_WARNING_MESSAGE);
+
 		ViewHelper.showNotification(caption, Notification.Type.WARNING_MESSAGE);
 	}
 
