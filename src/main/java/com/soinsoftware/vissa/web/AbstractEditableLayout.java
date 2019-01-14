@@ -33,7 +33,7 @@ public abstract class AbstractEditableLayout<E> extends VerticalLayout implement
 	protected static final Logger log = Logger.getLogger(AbstractEditableLayout.class);
 
 	private TabSheet tabSheet;
-	private final String pageTitle;
+	protected String pageTitle;
 	
 	public AbstractEditableLayout(String pageTitle) {
 		super();
@@ -119,7 +119,7 @@ public abstract class AbstractEditableLayout<E> extends VerticalLayout implement
 		if (entity != null) {			
 			showEditionTab(entity, "Editar", FontAwesome.EDIT);
 		} else {
-			ViewHelper.showNotification("No has seleccionado ningún registro", Notification.Type.TRAY_NOTIFICATION);
+			ViewHelper.showNotification("No has seleccionado ningún registro", Notification.Type.WARNING_MESSAGE);
 		}
 	}
 
@@ -161,7 +161,7 @@ public abstract class AbstractEditableLayout<E> extends VerticalLayout implement
 			ViewHelper.showNotification(ex.getMessage(), Notification.Type.ERROR_MESSAGE);
 		} catch (HibernateException ex) {
 			log.error(ex);
-			//bll.rollback();
+			bll.rollback();
 			ViewHelper.showNotification("Los datos no pudieron ser salvados, contacte al administrador (3002007694)",
 					Notification.Type.ERROR_MESSAGE);
 		}
