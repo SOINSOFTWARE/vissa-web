@@ -431,7 +431,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		// Panel de botones
 		Button backBtn = new Button("Cancelar", FontAwesome.BACKWARD);
 		backBtn.addStyleName(ValoTheme.BUTTON_DANGER);
-		backBtn.addClickListener(e -> closeWindow(productSubwindow));
+		backBtn.addClickListener(e -> closeWindow(personSubwindow));
 
 		Button selectBtn = new Button("Seleccionar", FontAwesome.CHECK);
 		selectBtn.addStyleName(ValoTheme.BUTTON_PRIMARY);
@@ -442,7 +442,14 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		Panel buttonPanel = ViewHelper.buildPanel(null, buttonLayout);
 
 		try {
-			personLayout = new SupplierLayout(true, PersonType.SUPPLIER.getDisplay());
+			
+			if(transactionType.equals(TransactionType.ENTRADA)){
+				Commons.PERSON_TYPE = PersonType.SUPPLIER.getName();
+			}
+			if(transactionType.equals(TransactionType.SALIDA)){
+				Commons.PERSON_TYPE = PersonType.CUSTOMER.getName();
+			}
+			personLayout = new SupplierLayout(true);
 
 		} catch (IOException e) {
 			log.error("Error al cargar lista de personas. Exception:" + e);

@@ -4,10 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
-import java.util.Map.Entry;
-import java.util.Set;
 
 import javax.servlet.annotation.WebServlet;
 
@@ -15,18 +12,16 @@ import org.apache.log4j.Logger;
 
 import com.soinsoftware.vissa.bll.UserBll;
 import com.soinsoftware.vissa.model.Person;
+import com.soinsoftware.vissa.model.PersonType;
 import com.soinsoftware.vissa.model.TransactionType;
 import com.soinsoftware.vissa.model.User;
 import com.soinsoftware.vissa.util.Commons;
 import com.soinsoftware.vissa.util.ViewHelper;
 import com.vaadin.annotations.Theme;
 import com.vaadin.annotations.VaadinServletConfiguration;
-import com.vaadin.client.metadata.Property;
 import com.vaadin.data.TreeData;
 import com.vaadin.data.provider.TreeDataProvider;
 import com.vaadin.navigator.Navigator;
-import com.vaadin.navigator.View;
-import com.vaadin.navigator.ViewChangeListener;
 import com.vaadin.server.FileResource;
 import com.vaadin.server.FontAwesome;
 import com.vaadin.server.Responsive;
@@ -48,7 +43,6 @@ import com.vaadin.ui.Panel;
 import com.vaadin.ui.PasswordField;
 import com.vaadin.ui.TextField;
 import com.vaadin.ui.Tree;
-import com.vaadin.ui.Tree.TreeContextClickEvent;
 import com.vaadin.ui.UI;
 import com.vaadin.ui.VerticalLayout;
 import com.vaadin.ui.themes.ValoTheme;
@@ -77,10 +71,11 @@ public class VissaUI extends UI {
 	private static final String KEY_FOOD_BRAND = "foodBrand";
 	private static final String KEY_SALES = "Ventas";
 	private static final String KEY_SUPPLIER = "Proveedores";
-	private static final String KEY_CUSTOMERS = "Clientes";
+	private static final String KEY_CUSTOMER = "Clientes";
 	private static final String KEY_SALE_INVOICES = "Facturas de Venta";
 	private static final String KEY_PURCHASE_INVOICES = "Facturas de Compra";
 	private static final String KEY_SUPPLIER_LIST = "supplierList";
+	private static final String KEY_REPORTS = "Reportes";
 
 	private LinkedHashMap<String, String> menuItems = new LinkedHashMap<String, String>();
 	private LinkedHashMap<String, FontAwesome> menuIconItems = new LinkedHashMap<String, FontAwesome>();
@@ -116,6 +111,7 @@ public class VissaUI extends UI {
 		treeData.addItem(null, KEY_PURCHASES);
 		treeData.addItem(null, KEY_SALES);
 		treeData.addItem(null, KEY_INVENTORY);
+		treeData.addItem(null, KEY_REPORTS);
 		
 
 		// Couple of childless root items
@@ -123,7 +119,7 @@ public class VissaUI extends UI {
 		treeData.addItem(KEY_PURCHASES, KEY_SUPPLIER);
 
 		treeData.addItem(KEY_SALES, KEY_SALE_INVOICES);
-		treeData.addItem(KEY_SALES, KEY_CUSTOMERS);
+		treeData.addItem(KEY_SALES, KEY_CUSTOMER);
 
 		treeData.addItem(KEY_INVENTORY, KEY_PRODUCTS);
 		
@@ -230,6 +226,12 @@ public class VissaUI extends UI {
 		if (item.equals(KEY_PURCHASE_INVOICES)) {
 			Commons.DOCUMENT_TYPE = TransactionType.ENTRADA.getName();
 		}
+		if (item.equals(KEY_SUPPLIER)) {
+			Commons.PERSON_TYPE = PersonType.SUPPLIER.getName();
+		}
+		if (item.equals(KEY_CUSTOMER)) {
+			Commons.PERSON_TYPE = PersonType.CUSTOMER.getName();
+		}
 		UI.getCurrent().getNavigator().navigateTo(item);
 	}
 
@@ -242,7 +244,7 @@ public class VissaUI extends UI {
 		navigator.addView(KEY_SUPPLIER_LIST, SupplierListLayout.class);
 		navigator.addView(KEY_PURCHASE_INVOICES, InvoiceLayout.class);
 		navigator.addView(KEY_SALE_INVOICES, InvoiceLayout.class);
-		navigator.addView(KEY_CUSTOMERS, CustomerLayout.class);
+		navigator.addView(KEY_CUSTOMER, SupplierLayout.class);
 		navigator.addView(KEY_INVENTORY_MOV, InventoryLayout.class);
 		navigator.setErrorView(DefaultView.class);
 		UI.getCurrent().setNavigator(navigator);

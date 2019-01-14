@@ -30,6 +30,7 @@ import com.soinsoftware.vissa.model.Person;
 import com.soinsoftware.vissa.model.PersonType;
 import com.soinsoftware.vissa.model.State;
 import com.soinsoftware.vissa.model.Supplier;
+import com.soinsoftware.vissa.util.Commons;
 import com.soinsoftware.vissa.util.ViewHelper;
 import com.vaadin.data.provider.ConfigurableFilterDataProvider;
 import com.vaadin.data.provider.ListDataProvider;
@@ -95,14 +96,24 @@ public class SupplierLayout extends AbstractEditableLayout<Supplier> {
 	private ComboBox<BankAccountStatus> cbAccountStatus;
 
 	private boolean listMode;
-	private String personType;
+	private PersonType personType;
 	private Supplier supplier;
 	private Customer customer;
 
 	private ConfigurableFilterDataProvider<Supplier, Void, SerializablePredicate<Supplier>> filterDataProvider;
 
-	public SupplierLayout(boolean list, String type) throws IOException {
-		super("Proveedores");
+	public SupplierLayout(boolean list) throws IOException {
+
+		super("");
+		if (Commons.PERSON_TYPE.equals(PersonType.SUPPLIER.getName())) {
+			personType = PersonType.SUPPLIER;
+			this.pageTitle = "Proveedores";
+		}
+		if (Commons.PERSON_TYPE.equals(PersonType.CUSTOMER.getName())) {
+			personType = PersonType.CUSTOMER;
+			this.pageTitle = "Clientes";
+		}
+
 		listMode = list;
 		supplierBll = SupplierBll.getInstance();
 		payMethodBll = PaymentMethodBll.getInstance();
@@ -113,14 +124,23 @@ public class SupplierLayout extends AbstractEditableLayout<Supplier> {
 		cityBll = CityBll.getInstance();
 		bankBll = BankBll.getInstance();
 		bankAccountBll = BankAccountBll.getInstance();
-		personType = type;
+
 		if (listMode) {
 			addListTab();
 		}
 	}
 
 	public SupplierLayout() throws IOException {
-		super("Proveedores");
+		super("");
+		if (Commons.PERSON_TYPE.equals(PersonType.SUPPLIER.getName())) {
+			personType = PersonType.SUPPLIER;
+			this.pageTitle = "Proveedores";
+		}
+		if (Commons.PERSON_TYPE.equals(PersonType.CUSTOMER.getName())) {
+			personType = PersonType.CUSTOMER;
+			this.pageTitle = "Clientes";
+		}
+
 		supplierBll = SupplierBll.getInstance();
 		personBll = PersonBll.getInstance();
 		payMethodBll = PaymentMethodBll.getInstance();
@@ -455,10 +475,9 @@ public class SupplierLayout extends AbstractEditableLayout<Supplier> {
 		// objeto persona
 
 		person = personBuilder.documentType(cbDocumentType.getValue()).documentNumber(txtDocumentId.getValue())
-				.name(txtName.getValue()).lastName(lastName).type(PersonType.SUPPLIER)
-				.contactName(txtContactName.getValue()).address(txtAddress.getValue()).city(city)
-				.mobile(txtMobile.getValue()).phone(txtPhone.getValue()).email(txtEmail.getValue())
-				.webSite(txtWebSite.getValue()).bankAccount(bankAccount).build();
+				.name(txtName.getValue()).lastName(lastName).type(personType).contactName(txtContactName.getValue())
+				.address(txtAddress.getValue()).city(city).mobile(txtMobile.getValue()).phone(txtPhone.getValue())
+				.email(txtEmail.getValue()).webSite(txtWebSite.getValue()).bankAccount(bankAccount).build();
 
 		// objeto proveedor
 		supplier = supplierBuilder.person(person).paymentType(paymentType).paymentMethod(paymentMethod)
