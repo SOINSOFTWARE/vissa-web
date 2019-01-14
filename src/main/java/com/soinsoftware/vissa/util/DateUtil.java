@@ -1,7 +1,7 @@
 package com.soinsoftware.vissa.util;
 
 import java.text.SimpleDateFormat;
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Calendar;
 import java.util.Date;
@@ -13,41 +13,44 @@ public class DateUtil {
 	protected static final Logger log = Logger.getLogger(DateUtil.class);
 
 	/**
-	 * Metodo para convertir una fecha en LocalDate a Date
+	 * Metodo para convertir una fecha en LocalDateTime a Date
 	 * 
 	 * @param localDate
 	 * @return
 	 */
 
-	public static Date localDateToDate(LocalDate localDate) {
+	public static Date localDateTimeToDate(LocalDateTime ldt) {
 
 		Date parseDate = null;
+
 		try {
-			Date date = Date.from(localDate.atStartOfDay(ZoneId.systemDefault()).toInstant());
+			Date date = Date.from(ldt.atZone(ZoneId.systemDefault()).toInstant());
 			SimpleDateFormat parseador = new SimpleDateFormat(Commons.FORMAT_DATE);
 			parseDate = parseador.parse(dateToString(date));
 		} catch (Exception e) {
-			log.error("Error al convertir LocalDate " + localDate + " a Date");
+			log.error("Error al convertir LocalDateTime " + ldt + " a Date");
 		}
 		return parseDate;
 	}
 
 	/**
-	 * Metodo para convertir una fecha en Date a LocalDate
+	 * Metodo para convertir una fecha en Date a LocalDateTime
 	 * 
 	 * @param localDate
 	 * @return
 	 */
 
-	public static LocalDate dateToLocalDate(Date date) {
+	public static LocalDateTime dateToLocalDateTime(Date date) {
 
-		LocalDate localDate = null;
+		LocalDateTime ldt = null;
 		try {
-			localDate = date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+			ldt = date.toInstant()
+				      .atZone(ZoneId.systemDefault())
+				      .toLocalDateTime();
 		} catch (Exception e) {
-			log.error("Error al convertir Date " + date + " a LocalDate");
+			log.error("Error al convertir Date " + date + " a LocalDateTime");
 		}
-		return localDate;
+		return ldt;
 	}
 
 	/**

@@ -1,8 +1,7 @@
 package com.soinsoftware.vissa.web;
 
 import java.io.IOException;
-import java.time.LocalDate;
-import java.time.ZoneId;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
@@ -36,11 +35,15 @@ import com.soinsoftware.vissa.model.Lot;
 import com.soinsoftware.vissa.model.PaymentMethod;
 import com.soinsoftware.vissa.model.PaymentType;
 import com.soinsoftware.vissa.model.Person;
+import com.soinsoftware.vissa.model.PersonType;
 import com.soinsoftware.vissa.model.Product;
+import com.soinsoftware.vissa.model.Supplier;
 import com.soinsoftware.vissa.model.TransactionType;
 import com.soinsoftware.vissa.util.Commons;
 import com.soinsoftware.vissa.util.DateUtil;
 import com.soinsoftware.vissa.util.ViewHelper;
+import com.vaadin.data.HasValue.ValueChangeEvent;
+import com.vaadin.data.HasValue.ValueChangeListener;
 import com.vaadin.data.provider.ConfigurableFilterDataProvider;
 import com.vaadin.data.provider.ListDataProvider;
 import com.vaadin.data.provider.Query;
@@ -48,29 +51,30 @@ import com.vaadin.navigator.View;
 import com.vaadin.navigator.ViewChangeListener.ViewChangeEvent;
 import com.vaadin.server.FontAwesome;
 import com.vaadin.server.SerializablePredicate;
+import com.vaadin.shared.ui.datefield.DateTimeResolution;
 import com.vaadin.ui.Alignment;
 import com.vaadin.ui.Button;
 import com.vaadin.ui.ComboBox;
-import com.vaadin.ui.DateField;
+import com.vaadin.ui.DateTimeField;
 import com.vaadin.ui.Grid;
-import com.vaadin.ui.Grid.SelectionMode;
 import com.vaadin.ui.HorizontalLayout;
 import com.vaadin.ui.Label;
 import com.vaadin.ui.Notification;
 import com.vaadin.ui.Panel;
 import com.vaadin.ui.TextField;
+import com.vaadin.ui.Upload.ChangeEvent;
 import com.vaadin.ui.VerticalLayout;
 import com.vaadin.ui.Window;
 import com.vaadin.ui.themes.ValoTheme;
 
 @SuppressWarnings("deprecation")
-public class PurchaseLayout extends VerticalLayout implements View {
+public class InvoiceLayout extends VerticalLayout implements View {
 
 	/**
 	 * 
 	 */
 	private static final long serialVersionUID = 5187486966314714738L;
-	protected static final Logger log = Logger.getLogger(PurchaseLayout.class);
+	protected static final Logger log = Logger.getLogger(InvoiceLayout.class);
 
 	// Bll
 	private final PersonBll personBll;
@@ -89,29 +93,29 @@ public class PurchaseLayout extends VerticalLayout implements View {
 	private TextField txtDocNumber;
 	private TextField txtReference;
 	private TextField txtPerson;
-	private Grid<Person> personGrid;
-	private DateField dtDocumentDate;
+
+	private DateTimeField dtfDocumentDate;
 	private ComboBox<PaymentType> cbPaymentType;
 	private ComboBox<DocumentType> cbDocumentType;
 	private TextField txtPaymentTerm;
-	private DateField dtExpirationDate;
+	private DateTimeField dtfExpirationDate;
 	private TextField txtTotal;
 	private ComboBox<PaymentMethod> cbPaymentMethod;
 	private ComboBox<DocumentStatus> cbDocumentStatus;
 	private Grid<DocumentDetail> detailGrid;
-	private Grid<Product> productGrid;
 	private Window personSubwindow;
 	private Window productSubwindow;
-	private Set<Product> productSet = null;
-	private Set<Person> personSet = null;
-	private Person personSelected = null;
+
+	private Supplier personSelected = null;
 	private Product productSelected = null;
 	private Document document;
 	private List<DocumentDetail> itemsList = null;
 	private ProductLayout productLayout = null;
+	private SupplierLayout personLayout = null;
+
 	private TransactionType transactionType;
 
-	public PurchaseLayout() throws IOException {
+	public InvoiceLayout() throws IOException {
 		super();
 		personBll = PersonBll.getInstance();
 		productBll = ProductBll.getInstance();
@@ -136,9 +140,9 @@ public class PurchaseLayout extends VerticalLayout implements View {
 
 		// setMargin(true);
 		String title = "";
-		if(transactionType.equals(TransactionType.ENTRADA)) {
+		if (transactionType.equals(TransactionType.ENTRADA)) {
 			title = "Pedido";
-		}else {
+		} else {
 			title = "Venta";
 		}
 		Label tittle = new Label(title);
@@ -238,9 +242,9 @@ public class PurchaseLayout extends VerticalLayout implements View {
 		txtReference = new TextField("Referencia");
 
 		String title = "";
-		if(transactionType.equals(TransactionType.ENTRADA)) {
+		if (transactionType.equals(TransactionType.ENTRADA)) {
 			title = "Proveedor";
-		}else {
+		} else {
 			title = "Cliente";
 		}
 		txtPerson = new TextField(title);
@@ -251,9 +255,10 @@ public class PurchaseLayout extends VerticalLayout implements View {
 		searchSupplierButton.addClickListener(e -> buildPersonWindow(txtPerson.getValue()));
 		searchSupplierButton.addStyleName(ValoTheme.BUTTON_ICON_ONLY);
 
-		dtDocumentDate = new DateField("Fecha");
-		dtDocumentDate.setValue(LocalDate.now());
-		dtDocumentDate.setDateFormat(Commons.FORMAT_DATE);
+		dtfDocumentDate = new DateTimeField("Fecha");
+		dtfDocumentDate.setResolution(DateTimeResolution.SECOND);
+		dtfDocumentDate.setValue(LocalDateTime.now());
+		dtfDocumentDate.setDateFormat(Commons.FORMAT_DATE);
 
 		cbPaymentType = new ComboBox<PaymentType>("Forma de pago");
 		cbPaymentType.setWidth("250px");
@@ -265,9 +270,9 @@ public class PurchaseLayout extends VerticalLayout implements View {
 
 		txtPaymentTerm = new TextField("Plazo");
 
-		dtExpirationDate = new DateField("Fecha de Vencimiento");
-		dtExpirationDate.setEnabled(false);
-		dtExpirationDate.setDateFormat(Commons.FORMAT_DATE);
+		dtfExpirationDate = new DateTimeField("Fecha de Vencimiento");
+		dtfExpirationDate.setEnabled(false);
+		dtfExpirationDate.setDateFormat(Commons.FORMAT_DATE);
 
 		txtPaymentTerm.addValueChangeListener(e -> {
 			setExpirationDate(txtPaymentTerm.getValue());
@@ -296,11 +301,11 @@ public class PurchaseLayout extends VerticalLayout implements View {
 		HorizontalLayout headerLayout1 = ViewHelper.buildHorizontalLayout(false, false);
 
 		headerLayout1.addComponents(cbDocumentType, txtDocNumber, txtReference, txtPerson, searchSupplierButton,
-				dtDocumentDate);
+				dtfDocumentDate);
 		headerLayout1.setComponentAlignment(searchSupplierButton, Alignment.BOTTOM_CENTER);
 
 		HorizontalLayout headerLayout2 = ViewHelper.buildHorizontalLayout(false, false);
-		headerLayout2.addComponents(cbPaymentType, txtPaymentTerm, dtExpirationDate, cbPaymentMethod, cbDocumentStatus,
+		headerLayout2.addComponents(cbPaymentType, txtPaymentTerm, dtfExpirationDate, cbPaymentMethod, cbDocumentStatus,
 				txtTotal);
 
 		layout.addComponents(headerLayout1, headerLayout2);
@@ -319,8 +324,6 @@ public class PurchaseLayout extends VerticalLayout implements View {
 		Button searchProductBt = new Button("Buscar productos", FontAwesome.PLUS);
 		searchProductBt.addStyleName(ValoTheme.BUTTON_SMALL);
 		searchProductBt.addClickListener(e -> buildProductWindow());
-
-		HorizontalLayout buttonLayout = ViewHelper.buildHorizontalLayout(true, false);
 
 		detailGrid = new Grid<>();
 		detailGrid.setSizeFull();
@@ -361,22 +364,31 @@ public class PurchaseLayout extends VerticalLayout implements View {
 		detailGrid.addColumn(DocumentDetail::getQuantity).setCaption("Cantidad").setEditorComponent(txtCant,
 				DocumentDetail::setQuantity);
 
-		txtCant.addValueChangeListener(e -> setTotalDocument(txtCant.getValue()));
+		
 
-		detailGrid.addColumn(documentDetail -> {
+	detailGrid.addColumn(documentDetail -> {
 			if (documentDetail.getSubtotal() != 0) {
 				return documentDetail.getSubtotal();
 			} else {
 				return "";
 			}
 		}).setCaption("Subtotal");
-
+		
+		
+	/*	TextField lSubtotal = new TextField();
+		lSubtotal.setEnabled(false);
+		detailGrid.addColumn(DocumentDetail::getSubtotalStr).setCaption("Subtotal").setEditorComponent(lSubtotal,
+				DocumentDetail::setSubtotalStr);
+		lSubtotal.addValueChangeListener(e -> setTotalDocument());
+*/
 		detailGrid.getEditor().setEnabled(true);
 
 		ListDataProvider<DocumentDetail> detailDataProv = new ListDataProvider<>(Arrays.asList(new DocumentDetail()));
 		ConfigurableFilterDataProvider<DocumentDetail, Void, SerializablePredicate<DocumentDetail>> filterDataProvider = detailDataProv
 				.withConfigurableFilter();
 		detailGrid.setDataProvider(filterDataProvider);
+		
+		
 
 		HorizontalLayout itemsLayout = ViewHelper.buildHorizontalLayout(false, false);
 		itemsLayout.setSizeFull();
@@ -387,12 +399,20 @@ public class PurchaseLayout extends VerticalLayout implements View {
 		return ViewHelper.buildPanel("Productos", layout);
 	}
 
-	private void setTotalDocument(String val) {
-		log.info ("Total:" + val);
-		log.info (CommonsUtil.documentTotal);
-		if (val != null && !val.isEmpty()) {
-			txtTotal.setValue(String.valueOf(CommonsUtil.documentTotal));
+	private void setTotalDocument() {
+		List<DocumentDetail> detailList = detailGrid.getDataProvider().fetch(new Query<>())
+				.collect(Collectors.toList());
+		
+		log.info("detailList:" + detailList.size());
+		Double total = 0.0;
+
+		for (Iterator<DocumentDetail> iterator = detailList.iterator(); iterator.hasNext();) {
+			total = total + iterator.next().getSubtotal();
 		}
+
+		log.info("Total:" + total);
+
+		txtTotal.setValue(String.valueOf(total));
 
 	}
 
@@ -404,42 +424,31 @@ public class PurchaseLayout extends VerticalLayout implements View {
 	private void buildPersonWindow(String personFiltter) {
 
 		personSubwindow = ViewHelper.buildSubwindow("75%");
+		personSubwindow.setCaption("Personas");
 
 		VerticalLayout subContent = ViewHelper.buildVerticalLayout(true, true);
 
+		// Panel de botones
 		Button backBtn = new Button("Cancelar", FontAwesome.BACKWARD);
 		backBtn.addStyleName(ValoTheme.BUTTON_DANGER);
+		backBtn.addClickListener(e -> closeWindow(productSubwindow));
+
 		Button selectBtn = new Button("Seleccionar", FontAwesome.CHECK);
 		selectBtn.addStyleName(ValoTheme.BUTTON_PRIMARY);
-		Button newBtn = new Button("Crear", FontAwesome.PLUS);
-		newBtn.addStyleName(ValoTheme.BUTTON_FRIENDLY);
+		selectBtn.addClickListener(e -> selectPerson());
 
 		HorizontalLayout buttonLayout = ViewHelper.buildHorizontalLayout(true, true);
-		buttonLayout.addComponents(backBtn, selectBtn, newBtn);
+		buttonLayout.addComponents(backBtn, selectBtn);
+		Panel buttonPanel = ViewHelper.buildPanel(null, buttonLayout);
 
-		// Grid de personas
-		personGrid = new Grid<>();
-		fillPersonDataGrid();
-		personGrid.addColumn(Person::getDocumentNumber).setCaption("Número identificación");
-		personGrid.addColumn(Person::getName).setCaption("Nombres");
-		personGrid.addColumn(Person::getLastName).setCaption("Apellidos");
+		try {
+			personLayout = new SupplierLayout(true, PersonType.SUPPLIER.getDisplay());
 
-		personGrid.setSelectionMode(SelectionMode.SINGLE);
-		personGrid.setSizeFull();
-
-		personGrid.addSelectionListener(event -> {
-			personSet = event.getAllSelectedItems();
-
-		});
-
-		selectBtn.addClickListener(e -> selectPerson());
-		newBtn.addClickListener(e -> createPerson());
-
-		HorizontalLayout gridLayout = ViewHelper.buildHorizontalLayout(true, true);
-		gridLayout.setSizeFull();
-		gridLayout.addComponent(personGrid);
-
-		subContent.addComponents(buttonLayout, gridLayout);
+		} catch (IOException e) {
+			log.error("Error al cargar lista de personas. Exception:" + e);
+		}
+		Panel personPanel = ViewHelper.buildPanel(null, personLayout);
+		subContent.addComponents(buttonPanel, personPanel);
 
 		personSubwindow.setContent(subContent);
 		getUI().addWindow(personSubwindow);
@@ -450,34 +459,15 @@ public class PurchaseLayout extends VerticalLayout implements View {
 	 * Método para seleccionar proveedor o cliente
 	 */
 	private void selectPerson() {
-		if (personSet != null) {
-			for (Iterator<Person> iterator = personSet.iterator(); iterator.hasNext();) {
-				personSelected = iterator.next();
-			}
-			if (personSelected != null) {
-				txtPerson.setValue(personSelected.getName() + " " + personSelected.getLastName());
-				personSubwindow.close();
-			} else {
-				ViewHelper.showNotification("Seleccione un proveedor", Notification.TYPE_WARNING_MESSAGE);
-			}
+		personSelected = personLayout.getSelected();
+
+		if (personSelected != null) {
+			txtPerson.setValue(personSelected.getPerson().getName() + " " + personSelected.getPerson().getLastName());
+			personSubwindow.close();
+		} else {
+			ViewHelper.showNotification("Seleccione un proveedor", Notification.TYPE_WARNING_MESSAGE);
 		}
-	}
 
-	/**
-	 * Metodo para crear nueva persona
-	 */
-	private void createPerson() {
-
-	}
-
-	/**
-	 * Metodo encargado de llenar la grid de personas (Proveedores, Clientes)
-	 */
-	private void fillPersonDataGrid() {
-		ListDataProvider<Person> dataProvider = new ListDataProvider<>(personBll.selectAll());
-		ConfigurableFilterDataProvider<Person, Void, SerializablePredicate<Person>> filterPersonDataProv = dataProvider
-				.withConfigurableFilter();
-		personGrid.setDataProvider(filterPersonDataProv);
 	}
 
 	/**
@@ -499,12 +489,12 @@ public class PurchaseLayout extends VerticalLayout implements View {
 		try {
 			if (val != null && !val.isEmpty()) {
 				Integer paymentTerm = Integer.parseInt(val);
-				LocalDate docDate = dtDocumentDate.getValue();
+				LocalDateTime docDate = dtfDocumentDate.getValue();
 				if (docDate != null) {
-					Date iniDate = DateUtil.localDateToDate(docDate);
+					Date iniDate = DateUtil.localDateTimeToDate(docDate);
 					Date endDate = DateUtil.addDaysToDate(iniDate, paymentTerm);
-					LocalDate expDate = DateUtil.dateToLocalDate(endDate);
-					dtExpirationDate.setValue(expDate);
+					LocalDateTime expDate = DateUtil.dateToLocalDateTime(endDate);
+					dtfExpirationDate.setValue(expDate);
 				}
 			}
 		} catch (NumberFormatException nfe) {
@@ -645,7 +635,7 @@ public class PurchaseLayout extends VerticalLayout implements View {
 			docBuilder = Document.builder(documentEntity);
 		}
 
-		Date docDate = DateUtil.localDateToDate(dtDocumentDate.getValue());
+		Date docDate = DateUtil.localDateTimeToDate(dtfDocumentDate.getValue());
 
 		List<DocumentDetail> detailList = detailGrid.getDataProvider().fetch(new Query<>())
 				.collect(Collectors.toList());
@@ -655,10 +645,11 @@ public class PurchaseLayout extends VerticalLayout implements View {
 
 		documentEntity = docBuilder.code(txtDocNumber.getValue())
 				.reference(txtReference.getValue() != null ? txtReference.getValue() : "")
-				.documentType(cbDocumentType.getValue()).person(personSelected).documentDate(docDate)
+				.documentType(cbDocumentType.getValue()).person(personSelected.getPerson()).documentDate(docDate)
 				.paymentMethod(cbPaymentMethod.getValue()).paymentType(cbPaymentType.getValue())
 				.paymentTerm(txtPaymentTerm.getValue())
-				.expirationDate(DateUtil.localDateToDate(dtExpirationDate.getValue())).status(documentStatus).build();
+				.expirationDate(DateUtil.localDateTimeToDate(dtfExpirationDate.getValue())).status(documentStatus)
+				.build();
 
 		// Guardar documento
 		try {
@@ -770,12 +761,12 @@ public class PurchaseLayout extends VerticalLayout implements View {
 				cbDocumentType.setValue(document.getDocumentType());
 				txtDocNumber.setValue(document.getCode());
 				txtReference.setValue(document.getReference() != null ? document.getReference() : "");
-				dtDocumentDate.setValue(DateUtil.dateToLocalDate(document.getDocumentDate()));
+				dtfDocumentDate.setValue(DateUtil.dateToLocalDateTime(document.getDocumentDate()));
 				cbPaymentType.setValue(document.getPaymentType());
 				cbPaymentMethod.setValue(document.getPaymentMethod());
 				txtPaymentTerm.setValue(document.getPaymentTerm() != null ? document.getPaymentTerm() : "");
 				txtPerson.setValue(document.getPerson().getName() + " " + document.getPerson().getLastName());
-				dtExpirationDate.setValue(DateUtil.dateToLocalDate(document.getExpirationDate()));
+				dtfExpirationDate.setValue(DateUtil.dateToLocalDateTime(document.getExpirationDate()));
 				Set<DocumentDetail> detailSet = document.getDetails();
 
 				itemsList = new ArrayList<>();

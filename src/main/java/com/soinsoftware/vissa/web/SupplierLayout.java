@@ -423,6 +423,7 @@ public class SupplierLayout extends AbstractEditableLayout<Supplier> {
 		PaymentMethod paymentMethod = cbPaymentMethod.getSelectedItem().isPresent()
 				? cbPaymentMethod.getSelectedItem().get()
 				: null;
+		log.info("paymentMethod:" + paymentMethod);
 
 		// Construir objeto con datos bancarios
 		BankAccount bankAccount = null;
@@ -447,18 +448,8 @@ public class SupplierLayout extends AbstractEditableLayout<Supplier> {
 		bankAccount = bankAccountBuilder.type(accountType).account(txtAccountNumber.getValue()).bank(bank)
 				.status(accountStatus).build();
 
-		try {
-			if (bankAccount != null && bankAccount.getType() != null) {
-				bankAccountBll.save(bankAccount);
-			} else {
-				bankAccount = null;
-			}
-
-		} catch (Exception e) {
-			log.error("Error al guardar datos bancarios de la persona: Exception: " + e.getMessage());
-			e.printStackTrace();
-			ViewHelper.showNotification("Se presentó un error al guardar los dato bancarios de la persona",
-					Notification.Type.ERROR_MESSAGE);
+		if (bankAccount != null && bankAccount.getType() == null) {
+			bankAccount = null;
 		}
 
 		// objeto persona
@@ -474,13 +465,13 @@ public class SupplierLayout extends AbstractEditableLayout<Supplier> {
 				.paymentTerm(txtPaymentTerm.getValue()).build();
 
 		try {
-			personBll.save(person);
+
 			save(supplierBll, supplier, "Persona guardada");
-			
+
 		} catch (Exception e) {
-			log.error("Error al guardar persona: Exception: " + e.getMessage());
+			log.error("Error al guardar el tercero: Exception: " + e.getMessage());
 			e.printStackTrace();
-			ViewHelper.showNotification("Se presentó un error al guardar la persona", Notification.Type.ERROR_MESSAGE);
+			ViewHelper.showNotification("Se presentó un error al guardar el tercero", Notification.Type.ERROR_MESSAGE);
 		}
 
 	}

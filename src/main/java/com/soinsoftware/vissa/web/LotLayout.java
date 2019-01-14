@@ -16,7 +16,7 @@ import com.vaadin.server.SerializablePredicate;
 import com.vaadin.ui.AbstractOrderedLayout;
 import com.vaadin.ui.Button;
 import com.vaadin.ui.Component;
-import com.vaadin.ui.DateField;
+import com.vaadin.ui.DateTimeField;
 import com.vaadin.ui.FormLayout;
 import com.vaadin.ui.Grid;
 import com.vaadin.ui.Grid.SelectionMode;
@@ -41,8 +41,8 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 
 	private TextField txtCode;
 	private TextField txtName;
-	private DateField txtFabricationDate;
-	private DateField txtExpirationDate;
+	private DateTimeField dtfFabricationDate;
+	private DateTimeField dtfExpirationDate;
 	private TextField txtQuantity;
 
 	private Product product;
@@ -114,11 +114,11 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 		txtName = new TextField("Nombre");
 		txtName.setValue(entity != null ? entity.getName() : "");
 
-		txtFabricationDate = new DateField("Fecha de fabricación");
-		txtFabricationDate.setValue(entity != null ? DateUtil.dateToLocalDate(entity.getLotDate()) : null);
+		dtfFabricationDate = new DateTimeField("Fecha de fabricación");
+		dtfFabricationDate.setValue(entity != null ? DateUtil.dateToLocalDateTime(entity.getLotDate()) : null);
 
-		txtExpirationDate = new DateField("Fecha de vencimiento");
-		txtExpirationDate.setValue(entity != null ? DateUtil.dateToLocalDate(entity.getExpirationDate()) : null);
+		dtfExpirationDate = new DateTimeField("Fecha de vencimiento");
+		dtfExpirationDate.setValue(entity != null ? DateUtil.dateToLocalDateTime(entity.getExpirationDate()) : null);
 
 		txtQuantity = new TextField("Cantidad");
 		txtQuantity.setValue(entity != null ? String.valueOf(entity.getQuantity()) : "");
@@ -131,7 +131,7 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 		form.setWidth("50%");
 		form.addStyleName(ValoTheme.FORMLAYOUT_LIGHT);
 
-		form.addComponents(txtCode, txtName, txtFabricationDate, txtExpirationDate, txtQuantity);
+		form.addComponents(txtCode, txtName, dtfFabricationDate, dtfExpirationDate, txtQuantity);
 
 		layout.addComponents(form);
 
@@ -155,8 +155,8 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 			lotBuilder = Lot.builder(entity);
 		}
 		entity = lotBuilder.code(txtCode.getValue()).name(txtName.getValue())
-				.lotDate(DateUtil.localDateToDate(txtFabricationDate.getValue()))
-				.expirationDate(DateUtil.localDateToDate(txtExpirationDate.getValue())).archived(false)
+				.lotDate(DateUtil.localDateTimeToDate(dtfFabricationDate.getValue()))
+				.expirationDate(DateUtil.localDateTimeToDate(dtfExpirationDate.getValue())).archived(false)
 				.quantity(Integer.parseInt(txtQuantity.getValue()))
 				.product(product).build();
 		save(lotBll, entity, "Lote guardado");
