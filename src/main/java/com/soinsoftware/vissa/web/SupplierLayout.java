@@ -419,19 +419,18 @@ public class SupplierLayout extends AbstractEditableLayout<Supplier> {
 	@Transactional(rollbackFor = Exception.class)
 	protected void saveButtonAction(Supplier supplier) {
 		Person person = null;
+		Person.Builder personBuilder = null;
 		Supplier.Builder supplierBuilder = null;
 		if (supplier == null) {
 			supplierBuilder = Supplier.builder();
 		} else {
 			supplierBuilder = Supplier.builder(supplier);
-		}
-
-		Person.Builder personBuilder = null;
-		if (supplier.getPerson() == null) {
-			personBuilder = Person.builder();
-		} else {
-			person = supplier.getPerson();
-			personBuilder = Person.builder(person);
+			if (supplier.getPerson() == null) {
+				personBuilder = Person.builder();
+			} else {
+				person = supplier.getPerson();
+				personBuilder = Person.builder(person);
+			}
 		}
 
 		String lastName = txtLastName.getValue() != null ? txtLastName.getValue() : null;
@@ -449,7 +448,7 @@ public class SupplierLayout extends AbstractEditableLayout<Supplier> {
 		BankAccount bankAccount = null;
 
 		BankAccount.Builder bankAccountBuilder = null;
-		if (supplier.getPerson() != null && supplier.getPerson().getBankAccount() != null) {
+		if (supplier != null && supplier.getPerson() != null && supplier.getPerson().getBankAccount() != null) {
 			bankAccount = supplier.getPerson().getBankAccount();
 			bankAccountBuilder = BankAccount.builder(bankAccount);
 		} else {
