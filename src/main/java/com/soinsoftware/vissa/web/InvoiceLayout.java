@@ -24,7 +24,6 @@ import com.soinsoftware.vissa.bll.PaymentMethodBll;
 import com.soinsoftware.vissa.bll.PaymentTypeBll;
 import com.soinsoftware.vissa.bll.PersonBll;
 import com.soinsoftware.vissa.bll.ProductBll;
-import com.soinsoftware.vissa.common.CommonsUtil;
 import com.soinsoftware.vissa.exception.ModelValidationException;
 import com.soinsoftware.vissa.model.Document;
 import com.soinsoftware.vissa.model.DocumentDetail;
@@ -34,7 +33,6 @@ import com.soinsoftware.vissa.model.InventoryTransaction;
 import com.soinsoftware.vissa.model.Lot;
 import com.soinsoftware.vissa.model.PaymentMethod;
 import com.soinsoftware.vissa.model.PaymentType;
-import com.soinsoftware.vissa.model.Person;
 import com.soinsoftware.vissa.model.PersonType;
 import com.soinsoftware.vissa.model.Product;
 import com.soinsoftware.vissa.model.Supplier;
@@ -42,8 +40,6 @@ import com.soinsoftware.vissa.model.TransactionType;
 import com.soinsoftware.vissa.util.Commons;
 import com.soinsoftware.vissa.util.DateUtil;
 import com.soinsoftware.vissa.util.ViewHelper;
-import com.vaadin.data.HasValue.ValueChangeEvent;
-import com.vaadin.data.HasValue.ValueChangeListener;
 import com.vaadin.data.provider.ConfigurableFilterDataProvider;
 import com.vaadin.data.provider.ListDataProvider;
 import com.vaadin.data.provider.Query;
@@ -62,7 +58,6 @@ import com.vaadin.ui.Label;
 import com.vaadin.ui.Notification;
 import com.vaadin.ui.Panel;
 import com.vaadin.ui.TextField;
-import com.vaadin.ui.Upload.ChangeEvent;
 import com.vaadin.ui.VerticalLayout;
 import com.vaadin.ui.Window;
 import com.vaadin.ui.themes.ValoTheme;
@@ -91,6 +86,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	// Components
 	private TextField txtDocNumFilter;
 	private TextField txtDocNumber;
+	private TextField txtResolution;
 	private TextField txtReference;
 	private TextField txtPerson;
 
@@ -146,7 +142,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			title = "Venta";
 		}
 		Label tittle = new Label(title);
-		tittle.addStyleName(ValoTheme.LABEL_H1);
+		tittle.addStyleName(ValoTheme.LABEL_H2);
 		addComponent(tittle);
 
 		VerticalLayout layout = ViewHelper.buildVerticalLayout(false, false);
@@ -165,6 +161,8 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 		layout.addComponents(buttonPanel, filterPanel, headerPanel, detailPanel);
 		addComponent(layout);
+		this.setMargin(false);
+		this.setSpacing(false);
 
 	}
 
@@ -209,6 +207,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		txtDocNumFilter = new TextField("Número de factura");
 
 		txtDocNumFilter.addValueChangeListener(e -> searchDocument(txtDocNumFilter.getValue()));
+		txtDocNumFilter.setStyleName(ValoTheme.TEXTFIELD_TINY);
 
 		layout.addComponents(txtDocNumFilter);
 
@@ -221,10 +220,10 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	 * @return
 	 */
 	private Panel buildHeaderPanel() {
-		VerticalLayout layout = ViewHelper.buildVerticalLayout(true, true);
+		VerticalLayout verticalLayout = ViewHelper.buildVerticalLayout(true, true);
 
 		cbDocumentType = new ComboBox<DocumentType>("Tipo de pedido");
-		cbDocumentType.setWidth("250px");
+		// cbDocumentType.setWidth("40%");
 
 		ListDataProvider<DocumentType> docTypeDataProv = new ListDataProvider<>(docTypeBll.select(transactionType));
 
@@ -235,11 +234,19 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		});
 		cbDocumentType.setEmptySelectionAllowed(false);
 		cbDocumentType.setEmptySelectionCaption("Seleccione");
+		cbDocumentType.setStyleName(ValoTheme.COMBOBOX_TINY);
 
 		txtDocNumber = new TextField("Número de factura");
 		txtDocNumber.setEnabled(false);
+		// txtDocNumber.setWidth("40%");
+		txtDocNumber.setStyleName(ValoTheme.TEXTFIELD_TINY);
+
+		txtResolution = new TextField("Resolución de factura");
+		txtResolution.setStyleName(ValoTheme.TEXTFIELD_TINY);
 
 		txtReference = new TextField("Referencia");
+		txtReference.setStyleName(ValoTheme.TEXTFIELD_TINY);
+		// txtReference.setWidth("40%");
 
 		String title = "";
 		if (transactionType.equals(TransactionType.ENTRADA)) {
@@ -248,69 +255,82 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			title = "Cliente";
 		}
 		txtPerson = new TextField(title);
-		txtPerson.setWidth("250px");
+		// txtPerson.setWidth("28%");
 		txtPerson.setEnabled(false);
-
+		txtPerson.setStyleName(ValoTheme.TEXTFIELD_TINY);
 		Button searchSupplierButton = new Button("Buscar proveedor", FontAwesome.SEARCH);
 		searchSupplierButton.addClickListener(e -> buildPersonWindow(txtPerson.getValue()));
-		searchSupplierButton.addStyleName(ValoTheme.BUTTON_ICON_ONLY);
+		searchSupplierButton.setStyleName("icon-only");
 
 		dtfDocumentDate = new DateTimeField("Fecha");
 		dtfDocumentDate.setResolution(DateTimeResolution.SECOND);
 		dtfDocumentDate.setValue(LocalDateTime.now());
 		dtfDocumentDate.setDateFormat(Commons.FORMAT_DATE);
+		dtfDocumentDate.setStyleName(ValoTheme.DATEFIELD_TINY);
+		dtfDocumentDate.setWidth("184px");
 
 		cbPaymentType = new ComboBox<PaymentType>("Forma de pago");
-		cbPaymentType.setWidth("250px");
+
 		cbPaymentType.setEmptySelectionAllowed(false);
 		cbPaymentType.setEmptySelectionCaption("Seleccione");
 		ListDataProvider<PaymentType> payTypeDataProv = new ListDataProvider<>(payTypeBll.selectAll());
 		cbPaymentType.setDataProvider(payTypeDataProv);
 		cbPaymentType.setItemCaptionGenerator(PaymentType::getName);
+		cbPaymentType.setStyleName(ValoTheme.COMBOBOX_TINY);
 
 		txtPaymentTerm = new TextField("Plazo");
+		txtPaymentTerm.setStyleName(ValoTheme.TEXTFIELD_TINY);
 
 		dtfExpirationDate = new DateTimeField("Fecha de Vencimiento");
 		dtfExpirationDate.setEnabled(false);
 		dtfExpirationDate.setDateFormat(Commons.FORMAT_DATE);
+		dtfExpirationDate.setStyleName(ValoTheme.DATEFIELD_TINY);
+		dtfExpirationDate.setWidth("184px");
 
 		txtPaymentTerm.addValueChangeListener(e -> {
 			setExpirationDate(txtPaymentTerm.getValue());
 		});
 
 		cbPaymentMethod = new ComboBox<PaymentMethod>("Método de pago");
-		cbPaymentMethod.setWidth("250px");
+		// cbPaymentMethod.setWidth("20%");
 		cbPaymentMethod.setEmptySelectionAllowed(false);
 		cbPaymentMethod.setEmptySelectionCaption("Seleccione");
 		ListDataProvider<PaymentMethod> payMetDataProv = new ListDataProvider<>(payMethodBll.selectAll());
 		cbPaymentMethod.setDataProvider(payMetDataProv);
 		cbPaymentMethod.setItemCaptionGenerator(PaymentMethod::getName);
+		cbPaymentMethod.setStyleName(ValoTheme.COMBOBOX_TINY);
 
 		cbDocumentStatus = new ComboBox<DocumentStatus>("Estado de la factura");
-		cbDocumentStatus.setWidth("250px");
+
 		cbDocumentStatus.setEmptySelectionAllowed(false);
 		cbDocumentStatus.setEmptySelectionCaption("Seleccione");
 		ListDataProvider<DocumentStatus> docStatusDataProv = new ListDataProvider<>(docStatusBll.selectAll());
 		cbDocumentStatus.setDataProvider(docStatusDataProv);
 		cbDocumentStatus.setItemCaptionGenerator(DocumentStatus::getName);
 		cbDocumentStatus.setSelectedItem(docStatusBll.select("Nueva").get(0));
+		cbDocumentStatus.setStyleName(ValoTheme.COMBOBOX_TINY);
 
 		txtTotal = new TextField("Total Factura");
 		txtTotal.setEnabled(false);
+		txtTotal.setStyleName(ValoTheme.TEXTFIELD_TINY);
 
 		HorizontalLayout headerLayout1 = ViewHelper.buildHorizontalLayout(false, false);
 
-		headerLayout1.addComponents(cbDocumentType, txtDocNumber, txtReference, txtPerson, searchSupplierButton,
-				dtfDocumentDate);
-		headerLayout1.setComponentAlignment(searchSupplierButton, Alignment.BOTTOM_CENTER);
+		headerLayout1.addComponents(cbDocumentType, txtDocNumber, txtResolution, txtReference, txtPerson,
+				searchSupplierButton);
 
 		HorizontalLayout headerLayout2 = ViewHelper.buildHorizontalLayout(false, false);
-		headerLayout2.addComponents(cbPaymentType, txtPaymentTerm, dtfExpirationDate, cbPaymentMethod, cbDocumentStatus,
-				txtTotal);
+		headerLayout2.addComponents(dtfDocumentDate, cbPaymentType, txtPaymentTerm, dtfExpirationDate, cbPaymentMethod);
 
-		layout.addComponents(headerLayout1, headerLayout2);
+		headerLayout1.setComponentAlignment(searchSupplierButton, Alignment.BOTTOM_CENTER);
 
-		return ViewHelper.buildPanel(null, layout);
+		HorizontalLayout headerLayout3 = ViewHelper.buildHorizontalLayout(false, false);
+		headerLayout3.addComponents(cbDocumentStatus, txtTotal);
+
+		verticalLayout.addComponents(headerLayout1, headerLayout2, headerLayout3);
+		verticalLayout.setWidth("100%");
+
+		return ViewHelper.buildPanel(null, verticalLayout);
 	}
 
 	/**
@@ -364,31 +384,26 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		detailGrid.addColumn(DocumentDetail::getQuantity).setCaption("Cantidad").setEditorComponent(txtCant,
 				DocumentDetail::setQuantity);
 
-		
-
-	detailGrid.addColumn(documentDetail -> {
+		detailGrid.addColumn(documentDetail -> {
 			if (documentDetail.getSubtotal() != 0) {
 				return documentDetail.getSubtotal();
 			} else {
 				return "";
 			}
 		}).setCaption("Subtotal");
-		
-		
-	/*	TextField lSubtotal = new TextField();
-		lSubtotal.setEnabled(false);
-		detailGrid.addColumn(DocumentDetail::getSubtotalStr).setCaption("Subtotal").setEditorComponent(lSubtotal,
-				DocumentDetail::setSubtotalStr);
-		lSubtotal.addValueChangeListener(e -> setTotalDocument());
-*/
+
+		/*
+		 * TextField lSubtotal = new TextField(); lSubtotal.setEnabled(false);
+		 * detailGrid.addColumn(DocumentDetail::getSubtotalStr).setCaption("Subtotal").
+		 * setEditorComponent(lSubtotal, DocumentDetail::setSubtotalStr);
+		 * lSubtotal.addValueChangeListener(e -> setTotalDocument());
+		 */
 		detailGrid.getEditor().setEnabled(true);
 
 		ListDataProvider<DocumentDetail> detailDataProv = new ListDataProvider<>(Arrays.asList(new DocumentDetail()));
 		ConfigurableFilterDataProvider<DocumentDetail, Void, SerializablePredicate<DocumentDetail>> filterDataProvider = detailDataProv
 				.withConfigurableFilter();
 		detailGrid.setDataProvider(filterDataProvider);
-		
-		
 
 		HorizontalLayout itemsLayout = ViewHelper.buildHorizontalLayout(false, false);
 		itemsLayout.setSizeFull();
@@ -402,7 +417,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	private void setTotalDocument() {
 		List<DocumentDetail> detailList = detailGrid.getDataProvider().fetch(new Query<>())
 				.collect(Collectors.toList());
-		
+
 		log.info("detailList:" + detailList.size());
 		Double total = 0.0;
 
@@ -442,11 +457,11 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		Panel buttonPanel = ViewHelper.buildPanel(null, buttonLayout);
 
 		try {
-			
-			if(transactionType.equals(TransactionType.ENTRADA)){
+
+			if (transactionType.equals(TransactionType.ENTRADA)) {
 				Commons.PERSON_TYPE = PersonType.SUPPLIER.getName();
 			}
-			if(transactionType.equals(TransactionType.SALIDA)){
+			if (transactionType.equals(TransactionType.SALIDA)) {
 				Commons.PERSON_TYPE = PersonType.CUSTOMER.getName();
 			}
 			personLayout = new SupplierLayout(true);

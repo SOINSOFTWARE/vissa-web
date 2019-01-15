@@ -70,11 +70,11 @@
 }
 
 .valo-menu {
-	width: 300px;
+	width: 250px;
 	background: #E6E6E6;
 	color:#3A87CB;	
 	border-right: 1px solid #DFDEDE;
-	font-size: 12px;	
+	font-size: 8px;	
 	font-weight: bold;
 }
 .valo-menu-title{
@@ -83,4 +83,17 @@
 	background-image: linear-gradient(to bottom,#6d2f85 2%, #4e1f60 98%);
 	border-bottom: 1px solid #6D2F85;
 }
+
+.v-button-icon-only{
+	width: 30px;
+	height: 30px;
+}
+
+.v-label-h1 {
+	font-size: 1.4em;
+	
+}
+
+
+
 }
