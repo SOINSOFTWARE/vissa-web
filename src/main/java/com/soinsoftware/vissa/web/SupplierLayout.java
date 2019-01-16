@@ -220,6 +220,8 @@ public class SupplierLayout extends AbstractEditableLayout<Supplier> {
 		cbDocumentType = new ComboBox<>("Tipo de documento");
 		cbDocumentType.setDescription("Tipo");
 		cbDocumentType.setEmptySelectionAllowed(false);
+
+		cbDocumentType.setRequiredIndicatorVisible(true);
 		ListDataProvider<DocumentIdType> docTypeDataProv = new ListDataProvider<>(
 				Arrays.asList(DocumentIdType.values()));
 		cbDocumentType.setDataProvider(docTypeDataProv);
@@ -228,11 +230,13 @@ public class SupplierLayout extends AbstractEditableLayout<Supplier> {
 				supplier != null && supplier.getPerson() != null ? supplier.getPerson().getDocumentType() : null);
 
 		txtDocumentId = new TextField("Número de documento");
+		txtDocumentId.setRequiredIndicatorVisible(true);
 		txtDocumentId.setValue(
 				supplier != null && supplier.getPerson() != null ? supplier.getPerson().getDocumentNumber() : "");
 
 		txtName = new TextField("Nombres");
 		txtName.setWidth("50%");
+		txtName.setRequiredIndicatorVisible(true);
 		txtName.setValue(supplier != null && supplier.getPerson() != null ? supplier.getPerson().getName() : "");
 
 		txtLastName = new TextField("Apellidos");
@@ -259,17 +263,19 @@ public class SupplierLayout extends AbstractEditableLayout<Supplier> {
 		ListDataProvider<Country> countryDataProv = new ListDataProvider<>(countryBll.selectAll());
 		cbCountry.setDataProvider(countryDataProv);
 		cbCountry.setItemCaptionGenerator(Country::getName);
-		cbCountry.setValue(supplier != null && supplier.getPerson() != null
-				? supplier.getPerson().getCity().getState().getCountry()
-				: null);
+		cbCountry.setValue(supplier != null && supplier.getPerson() != null && supplier.getPerson().getCity() != null
+				&& supplier.getPerson().getCity().getState() != null
+						? supplier.getPerson().getCity().getState().getCountry()
+						: null);
 
 		cbState = new ComboBox<>("Departamento");
 		cbState.setEmptySelectionCaption("Seleccione");
 		ListDataProvider<State> stateDataProv = new ListDataProvider<>(stateBll.selectAll());
 		cbState.setDataProvider(stateDataProv);
 		cbState.setItemCaptionGenerator(State::getName);
-		cbState.setValue(
-				supplier != null && supplier.getPerson() != null ? supplier.getPerson().getCity().getState() : null);
+		cbState.setValue(supplier != null && supplier.getPerson() != null && supplier.getPerson().getCity() != null
+				? supplier.getPerson().getCity().getState()
+				: null);
 
 		cbCity = new ComboBox<>("Ciudad");
 		cbCity.setEmptySelectionCaption("Seleccione");
@@ -418,80 +424,105 @@ public class SupplierLayout extends AbstractEditableLayout<Supplier> {
 	@Override
 	@Transactional(rollbackFor = Exception.class)
 	protected void saveButtonAction(Supplier supplier) {
-		Person person = null;
-		Person.Builder personBuilder = null;
-		Supplier.Builder supplierBuilder = null;
-		if (supplier == null) {
-			supplierBuilder = Supplier.builder();
-		} else {
-			supplierBuilder = Supplier.builder(supplier);
-			if (supplier.getPerson() == null) {
+		try {
+			String message = validateRequiredFields();
+			if (!message.isEmpty()) {
+				throw new Exception(message);
+			}
+			Person person = null;
+			Person.Builder personBuilder = null;
+			Supplier.Builder supplierBuilder = null;
+			if (supplier == null) {
+				supplierBuilder = Supplier.builder();
 				personBuilder = Person.builder();
 			} else {
-				person = supplier.getPerson();
-				personBuilder = Person.builder(person);
+				supplierBuilder = Supplier.builder(supplier);
+				if (supplier.getPerson() == null) {
+					personBuilder = Person.builder();
+				} else {
+					person = supplier.getPerson();
+					personBuilder = Person.builder(person);
+				}
 			}
-		}
 
-		String lastName = txtLastName.getValue() != null ? txtLastName.getValue() : null;
+			String lastName = txtLastName.getValue() != null ? txtLastName.getValue() : null;
 
-		City city = cbCity.getSelectedItem().isPresent() ? cbCity.getSelectedItem().get() : null;
+			City city = cbCity.getSelectedItem().isPresent() ? cbCity.getSelectedItem().get() : null;
 
-		PaymentType paymentType = cbPaymentType.getSelectedItem().isPresent() ? cbPaymentType.getSelectedItem().get()
-				: null;
-		PaymentMethod paymentMethod = cbPaymentMethod.getSelectedItem().isPresent()
-				? cbPaymentMethod.getSelectedItem().get()
-				: null;
-		log.info("paymentMethod:" + paymentMethod);
+			PaymentType paymentType = cbPaymentType.getSelectedItem().isPresent()
+					? cbPaymentType.getSelectedItem().get()
+					: null;
+			PaymentMethod paymentMethod = cbPaymentMethod.getSelectedItem().isPresent()
+					? cbPaymentMethod.getSelectedItem().get()
+					: null;
+			log.info("paymentMethod:" + paymentMethod);
 
-		// Construir objeto con datos bancarios
-		BankAccount bankAccount = null;
+			// Construir objeto con datos bancarios
+			BankAccount bankAccount = null;
 
-		BankAccount.Builder bankAccountBuilder = null;
-		if (supplier != null && supplier.getPerson() != null && supplier.getPerson().getBankAccount() != null) {
-			bankAccount = supplier.getPerson().getBankAccount();
-			bankAccountBuilder = BankAccount.builder(bankAccount);
-		} else {
-			bankAccountBuilder = BankAccount.builder();
-		}
+			BankAccount.Builder bankAccountBuilder = null;
+			if (supplier != null && supplier.getPerson() != null && supplier.getPerson().getBankAccount() != null) {
+				bankAccount = supplier.getPerson().getBankAccount();
+				bankAccountBuilder = BankAccount.builder(bankAccount);
+			} else {
+				bankAccountBuilder = BankAccount.builder();
+			}
 
-		BankAccountType accountType = cbAccountType.getSelectedItem().isPresent()
-				? cbAccountType.getSelectedItem().get()
-				: null;
-		Bank bank = cbBank.getSelectedItem().isPresent() ? cbBank.getSelectedItem().get() : null;
-		BankAccountStatus accountStatus = cbAccountStatus.getSelectedItem().isPresent()
-				? cbAccountStatus.getSelectedItem().get()
-				: null;
+			BankAccountType accountType = cbAccountType.getSelectedItem().isPresent()
+					? cbAccountType.getSelectedItem().get()
+					: null;
+			Bank bank = cbBank.getSelectedItem().isPresent() ? cbBank.getSelectedItem().get() : null;
+			BankAccountStatus accountStatus = cbAccountStatus.getSelectedItem().isPresent()
+					? cbAccountStatus.getSelectedItem().get()
+					: null;
 
-		// objeto cuenta bancaria
-		bankAccount = bankAccountBuilder.type(accountType).account(txtAccountNumber.getValue()).bank(bank)
-				.status(accountStatus).build();
+			// objeto cuenta bancaria
+			bankAccount = bankAccountBuilder.type(accountType).account(txtAccountNumber.getValue()).bank(bank)
+					.status(accountStatus).build();
 
-		if (bankAccount != null && bankAccount.getType() == null) {
-			bankAccount = null;
-		}
+			if (bankAccount != null && bankAccount.getType() == null) {
+				bankAccount = null;
+			}
 
-		// objeto persona
+			// objeto persona
 
-		person = personBuilder.documentType(cbDocumentType.getValue()).documentNumber(txtDocumentId.getValue())
-				.name(txtName.getValue()).lastName(lastName).type(personType).contactName(txtContactName.getValue())
-				.address(txtAddress.getValue()).city(city).mobile(txtMobile.getValue()).phone(txtPhone.getValue())
-				.email(txtEmail.getValue()).webSite(txtWebSite.getValue()).bankAccount(bankAccount).build();
+			DocumentIdType documentIdType = cbDocumentType.getSelectedItem().isPresent()
+					? cbDocumentType.getSelectedItem().get()
+					: null;
+			String docId = txtDocumentId.getValue() != null ? txtDocumentId.getValue() : "";
+			person = personBuilder.documentType(documentIdType).documentNumber(docId).name(txtName.getValue())
+					.lastName(lastName).type(personType).contactName(txtContactName.getValue())
+					.address(txtAddress.getValue()).city(city).mobile(txtMobile.getValue()).phone(txtPhone.getValue())
+					.email(txtEmail.getValue()).webSite(txtWebSite.getValue()).bankAccount(bankAccount).build();
 
-		// objeto proveedor
-		supplier = supplierBuilder.person(person).paymentType(paymentType).paymentMethod(paymentMethod)
-				.paymentTerm(txtPaymentTerm.getValue()).build();
+			// objeto proveedor
+			supplier = supplierBuilder.person(person).paymentType(paymentType).paymentMethod(paymentMethod)
+					.paymentTerm(txtPaymentTerm.getValue()).build();
 
-		try {
+			try {
 
-			save(supplierBll, supplier, "Persona guardada");
+				save(supplierBll, supplier, "Persona guardada");
 
+			} catch (Exception e) {
+				log.error("Error al guardar el tercero: Exception: " + e.getMessage());
+				e.printStackTrace();
+				ViewHelper.showNotification("Se presentó un error al guardar el tercero",
+						Notification.Type.ERROR_MESSAGE);
+			}
 		} catch (Exception e) {
-			log.error("Error al guardar el tercero: Exception: " + e.getMessage());
 			e.printStackTrace();
-			ViewHelper.showNotification("Se presentó un error al guardar el tercero", Notification.Type.ERROR_MESSAGE);
+			ViewHelper.showNotification(e.getMessage(), Notification.Type.ERROR_MESSAGE);
 		}
 
+	}
+
+	private String validateRequiredFields() {
+		String message = "";
+		log.info("validateRequiredFields" + cbDocumentType.getSelectedItem().isPresent());
+		if (!cbDocumentType.getSelectedItem().isPresent()) {
+			message = "El tipo de documento es obligatorio";
+		}
+		return message;
 	}
 
 	@Override
