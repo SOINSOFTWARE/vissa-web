@@ -54,6 +54,24 @@
 		
 }
 
+.v-button-mystyle-btn {
+ 	height: 34px;
+	padding: 0 14px;
+	color: #ffffff;
+	font-weight: 200;
+	background: #4d215e;
+	
+	border-radius: 4px;
+	border: 1px solid #4d215e;
+	border-top-color: #4d215e;
+	border-bottom-color: #4d215e;
+	
+	box-shadow: inset 0 1px 0 #4d215e, inset 0 -1px 0 #4d215e, 0 2px 3px rgba(0, 0, 0, 0.05);
+	text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.05);
+	
+		
+}
+
 .mytheme .valo-menu-title-my {
 	line-height: 1.2;
 	background-color: #197de1;
@@ -71,8 +89,8 @@
 
 .valo-menu {
 	width: 250px;
-	background: #E6E6E6;
-	color:#3A87CB;	
+	background: #f5f5f5;
+	color:#4d215e;	
 	border-right: 1px solid #DFDEDE;
 	font-size: 8px;	
 	font-weight: bold;
@@ -85,8 +103,8 @@
 }
 
 .v-button-icon-only{
-	width: 30px;
-	height: 30px;
+	width: 28px;
+	height: 28px;
 }
 
 .v-label-h1 {
