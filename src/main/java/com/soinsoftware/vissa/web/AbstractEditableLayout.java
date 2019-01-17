@@ -23,7 +23,6 @@ import com.vaadin.ui.Panel;
 import com.vaadin.ui.TabSheet;
 import com.vaadin.ui.TabSheet.Tab;
 import com.vaadin.ui.VerticalLayout;
-import com.vaadin.ui.themes.ValoTheme;
 
 @SuppressWarnings("deprecation")
 public abstract class AbstractEditableLayout<E> extends VerticalLayout implements View {
@@ -65,17 +64,17 @@ public abstract class AbstractEditableLayout<E> extends VerticalLayout implement
 
 	protected Panel buildButtonPanelForLists() {
 		HorizontalLayout layout = ViewHelper.buildHorizontalLayout(true, true);
-		Button btNew = buildButtonForNewAction(ValoTheme.BUTTON_PRIMARY);
-		Button btEdit = buildButtonForEditAction(ValoTheme.BUTTON_FRIENDLY);
-		Button btDelete = buildButtonForDeleteAction(ValoTheme.BUTTON_DANGER);
+		Button btNew = buildButtonForNewAction("mystyle-btn");
+		Button btEdit = buildButtonForEditAction("mystyle-btn");
+		Button btDelete = buildButtonForDeleteAction("mystyle-btn");
 		layout.addComponents(btNew, btEdit, btDelete);
 		return ViewHelper.buildPanel(null, layout);
 	}
 
 	protected Panel buildButtonPanelForEdition(E entity) {
 		HorizontalLayout layout = ViewHelper.buildHorizontalLayout(true, true);
-		Button btCancel = buildButtonForCancelAction(ValoTheme.BUTTON_DANGER);
-		Button btSave = buildButtonForSaveAction(entity, ValoTheme.BUTTON_PRIMARY);
+		Button btCancel = buildButtonForCancelAction("mystyle-btn");
+		Button btSave = buildButtonForSaveAction(entity, "mystyle-btn");
 		layout.addComponents(btCancel, btSave);
 		return ViewHelper.buildPanel(null, layout);
 	}

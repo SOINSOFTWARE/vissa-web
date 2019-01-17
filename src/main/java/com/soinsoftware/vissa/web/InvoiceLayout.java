@@ -176,19 +176,19 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 		HorizontalLayout layout = ViewHelper.buildHorizontalLayout(true, true);
 		Button newBtn = new Button("Nuevo", FontAwesome.SAVE);
-		newBtn.addStyleName(ValoTheme.BUTTON_PRIMARY);
+		newBtn.addStyleName("mystyle-btn");
 		newBtn.addClickListener(e -> cleanButtonAction());
 
 		Button saveBtn = new Button("Guardar", FontAwesome.SAVE);
-		saveBtn.addStyleName(ValoTheme.BUTTON_FRIENDLY);
+		saveBtn.addStyleName("mystyle-btn");
 		saveBtn.addClickListener(e -> saveButtonAction(null));
 
 		Button editBtn = new Button("Edit", FontAwesome.EDIT);
-		editBtn.addStyleName(ValoTheme.BUTTON_FRIENDLY);
+		editBtn.addStyleName("mystyle-btn");
 		// editBtn.addClickListener(e -> saveButtonAction(null));
 
 		Button deleteBtn = new Button("Cancelar", FontAwesome.ERASER);
-		deleteBtn.addStyleName(ValoTheme.BUTTON_DANGER);
+		deleteBtn.addStyleName("mystyle-btn");
 		// deleteBtn.addClickListener(e -> saveButtonAction(document));
 
 		layout.addComponents(newBtn, saveBtn, deleteBtn);

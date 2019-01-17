@@ -102,6 +102,10 @@ public class VissaUI extends UI {
 		}
 		root.addMenu(menu);
 		root.setWidth("100%");
+		Panel panel = new Panel ();
+		panel.setStyleName("well");
+		panel.setContent(root);
+		//setContent(root);
 		setContent(root);
 	}
 
@@ -127,16 +131,7 @@ public class VissaUI extends UI {
 		
 	}
 
-	private void buildMenuIconItems() {
-		menuIconItems.put(KEY_PURCHASES, FontAwesome.LIST);
-		menuIconItems.put(KEY_SALES, FontAwesome.LIST);
-		menuIconItems.put(KEY_INVENTORY, FontAwesome.PRODUCT_HUNT);
-		menuIconItems.put(KEY_COMPANY_DATA, FontAwesome.BOOK);
-		menuIconItems.put(KEY_SUPPLIER, FontAwesome.BOOKMARK);
-		menuIconItems.put(KEY_PRODUCTS, FontAwesome.TAGS);
-		menuIconItems.put(KEY_FOOD_BRAND, FontAwesome.NEWSPAPER_O);
 
-	}
 
 	private CssLayout buildMenu(ValoMenuLayout root) {
 		CssLayout menu = new CssLayout();
@@ -211,9 +206,15 @@ public class VissaUI extends UI {
 		tree.expand(KEY_PURCHASES);
 		tree.expand(KEY_SALES);
 		tree.expand(KEY_INVENTORY);
-
+	
 		tree.addItemClickListener(e -> selectItem(e));
 		layout.addComponent(tree);
+		
+		Panel treePanel = new Panel();
+		treePanel.addStyleName("well");
+		treePanel.setContent(tree);
+		//setContent(treePanel);
+		
 		return tree;
 
 	}
