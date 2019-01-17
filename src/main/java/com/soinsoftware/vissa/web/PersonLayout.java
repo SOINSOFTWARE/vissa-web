@@ -5,9 +5,9 @@ import java.util.Arrays;
 import java.util.Set;
 
 import org.apache.log4j.Logger;
+import org.hibernate.HibernateException;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.soinsoftware.vissa.bll.BankAccountBll;
 import com.soinsoftware.vissa.bll.BankBll;
 import com.soinsoftware.vissa.bll.CityBll;
 import com.soinsoftware.vissa.bll.CountryBll;
@@ -16,13 +16,13 @@ import com.soinsoftware.vissa.bll.PaymentTypeBll;
 import com.soinsoftware.vissa.bll.PersonBll;
 import com.soinsoftware.vissa.bll.StateBll;
 import com.soinsoftware.vissa.bll.SupplierBll;
+import com.soinsoftware.vissa.exception.ModelValidationException;
 import com.soinsoftware.vissa.model.Bank;
 import com.soinsoftware.vissa.model.BankAccount;
 import com.soinsoftware.vissa.model.BankAccountStatus;
 import com.soinsoftware.vissa.model.BankAccountType;
 import com.soinsoftware.vissa.model.City;
 import com.soinsoftware.vissa.model.Country;
-import com.soinsoftware.vissa.model.Customer;
 import com.soinsoftware.vissa.model.DocumentIdType;
 import com.soinsoftware.vissa.model.PaymentMethod;
 import com.soinsoftware.vissa.model.PaymentType;
@@ -50,14 +50,14 @@ import com.vaadin.ui.VerticalLayout;
 import com.vaadin.ui.themes.ValoTheme;
 
 @SuppressWarnings("unchecked")
-public class SupplierLayout extends AbstractEditableLayout<Supplier> {
+public class PersonLayout extends AbstractEditableLayout<Person> {
 
 	/**
 	 * 
 	 */
 	private static final long serialVersionUID = 5076502522106126046L;
 
-	protected static final Logger log = Logger.getLogger(SupplierLayout.class);
+	protected static final Logger log = Logger.getLogger(PersonLayout.class);
 
 	private final SupplierBll supplierBll;
 	private final PersonBll personBll;
@@ -67,11 +67,11 @@ public class SupplierLayout extends AbstractEditableLayout<Supplier> {
 	private final StateBll stateBll;
 	private final CityBll cityBll;
 	private final BankBll bankBll;
-	private final BankAccountBll bankAccountBll;
 
 	private TextField txFilterByName;
 	private TextField txFilterByCode;
-	private Grid<Supplier> grid;
+	private TextField txFilterByLastName;
+	private Grid<Person> grid;
 
 	private TextField txtDocumentId;
 	private ComboBox<DocumentIdType> cbDocumentType;
@@ -98,12 +98,10 @@ public class SupplierLayout extends AbstractEditableLayout<Supplier> {
 
 	private boolean listMode;
 	private PersonType personType;
-	private Supplier supplier;
-	private Customer customer;
 
-	private ConfigurableFilterDataProvider<Supplier, Void, SerializablePredicate<Supplier>> filterDataProvider;
+	private ConfigurableFilterDataProvider<Person, Void, SerializablePredicate<Person>> filterDataProvider;
 
-	public SupplierLayout(boolean list) throws IOException {
+	public PersonLayout(boolean list) throws IOException {
 
 		super("");
 		if (Commons.PERSON_TYPE.equals(PersonType.SUPPLIER.getName())) {
@@ -124,14 +122,13 @@ public class SupplierLayout extends AbstractEditableLayout<Supplier> {
 		stateBll = StateBll.getInstance();
 		cityBll = CityBll.getInstance();
 		bankBll = BankBll.getInstance();
-		bankAccountBll = BankAccountBll.getInstance();
 
 		if (listMode) {
 			addListTab();
 		}
 	}
 
-	public SupplierLayout() throws IOException {
+	public PersonLayout() throws IOException {
 		super("");
 		if (Commons.PERSON_TYPE.equals(PersonType.SUPPLIER.getName())) {
 			personType = PersonType.SUPPLIER;
@@ -150,7 +147,6 @@ public class SupplierLayout extends AbstractEditableLayout<Supplier> {
 		stateBll = StateBll.getInstance();
 		cityBll = CityBll.getInstance();
 		bankBll = BankBll.getInstance();
-		bankAccountBll = BankAccountBll.getInstance();
 
 		if (listMode) {
 			addListTab();
@@ -177,7 +173,7 @@ public class SupplierLayout extends AbstractEditableLayout<Supplier> {
 	}
 
 	@Override
-	protected AbstractOrderedLayout buildEditionView(Supplier entity) {
+	protected AbstractOrderedLayout buildEditionView(Person entity) {
 		VerticalLayout layout = ViewHelper.buildVerticalLayout(false, false);
 		Panel buttonPanel = buildButtonPanelForEdition(entity);
 		Component dataPanel = buildEditionComponent(entity);
@@ -190,27 +186,14 @@ public class SupplierLayout extends AbstractEditableLayout<Supplier> {
 	protected Panel buildGridPanel() {
 		VerticalLayout layout = ViewHelper.buildVerticalLayout(true, true);
 		grid = ViewHelper.buildGrid(SelectionMode.SINGLE);
-		grid.addColumn(supplier -> {
-			if (supplier.getPerson() != null) {
-				return supplier.getPerson().getDocumentNumber();
+		grid.addColumn(Person::getDocumentNumber).setCaption("Número de documento");
+		grid.addColumn(person -> {
+			if (person != null) {
+				return person.getName() + " " + person.getLastName();
 			} else {
 				return null;
 			}
-		}).setCaption("Número de documento");
-		grid.addColumn(supplier -> {
-			if (supplier.getPerson() != null) {
-				return supplier.getPerson().getName();
-			} else {
-				return null;
-			}
-		}).setCaption("Nombres");
-		grid.addColumn(supplier -> {
-			if (supplier.getPerson() != null) {
-				return supplier.getPerson().getLastName();
-			} else {
-				return null;
-			}
-		}).setCaption("Apellidos");
+		}).setCaption("Nombre y apellidos");
 
 		layout.addComponent(ViewHelper.buildPanel(null, grid));
 		fillGridData();
@@ -218,7 +201,7 @@ public class SupplierLayout extends AbstractEditableLayout<Supplier> {
 	}
 
 	@Override
-	protected Component buildEditionComponent(Supplier supplier) {
+	protected Component buildEditionComponent(Person person) {
 		VerticalLayout layout = ViewHelper.buildVerticalLayout(false, false);
 
 		/// 1. Informacion basica de la persona
@@ -308,8 +291,8 @@ public class SupplierLayout extends AbstractEditableLayout<Supplier> {
 		});
 
 		FormLayout contactForm = ViewHelper.buildForm("Datos de contacto", true, false);
-		contactForm.addComponents(txtContactName, txtAddress, cbCountry, cbState, cbCity, txtNeighborhood, txtMobile, txtPhone, txtEmail,
-				txtWebSite);
+		contactForm.addComponents(txtContactName, txtAddress, cbCountry, cbState, cbCity, txtNeighborhood, txtMobile,
+				txtPhone, txtEmail, txtWebSite);
 
 		Panel contactPanel = ViewHelper.buildPanel("Datos de contacto", contactForm);
 
@@ -334,7 +317,6 @@ public class SupplierLayout extends AbstractEditableLayout<Supplier> {
 		FormLayout paymentForm = ViewHelper.buildForm("Datos para pagos", true, false);
 		paymentForm.addComponents(cbPaymentType, cbPaymentMethod, txtPaymentTerm);
 		Panel paymentPanel = ViewHelper.buildPanel("Datos para pagos", paymentForm);
-		
 
 		// 3. Datos bancarios
 		cbAccountType = new ComboBox<>("Tipo de cuenta");
@@ -369,48 +351,48 @@ public class SupplierLayout extends AbstractEditableLayout<Supplier> {
 		// ----------------------------------------------------------------------------------
 
 		layout.addComponents(basicPanel, contactPanel, paymentPanel, bankPanel);
-		setFieldValue(supplier);
+		setFieldValue(person);
 		return layout;
 	}
 
-	private void setFieldValue(Supplier supplier) {
+	private void setFieldValue(Person person) {
 		// Establecer datos a los campos
-		if (supplier != null) {
-			cbPaymentType.setValue(supplier.getPaymentType());
-			cbPaymentMethod.setValue(supplier.getPaymentMethod());
-			txtPaymentTerm.setValue(supplier.getPaymentTerm() != null ? supplier.getPaymentTerm() : "");
+		if (person != null) {
+			cbDocumentType.setValue(person.getDocumentType() != null ? person.getDocumentType() : null);
+			txtDocumentId.setValue(person.getDocumentNumber() != null ? person.getDocumentNumber() : "");
+			txtName.setValue(person.getName() != null ? person.getName() : "");
+			txtLastName.setValue(person.getLastName() != null ? person.getLastName() : "");
+			txtContactName.setValue(person.getContactName() != null ? person.getContactName() : "");
+			txtAddress.setValue(person.getAddress() != null ? person.getAddress() : "");
 
-			if (supplier.getPerson() != null) {
-				Person person = supplier.getPerson();
+			cbCountry.setValue(person.getCity() != null && person.getCity().getState() != null
+					? person.getCity().getState().getCountry()
+					: null);
+			cbState.setValue(
+					person.getCity() != null && person.getCity().getState() != null ? person.getCity().getState()
+							: null);
+			cbCity.setValue(person.getCity() != null ? person.getCity() : null);
 
-				cbDocumentType.setValue(person.getDocumentType() != null ? person.getDocumentType() : null);
-				txtDocumentId.setValue(person.getDocumentNumber() != null ? person.getDocumentNumber() : "");
-				txtName.setValue(person.getName() != null ? person.getName() : "");
-				txtLastName.setValue(person.getLastName() != null ? person.getLastName() : "");
-				txtContactName.setValue(person.getContactName() != null ? person.getContactName() : "");
-				txtAddress.setValue(person.getAddress() != null ? person.getAddress() : "");
+			txtNeighborhood.setValue(person.getNeighborhood() != null ? person.getNeighborhood() : "");
+			txtMobile.setValue(person.getMobile() != null ? person.getMobile() : "");
+			txtPhone.setValue(person.getPhone() != null ? person.getPhone() : "");
+			txtEmail.setValue(person.getEmail() != null ? person.getEmail() : "");
+			txtWebSite.setValue(person.getWebSite() != null ? person.getWebSite() : "");
 
-				cbCountry.setValue(person.getCity() != null && person.getCity().getState() != null
-						? person.getCity().getState().getCountry()
-						: null);
-				cbState.setValue(
-						person.getCity() != null && person.getCity().getState() != null ? person.getCity().getState()
-								: null);
-				cbCity.setValue(person.getCity() != null ? person.getCity() : null);
-
-				txtNeighborhood.setValue(person.getNeighborhood() != null ? person.getNeighborhood() : "");
-				txtMobile.setValue(person.getMobile() != null ? person.getMobile() : "");
-				txtPhone.setValue(person.getPhone() != null ? person.getPhone() : "");
-				txtEmail.setValue(person.getEmail() != null ? person.getEmail() : "");
-				txtWebSite.setValue(person.getWebSite() != null ? person.getWebSite() : "");
-
-				if (person.getBankAccount() != null) {
-					cbAccountType.setValue(supplier.getPerson().getBankAccount().getType());
-					txtAccountNumber.setValue(supplier.getPerson().getBankAccount().getAccountNumber());
-					cbBank.setValue(supplier.getPerson().getBankAccount().getBank());
-					cbAccountStatus.setValue(supplier.getPerson().getBankAccount().getStatus());
-				}
+			if (person.getBankAccount() != null) {
+				cbAccountType.setValue(person.getBankAccount().getType());
+				txtAccountNumber.setValue(person.getBankAccount().getAccountNumber());
+				cbBank.setValue(person.getBankAccount().getBank());
+				cbAccountStatus.setValue(person.getBankAccount().getStatus());
 			}
+
+			Supplier supplier = supplierBll.select(person.getDocumentNumber());
+			if (supplier != null) {
+				cbPaymentType.setValue(supplier.getPaymentType());
+				cbPaymentMethod.setValue(supplier.getPaymentMethod());
+				txtPaymentTerm.setValue(supplier.getPaymentTerm() != null ? supplier.getPaymentTerm() : "");
+			}
+
 		}
 
 	}
@@ -456,7 +438,7 @@ public class SupplierLayout extends AbstractEditableLayout<Supplier> {
 
 	@Override
 	protected void fillGridData() {
-		ListDataProvider<Supplier> dataProvider = new ListDataProvider<>(supplierBll.selectAll(false));
+		ListDataProvider<Person> dataProvider = new ListDataProvider<>(personBll.select(personType));
 		filterDataProvider = dataProvider.withConfigurableFilter();
 		grid.setDataProvider(filterDataProvider);
 
@@ -464,26 +446,18 @@ public class SupplierLayout extends AbstractEditableLayout<Supplier> {
 
 	@Override
 	@Transactional(rollbackFor = Exception.class)
-	protected void saveButtonAction(Supplier supplier) {
+	protected void saveButtonAction(Person person) {
 		try {
 			String message = validateRequiredFields();
 			if (!message.isEmpty()) {
 				throw new Exception(message);
 			}
-			Person person = null;
+
 			Person.Builder personBuilder = null;
-			Supplier.Builder supplierBuilder = null;
-			if (supplier == null) {
-				supplierBuilder = Supplier.builder();
+			if (person == null) {
 				personBuilder = Person.builder();
 			} else {
-				supplierBuilder = Supplier.builder(supplier);
-				if (supplier.getPerson() == null) {
-					personBuilder = Person.builder();
-				} else {
-					person = supplier.getPerson();
-					personBuilder = Person.builder(person);
-				}
+				personBuilder = Person.builder(person);
 			}
 
 			String lastName = txtLastName.getValue() != null ? txtLastName.getValue() : null;
@@ -496,14 +470,12 @@ public class SupplierLayout extends AbstractEditableLayout<Supplier> {
 			PaymentMethod paymentMethod = cbPaymentMethod.getSelectedItem().isPresent()
 					? cbPaymentMethod.getSelectedItem().get()
 					: null;
-			log.info("paymentMethod:" + paymentMethod);
 
 			// Construir objeto con datos bancarios
 			BankAccount bankAccount = null;
-
 			BankAccount.Builder bankAccountBuilder = null;
-			if (supplier != null && supplier.getPerson() != null && supplier.getPerson().getBankAccount() != null) {
-				bankAccount = supplier.getPerson().getBankAccount();
+			if (person != null && person.getBankAccount() != null) {
+				bankAccount = person.getBankAccount();
 				bankAccountBuilder = BankAccount.builder(bankAccount);
 			} else {
 				bankAccountBuilder = BankAccount.builder();
@@ -525,31 +497,57 @@ public class SupplierLayout extends AbstractEditableLayout<Supplier> {
 				bankAccount = null;
 			}
 
-			// objeto persona
+			// Objeto persona
 			DocumentIdType documentIdType = cbDocumentType.getSelectedItem().isPresent()
 					? cbDocumentType.getSelectedItem().get()
 					: null;
 			String docId = txtDocumentId.getValue() != null ? txtDocumentId.getValue() : "";
+
 			person = personBuilder.documentType(documentIdType).documentNumber(docId).name(txtName.getValue())
 					.lastName(lastName).type(personType).contactName(txtContactName.getValue())
 					.address(txtAddress.getValue()).city(city).neighborhood(txtNeighborhood.getValue())
 					.mobile(txtMobile.getValue()).phone(txtPhone.getValue()).email(txtEmail.getValue())
 					.webSite(txtWebSite.getValue()).bankAccount(bankAccount).build();
 
-			// objeto proveedor
-			supplier = supplierBuilder.person(person).paymentType(paymentType).paymentMethod(paymentMethod)
-					.paymentTerm(txtPaymentTerm.getValue()).build();
+			log.info("person:" + person.toString());
 
 			try {
+				personBll.save(person);
+				// afterSave("Persona guardada");
 
-				save(supplierBll, supplier, "Persona guardada");
+				Supplier supplier = null;
+				Supplier.Builder supplierBuilder = null;
+				Person personObj = personBll.select(person.getDocumentNumber());
+				supplier = supplierBll.select(personObj.getDocumentNumber());
 
-			} catch (Exception e) {
-				log.error("Error al guardar el tercero: Exception: " + e.getMessage());
-				e.printStackTrace();
-				ViewHelper.showNotification("Se presentó un error al guardar el tercero",
+				if (supplier == null) {
+					supplierBuilder = Supplier.builder();
+				} else {
+					supplierBuilder = Supplier.builder(supplier);
+				}
+
+				// Objeto proveedor
+				supplier = supplierBuilder.person(personObj).paymentType(paymentType).paymentMethod(paymentMethod)
+						.paymentTerm(txtPaymentTerm.getValue()).build();
+
+				log.info("supplier:" + supplier.toString());
+
+				supplierBll.save(supplier);
+				afterSave("Persona guardada");
+
+				ViewHelper.showNotification("Persona guardada", Notification.Type.WARNING_MESSAGE);
+
+			} catch (ModelValidationException ex) {
+				log.error(ex);
+				ViewHelper.showNotification(ex.getMessage(), Notification.Type.ERROR_MESSAGE);
+			} catch (HibernateException ex) {
+				log.error(ex);
+				personBll.rollback();
+				ViewHelper.showNotification(
+						"Los datos de la persona no pudieron ser guardados, contacte al administrador (3002007694)",
 						Notification.Type.ERROR_MESSAGE);
 			}
+
 		} catch (Exception e) {
 			e.printStackTrace();
 			ViewHelper.showNotification(e.getMessage(), Notification.Type.ERROR_MESSAGE);
@@ -582,30 +580,37 @@ public class SupplierLayout extends AbstractEditableLayout<Supplier> {
 	}
 
 	@Override
-	public Supplier getSelected() {
-		Supplier supplier = null;
-		Set<Supplier> suppliers = grid.getSelectedItems();
-		if (suppliers != null && !suppliers.isEmpty()) {
-			supplier = (Supplier) suppliers.toArray()[0];
+	public Person getSelected() {
+		Person person = null;
+		Set<Person> persons = grid.getSelectedItems();
+		if (persons != null && !persons.isEmpty()) {
+			person = (Person) persons.toArray()[0];
 		}
-		return supplier;
+		return person;
 	}
 
 	@Override
-	protected void delete(Supplier entity) {
-		entity = Supplier.builder(entity).archived(true).build();
-		save(supplierBll, entity, "Proveedor borrado");
+	protected void delete(Person entity) {
+		entity = Person.builder(entity).archived(true).build();
+		save(personBll, entity, "Proveedor borrado");
 	}
 
 	private Panel buildFilterPanel() {
 		HorizontalLayout layout = ViewHelper.buildHorizontalLayout(true, true);
-		txFilterByName = new TextField("Nombre");
-		txFilterByName.addValueChangeListener(e -> refreshGrid());
-		txFilterByName.setStyleName(ValoTheme.TEXTFIELD_TINY);
+
 		txFilterByCode = new TextField("Número de documento");
 		txFilterByCode.addValueChangeListener(e -> refreshGrid());
 		txFilterByCode.setStyleName(ValoTheme.TEXTFIELD_TINY);
-		layout.addComponents(txFilterByCode, txFilterByName);
+
+		txFilterByName = new TextField("Nombres");
+		txFilterByName.addValueChangeListener(e -> refreshGrid());
+		txFilterByName.setStyleName(ValoTheme.TEXTFIELD_TINY);
+
+		txFilterByLastName = new TextField("Apellidos");
+		txFilterByLastName.addValueChangeListener(e -> refreshGrid());
+		txFilterByLastName.setStyleName(ValoTheme.TEXTFIELD_TINY);
+
+		layout.addComponents(txFilterByCode, txFilterByName, txFilterByLastName);
 		return ViewHelper.buildPanel("Buscar por", layout);
 	}
 
@@ -614,12 +619,14 @@ public class SupplierLayout extends AbstractEditableLayout<Supplier> {
 		grid.getDataProvider().refreshAll();
 	}
 
-	private SerializablePredicate<Supplier> filterGrid() {
-		SerializablePredicate<Supplier> columnPredicate = null;
+	private SerializablePredicate<Person> filterGrid() {
+		SerializablePredicate<Person> columnPredicate = null;
 		String codeFilter = txFilterByCode.getValue().trim();
 		String nameFilter = txFilterByName.getValue().trim();
-		columnPredicate = supplier -> (supplier.getPerson().getName().toLowerCase().contains(nameFilter.toLowerCase())
-				&& supplier.getPerson().getDocumentNumber().toLowerCase().contains(codeFilter.toLowerCase()));
+		String lastNameFilter = txFilterByLastName.getValue().trim();
+		columnPredicate = person -> (person.getName().toLowerCase().contains(nameFilter.toLowerCase())
+				&& person.getLastName().toLowerCase().contains(lastNameFilter.toLowerCase())
+				&& person.getDocumentNumber().toLowerCase().contains(codeFilter.toLowerCase()));
 		return columnPredicate;
 	}
 

@@ -33,9 +33,9 @@ import com.soinsoftware.vissa.model.InventoryTransaction;
 import com.soinsoftware.vissa.model.Lot;
 import com.soinsoftware.vissa.model.PaymentMethod;
 import com.soinsoftware.vissa.model.PaymentType;
+import com.soinsoftware.vissa.model.Person;
 import com.soinsoftware.vissa.model.PersonType;
 import com.soinsoftware.vissa.model.Product;
-import com.soinsoftware.vissa.model.Supplier;
 import com.soinsoftware.vissa.model.TransactionType;
 import com.soinsoftware.vissa.util.Commons;
 import com.soinsoftware.vissa.util.DateUtil;
@@ -102,12 +102,12 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	private Window personSubwindow;
 	private Window productSubwindow;
 
-	private Supplier personSelected = null;
+	private Person personSelected = null;
 	private Product productSelected = null;
 	private Document document;
 	private List<DocumentDetail> itemsList = null;
 	private ProductLayout productLayout = null;
-	private SupplierLayout personLayout = null;
+	private PersonLayout personLayout = null;
 
 	private TransactionType transactionType;
 
@@ -464,7 +464,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			if (transactionType.equals(TransactionType.SALIDA)) {
 				Commons.PERSON_TYPE = PersonType.CUSTOMER.getName();
 			}
-			personLayout = new SupplierLayout(true);
+			personLayout = new PersonLayout(true);
 
 		} catch (IOException e) {
 			log.error("Error al cargar lista de personas. Exception:" + e);
@@ -484,7 +484,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		personSelected = personLayout.getSelected();
 
 		if (personSelected != null) {
-			txtPerson.setValue(personSelected.getPerson().getName() + " " + personSelected.getPerson().getLastName());
+			txtPerson.setValue(personSelected.getName() + " " + personSelected.getLastName());
 			personSubwindow.close();
 		} else {
 			ViewHelper.showNotification("Seleccione un proveedor", Notification.TYPE_WARNING_MESSAGE);
@@ -667,7 +667,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 		documentEntity = docBuilder.code(txtDocNumber.getValue())
 				.reference(txtReference.getValue() != null ? txtReference.getValue() : "")
-				.documentType(cbDocumentType.getValue()).person(personSelected.getPerson()).documentDate(docDate)
+				.documentType(cbDocumentType.getValue()).person(personSelected).documentDate(docDate)
 				.paymentMethod(cbPaymentMethod.getValue()).paymentType(cbPaymentType.getValue())
 				.paymentTerm(txtPaymentTerm.getValue())
 				.expirationDate(DateUtil.localDateTimeToDate(dtfExpirationDate.getValue())).status(documentStatus)

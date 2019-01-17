@@ -1,6 +1,8 @@
 // Soin Software 2018
 package com.soinsoftware.vissa.web;
 
+import javax.persistence.Entity;
+
 import org.apache.log4j.Logger;
 import org.hibernate.HibernateException;
 import org.vaadin.dialogs.ConfirmDialog;
@@ -165,8 +167,12 @@ public abstract class AbstractEditableLayout<E> extends VerticalLayout implement
 					Notification.Type.ERROR_MESSAGE);
 		}
 	}
+	
+	
+	
+	
 
-	private void afterSave(String caption) {
+	protected void afterSave(String caption) {
 		fillGridData();
 		cancelButtonAction();
 

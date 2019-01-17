@@ -240,12 +240,12 @@ public class VissaUI extends UI {
 
 		ComponentContainer viewContainer = root.getContentContainer();
 		Navigator navigator = new Navigator(this, viewContainer);
-		navigator.addView(KEY_SUPPLIER, SupplierLayout.class);
+		navigator.addView(KEY_SUPPLIER, PersonLayout.class);
 		navigator.addView(KEY_PRODUCTS, ProductLayout.class);
 		navigator.addView(KEY_SUPPLIER_LIST, SupplierListLayout.class);
 		navigator.addView(KEY_PURCHASE_INVOICES, InvoiceLayout.class);
 		navigator.addView(KEY_SALE_INVOICES, InvoiceLayout.class);
-		navigator.addView(KEY_CUSTOMER, SupplierLayout.class);
+		navigator.addView(KEY_CUSTOMER, PersonLayout.class);
 		navigator.addView(KEY_INVENTORY_MOV, InventoryLayout.class);
 		navigator.setErrorView(DefaultView.class);
 		UI.getCurrent().setNavigator(navigator);
