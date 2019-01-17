@@ -82,6 +82,7 @@ public class SupplierLayout extends AbstractEditableLayout<Supplier> {
 	private ComboBox<Country> cbCountry;
 	private ComboBox<State> cbState;
 	private ComboBox<City> cbCity;
+	private TextField txtNeighborhood;
 	private TextField txtMobile;
 	private TextField txtPhone;
 	private TextField txtEmail;
@@ -155,6 +156,7 @@ public class SupplierLayout extends AbstractEditableLayout<Supplier> {
 			addListTab();
 		}
 		listMode = false;
+
 	}
 
 	@Override
@@ -169,6 +171,8 @@ public class SupplierLayout extends AbstractEditableLayout<Supplier> {
 		Panel filterPanel = buildFilterPanel();
 		Panel dataPanel = buildGridPanel();
 		layout.addComponents(buttonPanel, filterPanel, dataPanel);
+		this.setSpacing(false);
+		this.setMargin(false);
 		return layout;
 	}
 
@@ -177,7 +181,8 @@ public class SupplierLayout extends AbstractEditableLayout<Supplier> {
 		VerticalLayout layout = ViewHelper.buildVerticalLayout(false, false);
 		Panel buttonPanel = buildButtonPanelForEdition(entity);
 		Component dataPanel = buildEditionComponent(entity);
-		layout.addComponents(buttonPanel, dataPanel);
+		Panel buttonPanel2 = buildButtonPanelForEdition(entity);
+		layout.addComponents(buttonPanel, dataPanel, buttonPanel2);
 		return layout;
 	}
 
@@ -220,29 +225,25 @@ public class SupplierLayout extends AbstractEditableLayout<Supplier> {
 		cbDocumentType = new ComboBox<>("Tipo de documento");
 		cbDocumentType.setDescription("Tipo");
 		cbDocumentType.setEmptySelectionAllowed(false);
-
 		cbDocumentType.setRequiredIndicatorVisible(true);
+		cbDocumentType.setStyleName(ValoTheme.COMBOBOX_TINY);
 		ListDataProvider<DocumentIdType> docTypeDataProv = new ListDataProvider<>(
 				Arrays.asList(DocumentIdType.values()));
 		cbDocumentType.setDataProvider(docTypeDataProv);
 		cbDocumentType.setItemCaptionGenerator(DocumentIdType::getDisplay);
-		cbDocumentType.setValue(
-				supplier != null && supplier.getPerson() != null ? supplier.getPerson().getDocumentType() : null);
 
 		txtDocumentId = new TextField("Número de documento");
 		txtDocumentId.setRequiredIndicatorVisible(true);
-		txtDocumentId.setValue(
-				supplier != null && supplier.getPerson() != null ? supplier.getPerson().getDocumentNumber() : "");
+		txtDocumentId.setStyleName(ValoTheme.TEXTFIELD_TINY);
 
 		txtName = new TextField("Nombres");
 		txtName.setWidth("50%");
 		txtName.setRequiredIndicatorVisible(true);
-		txtName.setValue(supplier != null && supplier.getPerson() != null ? supplier.getPerson().getName() : "");
+		txtName.setStyleName(ValoTheme.TEXTFIELD_TINY);
 
 		txtLastName = new TextField("Apellidos");
 		txtLastName.setWidth("50%");
-		txtLastName
-				.setValue(supplier != null && supplier.getPerson() != null ? supplier.getPerson().getLastName() : "");
+		txtLastName.setStyleName(ValoTheme.TEXTFIELD_TINY);
 
 		FormLayout basicForm = ViewHelper.buildForm("Datos basicos", true, false);
 		basicForm.addComponents(cbDocumentType, txtDocumentId, txtName, txtLastName);
@@ -250,40 +251,50 @@ public class SupplierLayout extends AbstractEditableLayout<Supplier> {
 
 		// 2. Datos de contacto
 		txtContactName = new TextField("Nombre de contacto");
-		txtContactName.setValue(
-				supplier != null && supplier.getPerson() != null && supplier.getPerson().getContactName() != null
-						? supplier.getPerson().getContactName()
-						: "");
+		txtContactName.setStyleName(ValoTheme.TEXTFIELD_TINY);
 
 		txtAddress = new TextField("Dirección");
-		txtAddress.setValue(supplier != null && supplier.getPerson() != null ? supplier.getPerson().getAddress() : "");
+		txtAddress.setStyleName(ValoTheme.TEXTFIELD_TINY);
 
 		cbCountry = new ComboBox<>("País");
 		cbCountry.setEmptySelectionCaption("Seleccione");
+		cbCountry.setStyleName(ValoTheme.COMBOBOX_TINY);
 		ListDataProvider<Country> countryDataProv = new ListDataProvider<>(countryBll.selectAll());
 		cbCountry.setDataProvider(countryDataProv);
 		cbCountry.setItemCaptionGenerator(Country::getName);
-		cbCountry.setValue(supplier != null && supplier.getPerson() != null && supplier.getPerson().getCity() != null
-				&& supplier.getPerson().getCity().getState() != null
-						? supplier.getPerson().getCity().getState().getCountry()
-						: null);
 
 		cbState = new ComboBox<>("Departamento");
 		cbState.setEmptySelectionCaption("Seleccione");
+		cbState.setStyleName(ValoTheme.COMBOBOX_TINY);
 		ListDataProvider<State> stateDataProv = new ListDataProvider<>(stateBll.selectAll());
 		cbState.setDataProvider(stateDataProv);
 		cbState.setItemCaptionGenerator(State::getName);
-		cbState.setValue(supplier != null && supplier.getPerson() != null && supplier.getPerson().getCity() != null
-				? supplier.getPerson().getCity().getState()
-				: null);
 
 		cbCity = new ComboBox<>("Ciudad");
 		cbCity.setEmptySelectionCaption("Seleccione");
+		cbCity.setStyleName(ValoTheme.COMBOBOX_TINY);
 		ListDataProvider<City> cityDataProv = new ListDataProvider<>(cityBll.selectAll());
 		cbCity.setDataProvider(cityDataProv);
 		cbCity.setItemCaptionGenerator(City::getName);
-		cbCity.setValue(supplier != null && supplier.getPerson() != null ? supplier.getPerson().getCity() : null);
 
+		txtNeighborhood = new TextField("Barrio");
+		txtNeighborhood.setStyleName(ValoTheme.TEXTFIELD_TINY);
+
+		txtMobile = new TextField("Teléfono móvil");
+		txtMobile.setStyleName(ValoTheme.TEXTFIELD_TINY);
+
+		txtPhone = new TextField("Teléfono fijo");
+		txtPhone.setStyleName(ValoTheme.TEXTFIELD_TINY);
+
+		txtEmail = new TextField("Correo electrónico");
+		txtEmail.setStyleName(ValoTheme.TEXTFIELD_TINY);
+
+		txtWebSite = new TextField("Sitio web");
+		txtWebSite.setStyleName(ValoTheme.TEXTFIELD_TINY);
+
+		// Establecer valores de persona
+
+		// Eventos
 		cbCountry.addValueChangeListener(e -> {
 			selectCountry();
 		});
@@ -296,74 +307,61 @@ public class SupplierLayout extends AbstractEditableLayout<Supplier> {
 			selectCity();
 		});
 
-		txtMobile = new TextField("Teléfono móvil");
-		txtMobile.setValue(supplier != null && supplier.getPerson() != null ? supplier.getPerson().getMobile() : "");
-
-		txtPhone = new TextField("Teléfono fijo");
-		txtPhone.setValue(supplier != null && supplier.getPerson() != null ? supplier.getPerson().getPhone() : "");
-
-		txtEmail = new TextField("Correo electrónico");
-		txtEmail.setValue(supplier != null && supplier.getPerson() != null ? supplier.getPerson().getEmail() : "");
-
-		txtWebSite = new TextField("Sitio web");
-		txtWebSite.setValue(supplier != null && supplier.getPerson() != null ? supplier.getPerson().getWebSite() : "");
-
 		FormLayout contactForm = ViewHelper.buildForm("Datos de contacto", true, false);
-		contactForm.addComponents(txtContactName, txtAddress, cbCountry, cbState, cbCity, txtMobile, txtPhone, txtEmail,
+		contactForm.addComponents(txtContactName, txtAddress, cbCountry, cbState, cbCity, txtNeighborhood, txtMobile, txtPhone, txtEmail,
 				txtWebSite);
+
 		Panel contactPanel = ViewHelper.buildPanel("Datos de contacto", contactForm);
 
 		// 3. Condiciones comerciales
 		cbPaymentType = new ComboBox<>("Tipo de pago");
 		cbPaymentType.setEmptySelectionCaption("Seleccione");
+		cbPaymentType.setStyleName(ValoTheme.COMBOBOX_TINY);
 		ListDataProvider<PaymentType> payTypeDataProv = new ListDataProvider<>(payTypeBll.selectAll());
 		cbPaymentType.setDataProvider(payTypeDataProv);
 		cbPaymentType.setItemCaptionGenerator(PaymentType::getName);
-		cbPaymentType.setValue(supplier != null ? supplier.getPaymentType() : null);
 
 		cbPaymentMethod = new ComboBox<>("Forma de pago");
 		cbPaymentMethod.setEmptySelectionCaption("Seleccione");
+		cbPaymentMethod.setStyleName(ValoTheme.COMBOBOX_TINY);
 		ListDataProvider<PaymentMethod> payMetDataProv = new ListDataProvider<>(payMethodBll.selectAll());
 		cbPaymentMethod.setDataProvider(payMetDataProv);
 		cbPaymentMethod.setItemCaptionGenerator(PaymentMethod::getName);
-		cbPaymentMethod.setValue(supplier != null ? supplier.getPaymentMethod() : null);
 
 		txtPaymentTerm = new TextField("Plazo");
-		txtPaymentTerm.setValue(supplier != null && supplier.getPaymentTerm() != null ? supplier.getPaymentTerm() : "");
+		txtPaymentTerm.setStyleName(ValoTheme.TEXTFIELD_TINY);
 
 		FormLayout paymentForm = ViewHelper.buildForm("Datos para pagos", true, false);
 		paymentForm.addComponents(cbPaymentType, cbPaymentMethod, txtPaymentTerm);
 		Panel paymentPanel = ViewHelper.buildPanel("Datos para pagos", paymentForm);
+		
 
 		// 3. Datos bancarios
 		cbAccountType = new ComboBox<>("Tipo de cuenta");
 		cbAccountType.setEmptySelectionCaption("Seleccione");
+		cbAccountType.setStyleName(ValoTheme.COMBOBOX_TINY);
 		ListDataProvider<BankAccountType> accTypeDataProv = new ListDataProvider<>(
 				Arrays.asList(BankAccountType.values()));
 		cbAccountType.setDataProvider(accTypeDataProv);
 		cbAccountType.setItemCaptionGenerator(BankAccountType::getDisplay);
 
 		txtAccountNumber = new TextField("Número de cuenta");
+		txtAccountNumber.setStyleName(ValoTheme.TEXTFIELD_TINY);
 
 		cbBank = new ComboBox<>("Entidad financiera");
 		cbBank.setEmptySelectionCaption("Seleccione");
+		cbBank.setStyleName(ValoTheme.COMBOBOX_TINY);
 		ListDataProvider<Bank> bankDataProv = new ListDataProvider<>(bankBll.selectAll());
 		cbBank.setDataProvider(bankDataProv);
 		cbBank.setItemCaptionGenerator(Bank::getName);
 
 		cbAccountStatus = new ComboBox<>("Estado");
 		cbAccountStatus.setEmptySelectionCaption("Seleccione");
+		cbAccountStatus.setStyleName(ValoTheme.COMBOBOX_TINY);
 		ListDataProvider<BankAccountStatus> accStatusDataProv = new ListDataProvider<>(
 				Arrays.asList(BankAccountStatus.values()));
 		cbAccountStatus.setDataProvider(accStatusDataProv);
 		cbAccountStatus.setItemCaptionGenerator(BankAccountStatus::getDisplay);
-
-		if (supplier != null && supplier.getPerson() != null && supplier.getPerson().getBankAccount() != null) {
-			cbAccountType.setValue(supplier.getPerson().getBankAccount().getType());
-			txtAccountNumber.setValue(supplier.getPerson().getBankAccount().getAccountNumber());
-			cbBank.setValue(supplier.getPerson().getBankAccount().getBank());
-			cbAccountStatus.setValue(supplier.getPerson().getBankAccount().getStatus());
-		}
 
 		FormLayout bankForm = ViewHelper.buildForm("Datos bancarios", false, false);
 		bankForm.addComponents(cbAccountType, txtAccountNumber, cbBank, cbAccountStatus);
@@ -371,7 +369,50 @@ public class SupplierLayout extends AbstractEditableLayout<Supplier> {
 		// ----------------------------------------------------------------------------------
 
 		layout.addComponents(basicPanel, contactPanel, paymentPanel, bankPanel);
+		setFieldValue(supplier);
 		return layout;
+	}
+
+	private void setFieldValue(Supplier supplier) {
+		// Establecer datos a los campos
+		if (supplier != null) {
+			cbPaymentType.setValue(supplier.getPaymentType());
+			cbPaymentMethod.setValue(supplier.getPaymentMethod());
+			txtPaymentTerm.setValue(supplier.getPaymentTerm() != null ? supplier.getPaymentTerm() : "");
+
+			if (supplier.getPerson() != null) {
+				Person person = supplier.getPerson();
+
+				cbDocumentType.setValue(person.getDocumentType() != null ? person.getDocumentType() : null);
+				txtDocumentId.setValue(person.getDocumentNumber() != null ? person.getDocumentNumber() : "");
+				txtName.setValue(person.getName() != null ? person.getName() : "");
+				txtLastName.setValue(person.getLastName() != null ? person.getLastName() : "");
+				txtContactName.setValue(person.getContactName() != null ? person.getContactName() : "");
+				txtAddress.setValue(person.getAddress() != null ? person.getAddress() : "");
+
+				cbCountry.setValue(person.getCity() != null && person.getCity().getState() != null
+						? person.getCity().getState().getCountry()
+						: null);
+				cbState.setValue(
+						person.getCity() != null && person.getCity().getState() != null ? person.getCity().getState()
+								: null);
+				cbCity.setValue(person.getCity() != null ? person.getCity() : null);
+
+				txtNeighborhood.setValue(person.getNeighborhood() != null ? person.getNeighborhood() : "");
+				txtMobile.setValue(person.getMobile() != null ? person.getMobile() : "");
+				txtPhone.setValue(person.getPhone() != null ? person.getPhone() : "");
+				txtEmail.setValue(person.getEmail() != null ? person.getEmail() : "");
+				txtWebSite.setValue(person.getWebSite() != null ? person.getWebSite() : "");
+
+				if (person.getBankAccount() != null) {
+					cbAccountType.setValue(supplier.getPerson().getBankAccount().getType());
+					txtAccountNumber.setValue(supplier.getPerson().getBankAccount().getAccountNumber());
+					cbBank.setValue(supplier.getPerson().getBankAccount().getBank());
+					cbAccountStatus.setValue(supplier.getPerson().getBankAccount().getStatus());
+				}
+			}
+		}
+
 	}
 
 	private void selectCountry() {
@@ -485,15 +526,15 @@ public class SupplierLayout extends AbstractEditableLayout<Supplier> {
 			}
 
 			// objeto persona
-
 			DocumentIdType documentIdType = cbDocumentType.getSelectedItem().isPresent()
 					? cbDocumentType.getSelectedItem().get()
 					: null;
 			String docId = txtDocumentId.getValue() != null ? txtDocumentId.getValue() : "";
 			person = personBuilder.documentType(documentIdType).documentNumber(docId).name(txtName.getValue())
 					.lastName(lastName).type(personType).contactName(txtContactName.getValue())
-					.address(txtAddress.getValue()).city(city).mobile(txtMobile.getValue()).phone(txtPhone.getValue())
-					.email(txtEmail.getValue()).webSite(txtWebSite.getValue()).bankAccount(bankAccount).build();
+					.address(txtAddress.getValue()).city(city).neighborhood(txtNeighborhood.getValue())
+					.mobile(txtMobile.getValue()).phone(txtPhone.getValue()).email(txtEmail.getValue())
+					.webSite(txtWebSite.getValue()).bankAccount(bankAccount).build();
 
 			// objeto proveedor
 			supplier = supplierBuilder.person(person).paymentType(paymentType).paymentMethod(paymentMethod)
@@ -518,11 +559,26 @@ public class SupplierLayout extends AbstractEditableLayout<Supplier> {
 
 	private String validateRequiredFields() {
 		String message = "";
+		String character = "|";
 		log.info("validateRequiredFields" + cbDocumentType.getSelectedItem().isPresent());
 		if (!cbDocumentType.getSelectedItem().isPresent()) {
 			message = "El tipo de documento es obligatorio";
 		}
+		if (txtDocumentId.getValue() == null || txtDocumentId.getValue().isEmpty()) {
+			if (!message.isEmpty()) {
+				message = message.concat(character);
+			}
+			message = message.concat("El número de documento es obligatorio");
+		}
+		if (txtName.getValue() == null || txtName.getValue().isEmpty()) {
+			if (!message.isEmpty()) {
+				message = message.concat(character);
+			}
+			message = message.concat("El nombre es obligatorio");
+		}
+
 		return message;
+
 	}
 
 	@Override
@@ -545,10 +601,12 @@ public class SupplierLayout extends AbstractEditableLayout<Supplier> {
 		HorizontalLayout layout = ViewHelper.buildHorizontalLayout(true, true);
 		txFilterByName = new TextField("Nombre");
 		txFilterByName.addValueChangeListener(e -> refreshGrid());
+		txFilterByName.setStyleName(ValoTheme.TEXTFIELD_TINY);
 		txFilterByCode = new TextField("Número de documento");
 		txFilterByCode.addValueChangeListener(e -> refreshGrid());
+		txFilterByCode.setStyleName(ValoTheme.TEXTFIELD_TINY);
 		layout.addComponents(txFilterByCode, txFilterByName);
-		return ViewHelper.buildPanel("Filtrar por", layout);
+		return ViewHelper.buildPanel("Buscar por", layout);
 	}
 
 	private void refreshGrid() {
