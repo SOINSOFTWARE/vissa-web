@@ -493,13 +493,19 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	}
 
 	/**
-	 * Obtener el número máximo del documento: venta, compra, remision
+	 * Obtener el número máximo del tipo documento: venta, compra, remision
 	 * 
 	 * @param docType
 	 */
 	private void getNextDocumentNumber(DocumentType docType) {
-		if (docType != null && docType.getCode() != null && !docType.getCode().isEmpty())
-			txtDocNumber.setValue(docType.getCode() + "-" + documentBll.selectNextDocumentNumber());
+		if (docType != null) {
+			Integer seq = docType.getSequence();
+			if (seq != null) {
+				txtDocNumber.setValue(String.valueOf(seq + 1));
+			}
+		}else {
+			ViewHelper.showNotification("El tipo de documento " + docType.getName() + " no tiene consecutivo configurado", Notification.Type.ERROR_MESSAGE);
+		}
 	}
 
 	/**
