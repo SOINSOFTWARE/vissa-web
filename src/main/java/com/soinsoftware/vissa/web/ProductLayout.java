@@ -1,6 +1,7 @@
 package com.soinsoftware.vissa.web;
 
 import java.io.IOException;
+import java.math.BigInteger;
 import java.util.Date;
 import java.util.Set;
 
@@ -10,10 +11,12 @@ import com.soinsoftware.vissa.bll.MeasurementUnitBll;
 import com.soinsoftware.vissa.bll.ProductBll;
 import com.soinsoftware.vissa.bll.ProductCategoryBll;
 import com.soinsoftware.vissa.bll.ProductTypeBll;
+import com.soinsoftware.vissa.bll.TableSequenceBll;
 import com.soinsoftware.vissa.model.MeasurementUnit;
 import com.soinsoftware.vissa.model.Product;
 import com.soinsoftware.vissa.model.ProductCategory;
 import com.soinsoftware.vissa.model.ProductType;
+import com.soinsoftware.vissa.model.TableSequence;
 import com.soinsoftware.vissa.util.DateUtil;
 import com.soinsoftware.vissa.util.ViewHelper;
 import com.vaadin.data.provider.ConfigurableFilterDataProvider;
@@ -27,6 +30,7 @@ import com.vaadin.ui.FormLayout;
 import com.vaadin.ui.Grid;
 import com.vaadin.ui.Grid.SelectionMode;
 import com.vaadin.ui.HorizontalLayout;
+import com.vaadin.ui.Notification;
 import com.vaadin.ui.Panel;
 import com.vaadin.ui.TextField;
 import com.vaadin.ui.VerticalLayout;
@@ -46,6 +50,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 	private final ProductCategoryBll categoryBll;
 	private final ProductTypeBll typeBll;
 	private final MeasurementUnitBll measurementUnitBll;
+	private final TableSequenceBll tableSequenceBll;
 
 	private Grid<Product> productGrid;
 
@@ -67,6 +72,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 	private TextField txtStock;
 	private TextField txtStockDate;
 	private boolean listMode;
+	private TableSequence tableSequence;
 
 	private ConfigurableFilterDataProvider<Product, Void, SerializablePredicate<Product>> filterProductDataProvider;
 
@@ -77,6 +83,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		categoryBll = ProductCategoryBll.getInstance();
 		typeBll = ProductTypeBll.getInstance();
 		measurementUnitBll = MeasurementUnitBll.getInstance();
+		tableSequenceBll = TableSequenceBll.getInstance();
 		if (listMode) {
 			addListTab();
 		}
@@ -88,6 +95,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		categoryBll = ProductCategoryBll.getInstance();
 		typeBll = ProductTypeBll.getInstance();
 		measurementUnitBll = MeasurementUnitBll.getInstance();
+		tableSequenceBll = TableSequenceBll.getInstance();
 		if (listMode) {
 			addListTab();
 		}
@@ -106,6 +114,8 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		Panel filterPanel = buildFilterPanel();
 		Panel dataPanel = buildGridPanel();
 		layout.addComponents(buttonPanel, filterPanel, dataPanel);
+		this.setMargin(false);
+		this.setSpacing(false);
 		return layout;
 	}
 
@@ -134,12 +144,16 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 
 	@Override
 	protected Component buildEditionComponent(Product product) {
+		// Cosultar consecutivo de productos
+		getProductSequence();
 		VerticalLayout layout = ViewHelper.buildVerticalLayout(true, true);
 		/// 1. Informacion producto
 		txtCode = new TextField("Código del producto");
 		txtCode.setWidth("50%");
 		txtCode.setEnabled(false);
-		txtCode.setValue(product != null ? product.getCode() : productBll.selectNextProductCode());
+
+		txtCode.setValue(product != null ? product.getCode()
+				: tableSequence != null ? String.valueOf(tableSequence.getSequence()) : "");
 
 		txtName = new TextField("Nombre del producto");
 		txtName.setWidth("50%");
@@ -210,8 +224,9 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		txtStockDate = new TextField("Fecha actualización Stock");
 		txtStockDate.setWidth("50%");
 		txtStockDate.setEnabled(false);
-	//	txtStockDate
-		//		.setValue(product != null && product.getStock() != null ? String.valueOf(product.getStockDate()) : "");
+		// txtStockDate
+		// .setValue(product != null && product.getStock() != null ?
+		// String.valueOf(product.getStockDate()) : "");
 
 		txtStock.addValueChangeListener(e -> {
 			updateStockDate(txtStock.getValue());
@@ -245,12 +260,12 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		layout.addComponents(form, lotPanel);
 		return layout;
 	}
-	
+
 	private void updateStockDate(String val) {
 		log.info("updateStockDate" + val);
-		if(val != null && !val.isEmpty()) {
+		if (val != null && !val.isEmpty()) {
 			txtStockDate.setValue(DateUtil.dateToString(new Date()));
-		}		
+		}
 	}
 
 	protected Panel buildButtonPanelListMode() {
@@ -347,4 +362,16 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		return columnPredicate;
 	}
 
+	private void getProductSequence() {
+		BigInteger seq = null;		
+		TableSequence tableSeqObj = tableSequenceBll.select(Product.class.getSimpleName());		
+		if (tableSeqObj != null) {
+			seq = tableSeqObj.getSequence().add(BigInteger.valueOf(1L));			
+			TableSequence.Builder builder = TableSequence.builder(tableSeqObj);
+			tableSequence = builder.sequence(seq).build();
+		} else {
+			ViewHelper.showNotification("No hay consecutivo configurado para los productos",
+					Notification.Type.ERROR_MESSAGE);
+		}
+	}
 }

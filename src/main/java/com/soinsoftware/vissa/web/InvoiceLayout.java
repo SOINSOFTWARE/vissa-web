@@ -22,8 +22,8 @@ import com.soinsoftware.vissa.bll.InventoryTransactionBll;
 import com.soinsoftware.vissa.bll.LotBll;
 import com.soinsoftware.vissa.bll.PaymentMethodBll;
 import com.soinsoftware.vissa.bll.PaymentTypeBll;
-import com.soinsoftware.vissa.bll.PersonBll;
 import com.soinsoftware.vissa.bll.ProductBll;
+import com.soinsoftware.vissa.bll.ProductTypeBll;
 import com.soinsoftware.vissa.exception.ModelValidationException;
 import com.soinsoftware.vissa.model.Document;
 import com.soinsoftware.vissa.model.DocumentDetail;
@@ -72,14 +72,14 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	protected static final Logger log = Logger.getLogger(InvoiceLayout.class);
 
 	// Bll
-	private final PersonBll personBll;
+
 	private final ProductBll productBll;
 	private final PaymentMethodBll payMethodBll;
 	private final PaymentTypeBll payTypeBll;
 	private final DocumentBll documentBll;
 	private final DocumentDetailBll docDetailBll;
 	private final InventoryTransactionBll inventoryBll;
-	private final DocumentTypeBll docTypeBll;
+	private final DocumentTypeBll documentTypeBll;
 	private final DocumentStatusBll docStatusBll;
 	private final LotBll lotBll;
 
@@ -89,7 +89,6 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	private TextField txtResolution;
 	private TextField txtReference;
 	private TextField txtPerson;
-
 	private DateTimeField dtfDocumentDate;
 	private ComboBox<PaymentType> cbPaymentType;
 	private ComboBox<DocumentType> cbDocumentType;
@@ -108,19 +107,20 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	private List<DocumentDetail> itemsList = null;
 	private ProductLayout productLayout = null;
 	private PersonLayout personLayout = null;
+	private DocumentType documentType;
 
 	private TransactionType transactionType;
 
 	public InvoiceLayout() throws IOException {
 		super();
-		personBll = PersonBll.getInstance();
+
 		productBll = ProductBll.getInstance();
 		payMethodBll = PaymentMethodBll.getInstance();
 		payTypeBll = PaymentTypeBll.getInstance();
 		documentBll = DocumentBll.getInstance();
 		docDetailBll = DocumentDetailBll.getInstance();
 		inventoryBll = InventoryTransactionBll.getInstance();
-		docTypeBll = DocumentTypeBll.getInstance();
+		documentTypeBll = DocumentTypeBll.getInstance();
 		docStatusBll = DocumentStatusBll.getInstance();
 		lotBll = LotBll.getInstance();
 		document = new Document();
@@ -225,7 +225,8 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		cbDocumentType = new ComboBox<DocumentType>("Tipo de pedido");
 		// cbDocumentType.setWidth("40%");
 
-		ListDataProvider<DocumentType> docTypeDataProv = new ListDataProvider<>(docTypeBll.select(transactionType));
+		ListDataProvider<DocumentType> docTypeDataProv = new ListDataProvider<>(
+				documentTypeBll.select(transactionType));
 
 		cbDocumentType.setDataProvider(docTypeDataProv);
 		cbDocumentType.setItemCaptionGenerator(DocumentType::getName);
@@ -499,12 +500,13 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	 */
 	private void getNextDocumentNumber(DocumentType docType) {
 		if (docType != null) {
-			Integer seq = docType.getSequence();
-			if (seq != null) {
-				txtDocNumber.setValue(String.valueOf(seq + 1));
-			}
-		}else {
-			ViewHelper.showNotification("El tipo de documento " + docType.getName() + " no tiene consecutivo configurado", Notification.Type.ERROR_MESSAGE);
+			DocumentType.Builder docTypeBuilder = DocumentType.builder(docType);
+			documentType = docTypeBuilder.sequence(docType.getSequence() + 1).build();
+			txtDocNumber.setValue(String.valueOf(documentType.getSequence()));
+
+		} else {
+			ViewHelper.showNotification("El tipo de documento no tiene consecutivo configurado",
+					Notification.Type.ERROR_MESSAGE);
 		}
 	}
 
@@ -682,15 +684,15 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		// Guardar documento
 		try {
 
-			documentBll.save(documentEntity);
+			documentBll.save(documentEntity);		
 
-			// afterSave(caption);
+		//	afterSave("");
 		} catch (ModelValidationException ex) {
 			log.error(ex);
 			ViewHelper.showNotification(ex.getMessage(), Notification.Type.ERROR_MESSAGE);
 		} catch (HibernateException ex) {
 			log.error(ex);
-			// bll.rollback();
+			documentBll.rollback();
 			ViewHelper.showNotification("Los datos no pudieron ser salvados, contacte al administrador (3007200405)",
 					Notification.Type.ERROR_MESSAGE);
 		}
@@ -746,6 +748,9 @@ public class InvoiceLayout extends VerticalLayout implements View {
 				if (lotObj != null) {
 					lotBll.save(lotObj);
 				}
+				
+				//Actualizar consecutivo de tipo de documento
+				documentTypeBll.save(documentType);
 
 				// afterSave(caption);
 			} catch (ModelValidationException ex) {
