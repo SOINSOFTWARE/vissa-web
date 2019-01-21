@@ -23,7 +23,6 @@ import com.soinsoftware.vissa.bll.LotBll;
 import com.soinsoftware.vissa.bll.PaymentMethodBll;
 import com.soinsoftware.vissa.bll.PaymentTypeBll;
 import com.soinsoftware.vissa.bll.ProductBll;
-import com.soinsoftware.vissa.bll.ProductTypeBll;
 import com.soinsoftware.vissa.exception.ModelValidationException;
 import com.soinsoftware.vissa.model.Document;
 import com.soinsoftware.vissa.model.DocumentDetail;
@@ -125,7 +124,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		lotBll = LotBll.getInstance();
 		document = new Document();
 		itemsList = new ArrayList<>();
-		transactionType = TransactionType.valueOf(Commons.DOCUMENT_TYPE);
+		transactionType = TransactionType.valueOf(Commons.TRANSACTION_TYPE);
 
 	}
 
@@ -446,11 +445,11 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 		// Panel de botones
 		Button backBtn = new Button("Cancelar", FontAwesome.BACKWARD);
-		backBtn.addStyleName(ValoTheme.BUTTON_DANGER);
+		backBtn.addStyleName("mystyle-btn");
 		backBtn.addClickListener(e -> closeWindow(personSubwindow));
 
 		Button selectBtn = new Button("Seleccionar", FontAwesome.CHECK);
-		selectBtn.addStyleName(ValoTheme.BUTTON_PRIMARY);
+		selectBtn.addStyleName("mystyle-btn");
 		selectBtn.addClickListener(e -> selectPerson());
 
 		HorizontalLayout buttonLayout = ViewHelper.buildHorizontalLayout(true, true);
@@ -545,11 +544,11 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 		// Panel de botones
 		Button backBtn = new Button("Cancelar", FontAwesome.BACKWARD);
-		backBtn.addStyleName(ValoTheme.BUTTON_DANGER);
+		backBtn.addStyleName("mystyle-btn");
 		backBtn.addClickListener(e -> closeWindow(productSubwindow));
 
 		Button selectBtn = new Button("Seleccionar", FontAwesome.CHECK);
-		selectBtn.addStyleName(ValoTheme.BUTTON_PRIMARY);
+		selectBtn.addStyleName("mystyle-btn");
 		selectBtn.addClickListener(e -> selectProduct());
 
 		HorizontalLayout buttonLayout = ViewHelper.buildHorizontalLayout(true, true);

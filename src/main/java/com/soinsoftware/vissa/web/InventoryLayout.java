@@ -48,6 +48,8 @@ public class InventoryLayout extends AbstractEditableLayout<Product> {
 		Panel filterPanel = buildFilterPanel();
 		Panel dataPanel = buildGridPanel();
 		layout.addComponents( filterPanel, dataPanel);
+		this.setSpacing(false);
+		this.setMargin(false);
 		return layout;
 	}
 

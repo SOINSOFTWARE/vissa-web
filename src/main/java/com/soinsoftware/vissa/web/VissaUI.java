@@ -70,6 +70,8 @@ public class VissaUI extends UI {
 	private static final String KEY_PURCHASES = "Compras";
 	private static final String KEY_FOOD_BRAND = "foodBrand";
 	private static final String KEY_SALES = "Ventas";
+	private static final String KEY_SALES_REPORT = "Reporte de Ventas";
+	private static final String KEY_PURCHASES_REPORT = "Reporte de Compras";
 	private static final String KEY_SUPPLIER = "Proveedores";
 	private static final String KEY_CUSTOMER = "Clientes";
 	private static final String KEY_SALE_INVOICES = "Facturas de Venta";
@@ -102,10 +104,10 @@ public class VissaUI extends UI {
 		}
 		root.addMenu(menu);
 		root.setWidth("100%");
-		Panel panel = new Panel ();
+		Panel panel = new Panel();
 		panel.setStyleName("well");
 		panel.setContent(root);
-		//setContent(root);
+		// setContent(root);
 		setContent(root);
 	}
 
@@ -116,7 +118,6 @@ public class VissaUI extends UI {
 		treeData.addItem(null, KEY_SALES);
 		treeData.addItem(null, KEY_INVENTORY);
 		treeData.addItem(null, KEY_REPORTS);
-		
 
 		// Couple of childless root items
 		treeData.addItem(KEY_PURCHASES, KEY_PURCHASE_INVOICES);
@@ -126,12 +127,12 @@ public class VissaUI extends UI {
 		treeData.addItem(KEY_SALES, KEY_CUSTOMER);
 
 		treeData.addItem(KEY_INVENTORY, KEY_PRODUCTS);
-		
+
 		treeData.addItem(KEY_INVENTORY, KEY_INVENTORY_MOV);
-		
+		treeData.addItem(KEY_REPORTS, KEY_SALES_REPORT);
+		treeData.addItem(KEY_REPORTS, KEY_PURCHASES_REPORT);
+
 	}
-
-
 
 	private CssLayout buildMenu(ValoMenuLayout root) {
 		CssLayout menu = new CssLayout();
@@ -206,26 +207,27 @@ public class VissaUI extends UI {
 		tree.expand(KEY_PURCHASES);
 		tree.expand(KEY_SALES);
 		tree.expand(KEY_INVENTORY);
-	
+		tree.expand(KEY_REPORTS);
+
 		tree.addItemClickListener(e -> selectItem(e));
 		layout.addComponent(tree);
-		
+
 		Panel treePanel = new Panel();
 		treePanel.addStyleName("well");
 		treePanel.setContent(tree);
-		//setContent(treePanel);
-		
+		// setContent(treePanel);
+
 		return tree;
 
 	}
 
 	private void selectItem(Tree.ItemClick<String> event) {
 		String item = event.getItem();
-		if (item.equals(KEY_SALE_INVOICES)) {
-			Commons.DOCUMENT_TYPE = TransactionType.SALIDA.getName();
+		if (item.equals(KEY_SALE_INVOICES) || item.equals(KEY_SALES_REPORT)) {
+			Commons.TRANSACTION_TYPE = TransactionType.SALIDA.getName();
 		}
-		if (item.equals(KEY_PURCHASE_INVOICES)) {
-			Commons.DOCUMENT_TYPE = TransactionType.ENTRADA.getName();
+		if (item.equals(KEY_PURCHASE_INVOICES) || item.equals(KEY_PURCHASES_REPORT)) {
+			Commons.TRANSACTION_TYPE = TransactionType.ENTRADA.getName();
 		}
 		if (item.equals(KEY_SUPPLIER)) {
 			Commons.PERSON_TYPE = PersonType.SUPPLIER.getName();
@@ -247,6 +249,8 @@ public class VissaUI extends UI {
 		navigator.addView(KEY_SALE_INVOICES, InvoiceLayout.class);
 		navigator.addView(KEY_CUSTOMER, PersonLayout.class);
 		navigator.addView(KEY_INVENTORY_MOV, InventoryLayout.class);
+		navigator.addView(KEY_SALES_REPORT, InvoiceListLayout.class);
+		navigator.addView(KEY_PURCHASES_REPORT, InvoiceListLayout.class);
 		navigator.setErrorView(DefaultView.class);
 		UI.getCurrent().setNavigator(navigator);
 

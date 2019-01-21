@@ -1,8 +1,6 @@
 // Soin Software 2018
 package com.soinsoftware.vissa.web;
 
-import javax.persistence.Entity;
-
 import org.apache.log4j.Logger;
 import org.hibernate.HibernateException;
 import org.vaadin.dialogs.ConfirmDialog;
