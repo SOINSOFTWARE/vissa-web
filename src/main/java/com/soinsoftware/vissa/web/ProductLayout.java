@@ -319,6 +319,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 				.salePrice(salePrice).purchasePrice(purchasePrice).saleTax(saleTax).purchaseTax(purchaseTax)
 				.stock(stock).stockDate(DateUtil.stringToDate(txtStockDate.getValue())).archived(false).build();
 		save(productBll, entity, "Producto guardado");
+		tableSequenceBll.save(tableSequence);
 
 	}
 
