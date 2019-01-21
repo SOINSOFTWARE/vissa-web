@@ -15,6 +15,7 @@ import com.soinsoftware.vissa.model.Person;
 import com.soinsoftware.vissa.model.PersonType;
 import com.soinsoftware.vissa.model.TransactionType;
 import com.soinsoftware.vissa.model.User;
+import com.soinsoftware.vissa.model.Warehouse;
 import com.soinsoftware.vissa.util.Commons;
 import com.soinsoftware.vissa.util.ViewHelper;
 import com.vaadin.annotations.Theme;
@@ -68,7 +69,7 @@ public class VissaUI extends UI {
 	private static final String KEY_INVENTORY = "Inventario";
 	private static final String KEY_INVENTORY_MOV = "Movimientos";
 	private static final String KEY_PURCHASES = "Compras";
-	private static final String KEY_FOOD_BRAND = "foodBrand";
+	private static final String KEY_WAREHOUSE = "Bodegas";
 	private static final String KEY_SALES = "Ventas";
 	private static final String KEY_SALES_REPORT = "Reporte de Ventas";
 	private static final String KEY_PURCHASES_REPORT = "Reporte de Compras";
@@ -127,8 +128,9 @@ public class VissaUI extends UI {
 		treeData.addItem(KEY_SALES, KEY_CUSTOMER);
 
 		treeData.addItem(KEY_INVENTORY, KEY_PRODUCTS);
-
+		treeData.addItem(KEY_INVENTORY, KEY_WAREHOUSE);
 		treeData.addItem(KEY_INVENTORY, KEY_INVENTORY_MOV);
+		
 		treeData.addItem(KEY_REPORTS, KEY_SALES_REPORT);
 		treeData.addItem(KEY_REPORTS, KEY_PURCHASES_REPORT);
 
@@ -249,6 +251,7 @@ public class VissaUI extends UI {
 		navigator.addView(KEY_SALE_INVOICES, InvoiceLayout.class);
 		navigator.addView(KEY_CUSTOMER, PersonLayout.class);
 		navigator.addView(KEY_INVENTORY_MOV, InventoryLayout.class);
+		navigator.addView(KEY_WAREHOUSE, WarehouseLayout.class);
 		navigator.addView(KEY_SALES_REPORT, InvoiceListLayout.class);
 		navigator.addView(KEY_PURCHASES_REPORT, InvoiceListLayout.class);
 		navigator.setErrorView(DefaultView.class);
