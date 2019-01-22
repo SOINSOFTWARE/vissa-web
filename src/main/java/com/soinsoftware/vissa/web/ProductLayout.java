@@ -341,9 +341,11 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		
 		txFilterByCode = new TextField("Código");
 		txFilterByCode.focus();
+		txFilterByCode.addStyleName(ValoTheme.TEXTFIELD_TINY);
 		txFilterByCode.addValueChangeListener(e -> refreshGrid());
 		
 		txFilterByName = new TextField("Nombre");
+		txFilterByName.addStyleName(ValoTheme.TEXTFIELD_TINY);
 		txFilterByName.addValueChangeListener(e -> refreshGrid());
 		layout.addComponents(txFilterByCode, txFilterByName);
 		return ViewHelper.buildPanel("Filtrar por", layout);

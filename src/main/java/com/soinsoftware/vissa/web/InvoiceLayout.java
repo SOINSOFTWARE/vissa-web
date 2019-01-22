@@ -222,6 +222,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		VerticalLayout verticalLayout = ViewHelper.buildVerticalLayout(true, true);
 
 		cbDocumentType = new ComboBox<DocumentType>("Tipo de pedido");
+		cbDocumentType.focus();
 		// cbDocumentType.setWidth("40%");
 
 		ListDataProvider<DocumentType> docTypeDataProv = new ListDataProvider<>(
@@ -577,10 +578,11 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		productSelected = productLayout.getSelected();
 
 		// ---Panel de lotes
-		/*
-		 * try { buildLotWindow(productSelected); } catch (Exception e) {
-		 * log.error("Error al cargar lotes del producto. Exception: " + e); }
-		 */
+		try {
+			buildLotWindow(productSelected);
+		} catch (Exception e) {
+			log.error("Error al cargar lotes del producto. Exception: " + e);
+		}
 
 		if (productSelected != null) {
 			DocumentDetail docDetail = DocumentDetail.builder().product(productSelected).build();
@@ -612,19 +614,20 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	 */
 	private void buildLotWindow(Product product) {
 
-		Window lotSubwindow = ViewHelper.buildSubwindow("50%");
-		lotSubwindow.setCaption("Lotes");
+		Window lotSubwindow = ViewHelper.buildSubwindow("70%");
+		lotSubwindow.setCaption("Lotes del producto " + product.getName());
 
 		VerticalLayout subContent = ViewHelper.buildVerticalLayout(true, true);
 
 		// Panel de botones
 		Button backBtn = new Button("Cancelar", FontAwesome.BACKWARD);
-		backBtn.addStyleName(ValoTheme.BUTTON_DANGER);
+		backBtn.addStyleName("mystyle-btn");		
 		Button selectBtn = new Button("Seleccionar", FontAwesome.CHECK);
-		selectBtn.addStyleName(ValoTheme.BUTTON_PRIMARY);
+		selectBtn.addStyleName("mystyle-btn");
 
 		HorizontalLayout buttonLayout = ViewHelper.buildHorizontalLayout(true, true);
 		buttonLayout.addComponents(backBtn, selectBtn);
+		Panel buttonPanel = ViewHelper.buildPanel(null, buttonLayout);
 
 		LotLayout lotPanel = null;
 		try {
@@ -635,7 +638,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		} catch (IOException e) {
 			log.error("Error al cargar lista de lotes. Exception:" + e);
 		}
-		subContent.addComponents(buttonLayout, lotPanel);
+		subContent.addComponents(buttonPanel, lotPanel);
 
 		lotSubwindow.setContent(subContent);
 		getUI().addWindow(lotSubwindow);
@@ -683,9 +686,9 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		// Guardar documento
 		try {
 
-			documentBll.save(documentEntity);		
+			documentBll.save(documentEntity);
 
-		//	afterSave("");
+			// afterSave("");
 		} catch (ModelValidationException ex) {
 			log.error(ex);
 			ViewHelper.showNotification(ex.getMessage(), Notification.Type.ERROR_MESSAGE);
@@ -747,8 +750,8 @@ public class InvoiceLayout extends VerticalLayout implements View {
 				if (lotObj != null) {
 					lotBll.save(lotObj);
 				}
-				
-				//Actualizar consecutivo de tipo de documento
+
+				// Actualizar consecutivo de tipo de documento
 				documentTypeBll.save(documentType);
 
 				// afterSave(caption);
