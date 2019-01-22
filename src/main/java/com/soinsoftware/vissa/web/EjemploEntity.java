@@ -8,6 +8,7 @@ import org.apache.log4j.Logger;
 
 import com.soinsoftware.vissa.bll.TableSequenceBll;
 import com.soinsoftware.vissa.bll.WarehouseBll;
+import com.soinsoftware.vissa.model.Product;
 import com.soinsoftware.vissa.model.TableSequence;
 import com.soinsoftware.vissa.model.Warehouse;
 import com.soinsoftware.vissa.util.ViewHelper;
@@ -28,14 +29,14 @@ import com.vaadin.ui.VerticalLayout;
 import com.vaadin.ui.themes.ValoTheme;
 
 @SuppressWarnings("unchecked")
-public class WarehouseLayout extends AbstractEditableLayout<Warehouse> {
+public class EjemploEntity extends AbstractEditableLayout<Warehouse> {
 
 	/**
 	 * 
 	 */
 	private static final long serialVersionUID = 5076502522106126046L;
 
-	protected static final Logger log = Logger.getLogger(WarehouseLayout.class);
+	protected static final Logger log = Logger.getLogger(EjemploEntity.class);
 
 	private final WarehouseBll warehouseBll;
 
@@ -53,7 +54,7 @@ public class WarehouseLayout extends AbstractEditableLayout<Warehouse> {
 
 	private ConfigurableFilterDataProvider<Warehouse, Void, SerializablePredicate<Warehouse>> filterProductDataProvider;
 
-	public WarehouseLayout(boolean list) throws IOException {
+	public EjemploEntity(boolean list) throws IOException {
 		super("Bodegas");
 		listMode = list;
 		warehouseBll = WarehouseBll.getInstance();
@@ -63,7 +64,7 @@ public class WarehouseLayout extends AbstractEditableLayout<Warehouse> {
 		}
 	}
 
-	public WarehouseLayout() throws IOException {
+	public EjemploEntity() throws IOException {
 		super("Bodegas");
 		warehouseBll = WarehouseBll.getInstance();
 		tableSequenceBll = TableSequenceBll.getInstance();
@@ -117,7 +118,7 @@ public class WarehouseLayout extends AbstractEditableLayout<Warehouse> {
 		getSequence();
 		VerticalLayout layout = ViewHelper.buildVerticalLayout(true, true);
 		/// 1. Informacion producto
-		txtCode = new TextField("Código de bodega");		
+		txtCode = new TextField("Código de bodega");
 		txtCode.setWidth("50%");
 		txtCode.setEnabled(false);
 
@@ -126,7 +127,6 @@ public class WarehouseLayout extends AbstractEditableLayout<Warehouse> {
 
 		txtName = new TextField("Nombre de bodega");
 		txtName.setWidth("50%");
-		txtName.focus();
 		txtName.setValue(warehouse != null ? warehouse.getName() : "");
 
 		// ----------------------------------------------------------------------------------
@@ -140,19 +140,8 @@ public class WarehouseLayout extends AbstractEditableLayout<Warehouse> {
 		form.addStyleName(ValoTheme.FORMLAYOUT_LIGHT);
 
 		form.addComponents(txtCode, txtName);
-		// ---Panel de lotes
-		LotLayout lotPanel = null;
 
-		try {
-			lotPanel = new LotLayout(warehouse);
-			lotPanel.setCaption("Lotes");
-			lotPanel.setMargin(false);
-			lotPanel.setSpacing(false);
-		} catch (IOException e) {
-			log.error("Error al cargar lotes del producto. Exception: " + e);
-		}
-
-		layout.addComponents(form, lotPanel);
+		layout.addComponents(form);
 		return layout;
 	}
 
@@ -170,6 +159,7 @@ public class WarehouseLayout extends AbstractEditableLayout<Warehouse> {
 		ListDataProvider<Warehouse> dataProvider = new ListDataProvider<>(warehouseBll.selectAll(false));
 		filterProductDataProvider = dataProvider.withConfigurableFilter();
 		warehouseGrid.setDataProvider(filterProductDataProvider);
+
 	}
 
 	@Override
@@ -184,6 +174,7 @@ public class WarehouseLayout extends AbstractEditableLayout<Warehouse> {
 		entity = warehouseBuilder.code(txtCode.getValue()).name(txtName.getValue()).archived(false).build();
 		save(warehouseBll, entity, "Bodega guardada");
 		tableSequenceBll.save(tableSequence);
+
 	}
 
 	@Override
@@ -234,7 +225,8 @@ public class WarehouseLayout extends AbstractEditableLayout<Warehouse> {
 			TableSequence.Builder builder = TableSequence.builder(tableSeqObj);
 			tableSequence = builder.sequence(seq).build();
 		} else {
-			ViewHelper.showNotification("No hay consecutivo configurado para bodegas", Notification.Type.ERROR_MESSAGE);
+			ViewHelper.showNotification("No hay consecutivo configurado para bodegas",
+					Notification.Type.ERROR_MESSAGE);
 		}
 	}
 }

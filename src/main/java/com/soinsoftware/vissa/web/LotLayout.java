@@ -6,8 +6,10 @@ import java.util.Set;
 import org.apache.log4j.Logger;
 
 import com.soinsoftware.vissa.bll.LotBll;
+import com.soinsoftware.vissa.bll.WarehouseBll;
 import com.soinsoftware.vissa.model.Lot;
 import com.soinsoftware.vissa.model.Product;
+import com.soinsoftware.vissa.model.Warehouse;
 import com.soinsoftware.vissa.util.DateUtil;
 import com.soinsoftware.vissa.util.ViewHelper;
 import com.vaadin.data.provider.ConfigurableFilterDataProvider;
@@ -15,6 +17,7 @@ import com.vaadin.data.provider.ListDataProvider;
 import com.vaadin.server.SerializablePredicate;
 import com.vaadin.ui.AbstractOrderedLayout;
 import com.vaadin.ui.Button;
+import com.vaadin.ui.ComboBox;
 import com.vaadin.ui.Component;
 import com.vaadin.ui.DateTimeField;
 import com.vaadin.ui.FormLayout;
@@ -36,6 +39,7 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 	protected static final Logger log = Logger.getLogger(LotLayout.class);
 
 	private final LotBll lotBll;
+	private final WarehouseBll warehouseBll;
 
 	private Grid<Lot> lotGrid;
 
@@ -44,15 +48,26 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 	private DateTimeField dtfFabricationDate;
 	private DateTimeField dtfExpirationDate;
 	private TextField txtQuantity;
+	private ComboBox<Warehouse> cbWarehouse;
 
 	private Product product;
+	private Warehouse warehouse;
 
 	private ConfigurableFilterDataProvider<Lot, Void, SerializablePredicate<Lot>> filterLotDataProvider;
 
-	public LotLayout(Product prod) throws IOException {
+	public LotLayout(Product product) throws IOException {
 		super("Lotes");
-		product = prod;
+		this.product = product;
 		lotBll = LotBll.getInstance();
+		warehouseBll = WarehouseBll.getInstance();
+		addListTab();
+	}
+
+	public LotLayout(Warehouse warehouse) throws IOException {
+		super("Lotes");
+		this.warehouse = warehouse;
+		lotBll = LotBll.getInstance();
+		warehouseBll = WarehouseBll.getInstance();
 		addListTab();
 	}
 
@@ -83,6 +98,14 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 		lotGrid.addColumn(Lot::getLotDate).setCaption("Fecha de fabricación");
 		lotGrid.addColumn(Lot::getExpirationDate).setCaption("Fecha de vencimiento");
 		lotGrid.addColumn(Lot::getQuantity).setCaption("Cantidad de productos");
+		lotGrid.addColumn(lot -> {
+			if (lot != null && lot.getWarehouse() != null) {
+				return lot.getWarehouse().getName();
+			} else {
+				return null;
+			}
+		}).setCaption("Bodega");
+
 		fillGridData();
 		return ViewHelper.buildPanel(null, lotGrid);
 	}
@@ -108,30 +131,46 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 	protected Component buildEditionComponent(Lot entity) {
 		VerticalLayout layout = ViewHelper.buildVerticalLayout(true, true);
 		txtCode = new TextField("Código");
+		txtCode.setStyleName(ValoTheme.TEXTAREA_TINY);
+		txtCode.focus();
 		txtCode.setValue(entity != null ? entity.getCode() : "");
-		
-		
+
 		txtName = new TextField("Nombre");
+		txtName.setStyleName(ValoTheme.TEXTAREA_TINY);
 		txtName.setValue(entity != null ? entity.getName() : "");
 
 		dtfFabricationDate = new DateTimeField("Fecha de fabricación");
+		dtfFabricationDate.setStyleName(ValoTheme.DATEFIELD_TINY);
 		dtfFabricationDate.setValue(entity != null ? DateUtil.dateToLocalDateTime(entity.getLotDate()) : null);
 
 		dtfExpirationDate = new DateTimeField("Fecha de vencimiento");
+		dtfExpirationDate.setStyleName(ValoTheme.DATEFIELD_TINY);
 		dtfExpirationDate.setValue(entity != null ? DateUtil.dateToLocalDateTime(entity.getExpirationDate()) : null);
 
 		txtQuantity = new TextField("Cantidad");
+		txtQuantity.setStyleName(ValoTheme.TEXTAREA_TINY);
 		txtQuantity.setValue(entity != null ? String.valueOf(entity.getQuantity()) : "");
+
+		cbWarehouse = new ComboBox<>("Bodega");
+		cbWarehouse.setEmptySelectionCaption("Seleccione");
+		cbWarehouse.setStyleName(ValoTheme.COMBOBOX_TINY);
+		ListDataProvider<Warehouse> countryDataProv = new ListDataProvider<>(warehouseBll.selectAll());
+		cbWarehouse.setDataProvider(countryDataProv);
+		cbWarehouse.setItemCaptionGenerator(Warehouse::getName);
+		cbWarehouse.setValue(entity == null && warehouse != null ? warehouse : entity.getWarehouse());
+		if (warehouse != null) {
+			cbWarehouse.setReadOnly(true);
+		}
 
 		FormLayout form = new FormLayout();
 		form.setMargin(true);
-		form.setCaption("Datos del producto");
+		form.setCaption("Datos del lote");
 		form.setCaptionAsHtml(true);
 		form.setSizeFull();
 		form.setWidth("50%");
 		form.addStyleName(ValoTheme.FORMLAYOUT_LIGHT);
 
-		form.addComponents(txtCode, txtName, dtfFabricationDate, dtfExpirationDate, txtQuantity);
+		form.addComponents(txtCode, txtName, dtfFabricationDate, dtfExpirationDate, txtQuantity, cbWarehouse);
 
 		layout.addComponents(form);
 
@@ -140,9 +179,16 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 
 	@Override
 	protected void fillGridData() {
-		ListDataProvider<Lot> dataProvider = new ListDataProvider<>(lotBll.select(product));
-		filterLotDataProvider = dataProvider.withConfigurableFilter();
-		lotGrid.setDataProvider(filterLotDataProvider);
+		ListDataProvider<Lot> dataProvider = null;
+		if (product != null) {
+			dataProvider = new ListDataProvider<>(lotBll.select(product));
+		} else if (warehouse != null) {
+			dataProvider = new ListDataProvider<>(lotBll.select(warehouse));
+		}
+		if (dataProvider != null) {
+			filterLotDataProvider = dataProvider.withConfigurableFilter();
+			lotGrid.setDataProvider(filterLotDataProvider);
+		}
 
 	}
 
@@ -154,11 +200,12 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 		} else {
 			lotBuilder = Lot.builder(entity);
 		}
+
+		Warehouse warehouse = cbWarehouse.getSelectedItem().isPresent() ? cbWarehouse.getSelectedItem().get() : null;
 		entity = lotBuilder.code(txtCode.getValue()).name(txtName.getValue())
 				.lotDate(DateUtil.localDateTimeToDate(dtfFabricationDate.getValue()))
 				.expirationDate(DateUtil.localDateTimeToDate(dtfExpirationDate.getValue())).archived(false)
-				.quantity(Integer.parseInt(txtQuantity.getValue()))
-				.product(product).build();
+				.quantity(Integer.parseInt(txtQuantity.getValue())).product(product).warehouse(warehouse).build();
 		save(lotBll, entity, "Lote guardado");
 
 	}

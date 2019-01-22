@@ -151,13 +151,13 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		txtCode = new TextField("Código del producto");
 		txtCode.setWidth("50%");
 		txtCode.setEnabled(false);
-
 		txtCode.setValue(product != null ? product.getCode()
 				: tableSequence != null ? String.valueOf(tableSequence.getSequence()) : "");
 
 		txtName = new TextField("Nombre del producto");
 		txtName.setWidth("50%");
-		txtName.setValue(product != null ? product.getName() : "");
+		txtName.focus();
+		txtName.setValue(product != null ? product.getName() : "");		
 
 		txtDescription = new TextField("Descripción");
 		txtDescription.setWidth("50%");
@@ -224,10 +224,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		txtStockDate = new TextField("Fecha actualización Stock");
 		txtStockDate.setWidth("50%");
 		txtStockDate.setEnabled(false);
-		// txtStockDate
-		// .setValue(product != null && product.getStock() != null ?
-		// String.valueOf(product.getStockDate()) : "");
-
+		
 		txtStock.addValueChangeListener(e -> {
 			updateStockDate(txtStock.getValue());
 		});
@@ -341,10 +338,13 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 
 	private Panel buildFilterPanel() {
 		HorizontalLayout layout = ViewHelper.buildHorizontalLayout(true, true);
+		
+		txFilterByCode = new TextField("Código");
+		txFilterByCode.focus();
+		txFilterByCode.addValueChangeListener(e -> refreshGrid());
+		
 		txFilterByName = new TextField("Nombre");
 		txFilterByName.addValueChangeListener(e -> refreshGrid());
-		txFilterByCode = new TextField("Código");
-		txFilterByCode.addValueChangeListener(e -> refreshGrid());
 		layout.addComponents(txFilterByCode, txFilterByName);
 		return ViewHelper.buildPanel("Filtrar por", layout);
 	}
