@@ -13,7 +13,9 @@ import java.util.stream.Collectors;
 import org.apache.log4j.Logger;
 import org.hibernate.HibernateException;
 import org.springframework.transaction.annotation.Transactional;
+import org.vaadin.dialogs.ConfirmDialog;
 
+import com.mysql.cj.xdevapi.Table;
 import com.soinsoftware.vissa.bll.DocumentBll;
 import com.soinsoftware.vissa.bll.DocumentDetailBll;
 import com.soinsoftware.vissa.bll.DocumentStatusBll;
@@ -26,6 +28,7 @@ import com.soinsoftware.vissa.bll.ProductBll;
 import com.soinsoftware.vissa.exception.ModelValidationException;
 import com.soinsoftware.vissa.model.Document;
 import com.soinsoftware.vissa.model.DocumentDetail;
+import com.soinsoftware.vissa.model.DocumentDetailLot;
 import com.soinsoftware.vissa.model.DocumentStatus;
 import com.soinsoftware.vissa.model.DocumentType;
 import com.soinsoftware.vissa.model.InventoryTransaction;
@@ -45,6 +48,7 @@ import com.vaadin.data.provider.Query;
 import com.vaadin.navigator.View;
 import com.vaadin.navigator.ViewChangeListener.ViewChangeEvent;
 import com.vaadin.server.FontAwesome;
+import com.vaadin.server.Page;
 import com.vaadin.server.SerializablePredicate;
 import com.vaadin.shared.ui.datefield.DateTimeResolution;
 import com.vaadin.ui.Alignment;
@@ -99,14 +103,18 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	private Grid<DocumentDetail> detailGrid;
 	private Window personSubwindow;
 	private Window productSubwindow;
+	private Window lotSubwindow;
 
-	private Person personSelected = null;
-	private Product productSelected = null;
+	private Person selectedPerson = null;
+	private Product selectedProduct = null;
+	private Lot selectedLot = null;
 	private Document document;
 	private List<DocumentDetail> itemsList = null;
 	private ProductLayout productLayout = null;
+	private LotLayout lotLayout = null;
 	private PersonLayout personLayout = null;
 	private DocumentType documentType;
+	private List<DocumentDetailLot> detailLotList = new ArrayList<>();
 
 	private TransactionType transactionType;
 
@@ -385,6 +393,8 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		detailGrid.addColumn(DocumentDetail::getQuantity).setCaption("Cantidad").setEditorComponent(txtCant,
 				DocumentDetail::setQuantity);
 
+		txtCant.addValueChangeListener(e -> changeQuantity(new Object()));
+
 		detailGrid.addColumn(documentDetail -> {
 			if (documentDetail.getSubtotal() != 0) {
 				return documentDetail.getSubtotal();
@@ -393,6 +403,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			}
 		}).setCaption("Subtotal");
 
+	
 		/*
 		 * TextField lSubtotal = new TextField(); lSubtotal.setEnabled(false);
 		 * detailGrid.addColumn(DocumentDetail::getSubtotalStr).setCaption("Subtotal").
@@ -413,6 +424,18 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		layout.addComponents(searchProductBt, itemsLayout);
 
 		return ViewHelper.buildPanel("Productos", layout);
+	}
+
+	private void changeQuantity(Object obj) {
+		Product prod = (Product) obj;
+		log.info("prod:" + prod);
+		Set<DocumentDetail> details = detailGrid.getSelectedItems();
+		log.info("Details:" + details.size());
+		if (!details.isEmpty()) {
+			DocumentDetail detail = details.iterator().next();
+			log.info("details: " + detail.getQuantity() + detail.getProduct().getName());
+		}
+
 	}
 
 	private void setTotalDocument() {
@@ -482,10 +505,10 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	 * Método para seleccionar proveedor o cliente
 	 */
 	private void selectPerson() {
-		personSelected = personLayout.getSelected();
+		selectedPerson = personLayout.getSelected();
 
-		if (personSelected != null) {
-			txtPerson.setValue(personSelected.getName() + " " + personSelected.getLastName());
+		if (selectedPerson != null) {
+			txtPerson.setValue(selectedPerson.getName() + " " + selectedPerson.getLastName());
 			personSubwindow.close();
 		} else {
 			ViewHelper.showNotification("Seleccione un proveedor", Notification.TYPE_WARNING_MESSAGE);
@@ -575,36 +598,42 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	 */
 	private void selectProduct() {
 
-		productSelected = productLayout.getSelected();
+		selectedProduct = productLayout.getSelected();
 
-		// ---Panel de lotes
-		try {
-			buildLotWindow(productSelected);
-		} catch (Exception e) {
-			log.error("Error al cargar lotes del producto. Exception: " + e);
-		}
-
-		if (productSelected != null) {
-			DocumentDetail docDetail = DocumentDetail.builder().product(productSelected).build();
+		if (selectedProduct != null) {
+			DocumentDetail docDetail = DocumentDetail.builder().product(selectedProduct).build();
 			if (itemsList.contains(docDetail)) {
 				ViewHelper.showNotification("Este producto ya está agregado a la factura",
-						Notification.TYPE_WARNING_MESSAGE);
+						Notification.Type.WARNING_MESSAGE);
 			} else {
-				if (productSelected.getSalePrice() == null) {
+				if (selectedProduct.getSalePrice() == null) {
 					ViewHelper.showNotification("El producto no tiene precio configurado",
-							Notification.TYPE_WARNING_MESSAGE);
-				} else if (productSelected.getStock() == null || productSelected.getStock() == 0) {
+							Notification.Type.WARNING_MESSAGE);
+				} else if (selectedProduct.getStock() == null || selectedProduct.getStock() == 0) {
 					ViewHelper.showNotification("El producto no tiene stock disponible",
-							Notification.TYPE_WARNING_MESSAGE);
+							Notification.Type.WARNING_MESSAGE);
 				} else {
-					itemsList.add(docDetail);
-					fillDetailGridData(itemsList);
-					productSubwindow.close();
+
+					// ---Panel de lotes
+					try {
+
+						buildLotWindow(selectedProduct);
+						if (selectedLot != null) {
+							itemsList.add(docDetail);
+							DocumentDetailLot detailLot = DocumentDetailLot.builder().documentDetail(docDetail)
+									.lot(selectedLot).initialStockLot(selectedLot.getQuantity()).build();
+							detailLotList.add(detailLot);
+							fillDetailGridData(itemsList);
+							productSubwindow.close();
+						}
+					} catch (Exception e) {
+						log.error("Error al cargar lotes del producto. Exception: " + e);
+					}
 				}
 			}
 
 		} else {
-			ViewHelper.showNotification("No ha seleccionado un producto", Notification.TYPE_WARNING_MESSAGE);
+			ViewHelper.showNotification("No ha seleccionado un producto", Notification.Type.WARNING_MESSAGE);
 		}
 
 	}
@@ -614,35 +643,71 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	 */
 	private void buildLotWindow(Product product) {
 
-		Window lotSubwindow = ViewHelper.buildSubwindow("70%");
+		lotSubwindow = ViewHelper.buildSubwindow("70%");
 		lotSubwindow.setCaption("Lotes del producto " + product.getName());
 
 		VerticalLayout subContent = ViewHelper.buildVerticalLayout(true, true);
 
 		// Panel de botones
 		Button backBtn = new Button("Cancelar", FontAwesome.BACKWARD);
-		backBtn.addStyleName("mystyle-btn");		
+		backBtn.addStyleName("mystyle-btn");
+		backBtn.addClickListener(e -> selectLot());
+
 		Button selectBtn = new Button("Seleccionar", FontAwesome.CHECK);
 		selectBtn.addStyleName("mystyle-btn");
+		selectBtn.addClickListener(e -> selectLot());
 
 		HorizontalLayout buttonLayout = ViewHelper.buildHorizontalLayout(true, true);
 		buttonLayout.addComponents(backBtn, selectBtn);
 		Panel buttonPanel = ViewHelper.buildPanel(null, buttonLayout);
 
-		LotLayout lotPanel = null;
 		try {
-			lotPanel = new LotLayout(productSelected);
-			lotPanel.setCaption("Lotes");
-			lotPanel.setMargin(false);
-			lotPanel.setSpacing(false);
+			lotLayout = new LotLayout(selectedProduct);
+			lotLayout.setCaption("Lotes");
+			lotLayout.setMargin(false);
+			lotLayout.setSpacing(false);
 		} catch (IOException e) {
 			log.error("Error al cargar lista de lotes. Exception:" + e);
 		}
-		subContent.addComponents(buttonPanel, lotPanel);
+		subContent.addComponents(buttonPanel, lotLayout);
 
 		lotSubwindow.setContent(subContent);
 		getUI().addWindow(lotSubwindow);
 
+	}
+
+	/**
+	 * Metodo para escoger lotes para tomar los productos
+	 */
+	private void selectLot() {
+		selectedLot = lotLayout.getSelected();
+
+		log.info("selectedLot:" + selectedLot.getCode());
+
+		if (selectedLot != null) {
+
+			if (selectedLot.getQuantity() <= 0) {
+				ViewHelper.showNotification("El lote no tiene un stock productos: " + selectedLot.getQuantity(),
+						Notification.Type.ERROR_MESSAGE);
+			} else {
+				lotSubwindow.close();
+			}
+		} else {
+			ConfirmDialog.show(Page.getCurrent().getUI(), "Confirmar", "No ha seleccionado un lote. Desea continuar",
+					"Si", "No", e -> {
+						if (e.isConfirmed()) {
+							closeWindow(lotSubwindow);
+						}
+					});
+		}
+
+	}
+
+	private void addItemList() {
+		DocumentDetail docDetail = DocumentDetail.builder().product(selectedProduct).build();
+		itemsList.add(docDetail);
+		fillDetailGridData(itemsList);
+		productSubwindow.close();
 	}
 
 	/**
@@ -671,13 +736,13 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 		List<DocumentDetail> detailList = detailGrid.getDataProvider().fetch(new Query<>())
 				.collect(Collectors.toList());
-		log.info("personSelected:" + personSelected);
+		log.info("personSelected:" + selectedPerson);
 
 		DocumentStatus documentStatus = docStatusBll.select("Registrada").get(0);
 
 		documentEntity = docBuilder.code(txtDocNumber.getValue())
 				.reference(txtReference.getValue() != null ? txtReference.getValue() : "")
-				.documentType(cbDocumentType.getValue()).person(personSelected).documentDate(docDate)
+				.documentType(cbDocumentType.getValue()).person(selectedPerson).documentDate(docDate)
 				.paymentMethod(cbPaymentMethod.getValue()).paymentType(cbPaymentType.getValue())
 				.paymentTerm(txtPaymentTerm.getValue())
 				.expirationDate(DateUtil.localDateTimeToDate(dtfExpirationDate.getValue())).status(documentStatus)

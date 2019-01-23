@@ -52,6 +52,7 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 
 	private Product product;
 	private Warehouse warehouse;
+	boolean listMode;
 
 	private ConfigurableFilterDataProvider<Lot, Void, SerializablePredicate<Lot>> filterLotDataProvider;
 
@@ -92,6 +93,9 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 
 	@Override
 	protected Panel buildGridPanel() {
+		if (listMode) {
+			
+		}
 		lotGrid = ViewHelper.buildGrid(SelectionMode.SINGLE);
 		lotGrid.setSizeFull();
 		lotGrid.addColumn(Lot::getCode).setCaption("Código");
