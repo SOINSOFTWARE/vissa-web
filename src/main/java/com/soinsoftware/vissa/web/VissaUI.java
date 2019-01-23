@@ -15,8 +15,8 @@ import com.soinsoftware.vissa.model.Person;
 import com.soinsoftware.vissa.model.PersonType;
 import com.soinsoftware.vissa.model.TransactionType;
 import com.soinsoftware.vissa.model.User;
-import com.soinsoftware.vissa.model.Warehouse;
 import com.soinsoftware.vissa.util.Commons;
+import com.soinsoftware.vissa.util.PermissionUtil;
 import com.soinsoftware.vissa.util.ViewHelper;
 import com.vaadin.annotations.Theme;
 import com.vaadin.annotations.VaadinServletConfiguration;
@@ -64,24 +64,27 @@ public class VissaUI extends UI {
 
 	private static final long serialVersionUID = 7412593442523938389L;
 	private static final Logger log = Logger.getLogger(VissaUI.class);
-	private static final String KEY_PRODUCTS = "Productos";
-	private static final String KEY_COMPANY_DATA = "companyData";
-	private static final String KEY_INVENTORY = "Inventario";
-	private static final String KEY_INVENTORY_MOV = "Movimientos";
-	private static final String KEY_PURCHASES = "Compras";
-	private static final String KEY_WAREHOUSE = "Bodegas";
-	private static final String KEY_SALES = "Ventas";
-	private static final String KEY_SALES_REPORT = "Reporte de Ventas";
-	private static final String KEY_PURCHASES_REPORT = "Reporte de Compras";
-	private static final String KEY_SUPPLIER = "Proveedores";
-	private static final String KEY_CUSTOMER = "Clientes";
-	private static final String KEY_SALE_INVOICES = "Facturas de Venta";
-	private static final String KEY_PURCHASE_INVOICES = "Facturas de Compra";
-	private static final String KEY_SUPPLIER_LIST = "supplierList";
-	private static final String KEY_REPORTS = "Reportes";
+	protected static final String KEY_PRODUCTS = "Productos";
+	protected static final String KEY_COMPANY_DATA = "companyData";
+	protected static final String KEY_INVENTORY = "Inventario";
+	protected static final String KEY_INVENTORY_MOV = "Movimientos";
+	protected static final String KEY_PURCHASES = "Compras";
+	protected static final String KEY_WAREHOUSE = "Bodegas";
+	protected static final String KEY_SALES = "Ventas";
+	protected static final String KEY_SALES_REPORT = "Reporte de Ventas";
+	protected static final String KEY_PURCHASES_REPORT = "Reporte de Compras";
+	protected static final String KEY_SUPPLIER = "Proveedores";
+	protected static final String KEY_CUSTOMER = "Clientes";
+	protected static final String KEY_SALE_INVOICES = "Facturas de Venta";
+	protected static final String KEY_PURCHASE_INVOICES = "Facturas de Compra";
+	protected static final String KEY_SUPPLIER_LIST = "supplierList";
+	protected static final String KEY_REPORTS = "Reportes";
+	protected static final String KEY_PERSON = "Personas";
+	protected static final String KEY_INVOICES = "Facturas";
 
 	private LinkedHashMap<String, String> menuItems = new LinkedHashMap<String, String>();
 	private LinkedHashMap<String, FontAwesome> menuIconItems = new LinkedHashMap<String, FontAwesome>();
+	private PermissionUtil permissionUtil;
 
 	TreeDataProvider dataProvider;
 	TreeData<String> treeData;
@@ -113,27 +116,45 @@ public class VissaUI extends UI {
 	}
 
 	private void buildMenuItems2() {
-
-		// Parents items
-		treeData.addItem(null, KEY_PURCHASES);
-		treeData.addItem(null, KEY_SALES);
-		treeData.addItem(null, KEY_INVENTORY);
-		treeData.addItem(null, KEY_REPORTS);
-
-		// Couple of childless root items
-		treeData.addItem(KEY_PURCHASES, KEY_PURCHASE_INVOICES);
-		treeData.addItem(KEY_PURCHASES, KEY_SUPPLIER);
-
-		treeData.addItem(KEY_SALES, KEY_SALE_INVOICES);
-		treeData.addItem(KEY_SALES, KEY_CUSTOMER);
-
-		treeData.addItem(KEY_INVENTORY, KEY_PRODUCTS);
-		treeData.addItem(KEY_INVENTORY, KEY_WAREHOUSE);
-		treeData.addItem(KEY_INVENTORY, KEY_INVENTORY_MOV);
-		
-		treeData.addItem(KEY_REPORTS, KEY_SALES_REPORT);
-		treeData.addItem(KEY_REPORTS, KEY_PURCHASES_REPORT);
-
+		if (permissionUtil.canView(KEY_PURCHASES)) {
+			treeData.addItem(null, KEY_PURCHASES);
+			if (permissionUtil.canView(KEY_PURCHASE_INVOICES)) {
+				treeData.addItem(KEY_PURCHASES, KEY_PURCHASE_INVOICES);
+			}
+			if (permissionUtil.canView(KEY_SUPPLIER)) {
+				treeData.addItem(KEY_PURCHASES, KEY_SUPPLIER);
+			}
+		}
+		if (permissionUtil.canView(KEY_SALES)) {
+			treeData.addItem(null, KEY_SALES);
+			if (permissionUtil.canView(KEY_SALE_INVOICES)) {
+				treeData.addItem(KEY_SALES, KEY_SALE_INVOICES);
+			}
+			if (permissionUtil.canView(KEY_CUSTOMER)) {
+				treeData.addItem(KEY_SALES, KEY_CUSTOMER);
+			}
+		}
+		if (permissionUtil.canView(KEY_INVENTORY)) {
+			treeData.addItem(null, KEY_INVENTORY);
+			if (permissionUtil.canView(KEY_PRODUCTS)) {
+				treeData.addItem(KEY_INVENTORY, KEY_PRODUCTS);
+			}
+			if (permissionUtil.canView(KEY_WAREHOUSE)) {
+				treeData.addItem(KEY_INVENTORY, KEY_WAREHOUSE);
+			}
+			if (permissionUtil.canView(KEY_INVENTORY_MOV)) {
+				treeData.addItem(KEY_INVENTORY, KEY_INVENTORY_MOV);
+			}
+		}
+		if (permissionUtil.canView(KEY_REPORTS)) {
+			treeData.addItem(null, KEY_REPORTS);
+			if (permissionUtil.canView(KEY_SALES_REPORT)) {
+				treeData.addItem(KEY_REPORTS, KEY_SALES_REPORT);
+			}
+			if (permissionUtil.canView(KEY_PURCHASES_REPORT)) {
+				treeData.addItem(KEY_REPORTS, KEY_PURCHASES_REPORT);
+			}
+		}
 	}
 
 	private CssLayout buildMenu(ValoMenuLayout root) {
@@ -206,10 +227,18 @@ public class VissaUI extends UI {
 		tree.setDataProvider(dataProvider);
 		tree.setStyleName("valo-menuitems");
 		tree.setWidth("100%");
-		tree.expand(KEY_PURCHASES);
-		tree.expand(KEY_SALES);
-		tree.expand(KEY_INVENTORY);
-		tree.expand(KEY_REPORTS);
+		if (permissionUtil.canView(KEY_PURCHASES)) {
+			tree.expand(KEY_PURCHASES);
+		}
+		if (permissionUtil.canView(KEY_SALES)) {
+			tree.expand(KEY_SALES);
+		}
+		if (permissionUtil.canView(KEY_INVENTORY)) {
+			tree.expand(KEY_INVENTORY);
+		}
+		if (permissionUtil.canView(KEY_REPORTS)) {
+			tree.expand(KEY_REPORTS);
+		}
 
 		tree.addItemClickListener(e -> selectItem(e));
 		layout.addComponent(tree);
@@ -264,6 +293,7 @@ public class VissaUI extends UI {
 		if (user == null) {
 			buildLoginForm();
 		} else {
+			permissionUtil = new PermissionUtil(user.getRole().getPermissions());
 			buildValoMenuLayout();
 		}
 	}

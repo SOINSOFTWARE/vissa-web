@@ -1,5 +1,7 @@
 package com.soinsoftware.vissa.web;
 
+import static com.soinsoftware.vissa.web.VissaUI.KEY_PRODUCTS;
+
 import java.io.IOException;
 import java.math.BigInteger;
 import java.util.Date;
@@ -77,7 +79,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 	private ConfigurableFilterDataProvider<Product, Void, SerializablePredicate<Product>> filterProductDataProvider;
 
 	public ProductLayout(boolean list) throws IOException {
-		super("Productos");
+		super("Productos", KEY_PRODUCTS);
 		listMode = list;
 		productBll = ProductBll.getInstance();
 		categoryBll = ProductCategoryBll.getInstance();
@@ -90,7 +92,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 	}
 
 	public ProductLayout() throws IOException {
-		super("Productos");
+		super("Productos", KEY_PRODUCTS);
 		productBll = ProductBll.getInstance();
 		categoryBll = ProductCategoryBll.getInstance();
 		typeBll = ProductTypeBll.getInstance();

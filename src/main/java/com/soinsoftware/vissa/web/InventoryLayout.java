@@ -1,7 +1,8 @@
 package com.soinsoftware.vissa.web;
 
+import static com.soinsoftware.vissa.web.VissaUI.KEY_INVENTORY;
+
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.Date;
 
 import com.soinsoftware.vissa.bll.InventoryTransactionBll;
@@ -33,7 +34,7 @@ public class InventoryLayout extends AbstractEditableLayout<Product> {
 	private ConfigurableFilterDataProvider<InventoryTransaction, Void, SerializablePredicate<InventoryTransaction>> filterInvDataProvider;
 	
 	public InventoryLayout()  throws IOException {
-		super("Transacciones de inventario");
+		super("Transacciones de inventario", KEY_INVENTORY);
 
 		inventoryBll = InventoryTransactionBll.getInstance();
 	}

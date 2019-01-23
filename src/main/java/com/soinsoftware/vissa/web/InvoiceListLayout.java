@@ -1,5 +1,7 @@
 package com.soinsoftware.vissa.web;
 
+import static com.soinsoftware.vissa.web.VissaUI.KEY_INVOICES;
+
 import java.io.IOException;
 import java.util.Date;
 import java.util.List;
@@ -74,7 +76,7 @@ public class InvoiceListLayout extends AbstractEditableLayout<Document> {
 	private ConfigurableFilterDataProvider<Document, Void, SerializablePredicate<Document>> filterDataProvider;
 
 	public InvoiceListLayout() throws IOException {
-		super("");
+		super("", KEY_INVOICES);
 
 		documentBll = DocumentBll.getInstance();
 		documentTypeBll = DocumentTypeBll.getInstance();

@@ -1,5 +1,7 @@
 package com.soinsoftware.vissa.web;
 
+import static com.soinsoftware.vissa.web.VissaUI.KEY_WAREHOUSE;
+
 import java.io.IOException;
 import java.math.BigInteger;
 import java.util.Set;
@@ -54,7 +56,7 @@ public class WarehouseLayout extends AbstractEditableLayout<Warehouse> {
 	private ConfigurableFilterDataProvider<Warehouse, Void, SerializablePredicate<Warehouse>> filterProductDataProvider;
 
 	public WarehouseLayout(boolean list) throws IOException {
-		super("Bodegas");
+		super("Bodegas", KEY_WAREHOUSE);
 		listMode = list;
 		warehouseBll = WarehouseBll.getInstance();
 		tableSequenceBll = TableSequenceBll.getInstance();
@@ -64,7 +66,7 @@ public class WarehouseLayout extends AbstractEditableLayout<Warehouse> {
 	}
 
 	public WarehouseLayout() throws IOException {
-		super("Bodegas");
+		super("Bodegas", KEY_WAREHOUSE);
 		warehouseBll = WarehouseBll.getInstance();
 		tableSequenceBll = TableSequenceBll.getInstance();
 		if (listMode) {
@@ -117,7 +119,7 @@ public class WarehouseLayout extends AbstractEditableLayout<Warehouse> {
 		getSequence();
 		VerticalLayout layout = ViewHelper.buildVerticalLayout(true, true);
 		/// 1. Informacion producto
-		txtCode = new TextField("Código de bodega");		
+		txtCode = new TextField("Código de bodega");
 		txtCode.setWidth("50%");
 		txtCode.setEnabled(false);
 

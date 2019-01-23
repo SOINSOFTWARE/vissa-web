@@ -1,5 +1,7 @@
 package com.soinsoftware.vissa.web;
 
+import static com.soinsoftware.vissa.web.VissaUI.KEY_PRODUCTS;
+
 import java.io.IOException;
 import java.util.Set;
 
@@ -57,7 +59,7 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 	private ConfigurableFilterDataProvider<Lot, Void, SerializablePredicate<Lot>> filterLotDataProvider;
 
 	public LotLayout(Product product) throws IOException {
-		super("Lotes");
+		super("Lotes", KEY_PRODUCTS);
 		this.product = product;
 		lotBll = LotBll.getInstance();
 		warehouseBll = WarehouseBll.getInstance();
@@ -65,7 +67,7 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 	}
 
 	public LotLayout(Warehouse warehouse) throws IOException {
-		super("Lotes");
+		super("Lotes", KEY_PRODUCTS);
 		this.warehouse = warehouse;
 		lotBll = LotBll.getInstance();
 		warehouseBll = WarehouseBll.getInstance();
@@ -94,7 +96,7 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 	@Override
 	protected Panel buildGridPanel() {
 		if (listMode) {
-			
+
 		}
 		lotGrid = ViewHelper.buildGrid(SelectionMode.SINGLE);
 		lotGrid.setSizeFull();

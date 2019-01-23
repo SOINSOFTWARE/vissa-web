@@ -7,6 +7,8 @@ import org.vaadin.dialogs.ConfirmDialog;
 
 import com.soinsoftware.vissa.bll.AbstractBll;
 import com.soinsoftware.vissa.exception.ModelValidationException;
+import com.soinsoftware.vissa.model.User;
+import com.soinsoftware.vissa.util.PermissionUtil;
 import com.soinsoftware.vissa.util.ViewHelper;
 import com.vaadin.navigator.View;
 import com.vaadin.navigator.ViewChangeListener.ViewChangeEvent;
@@ -31,17 +33,21 @@ public abstract class AbstractEditableLayout<E> extends VerticalLayout implement
 	private static final long serialVersionUID = -7958396636831213220L;
 	protected static final Logger log = Logger.getLogger(AbstractEditableLayout.class);
 
+	private final String menuName;
 	private TabSheet tabSheet;
 	protected String pageTitle;
-	
-	public AbstractEditableLayout(String pageTitle) {
+	private PermissionUtil permissionUtil;
+
+	public AbstractEditableLayout(String pageTitle, String menuName) {
 		super();
-		this.pageTitle = pageTitle;		
+		this.pageTitle = pageTitle;
+		this.menuName = menuName;
 	}
 
 	@Override
 	public void enter(ViewChangeEvent event) {
 		View.super.enter(event);
+		this.permissionUtil = new PermissionUtil(getSession().getAttribute(User.class).getRole().getPermissions());
 		setMargin(true);
 		addPageTitle(pageTitle);
 		addListTab();
@@ -64,10 +70,15 @@ public abstract class AbstractEditableLayout<E> extends VerticalLayout implement
 
 	protected Panel buildButtonPanelForLists() {
 		HorizontalLayout layout = ViewHelper.buildHorizontalLayout(true, true);
-		Button btNew = buildButtonForNewAction("mystyle-btn");
-		Button btEdit = buildButtonForEditAction("mystyle-btn");
-		Button btDelete = buildButtonForDeleteAction("mystyle-btn");
-		layout.addComponents(btNew, btEdit, btDelete);
+		if (permissionUtil.canEdit(menuName)) {
+			Button btNew = buildButtonForNewAction("mystyle-btn");
+			Button btEdit = buildButtonForEditAction("mystyle-btn");
+			layout.addComponents(btNew, btEdit);
+		}
+		if (permissionUtil.canDelete(menuName)) {
+			Button btDelete = buildButtonForDeleteAction("mystyle-btn");
+			layout.addComponent(btDelete);
+		}
 		return ViewHelper.buildPanel(null, layout);
 	}
 
@@ -115,7 +126,7 @@ public abstract class AbstractEditableLayout<E> extends VerticalLayout implement
 
 	protected void editButtonAction() {
 		E entity = getSelected();
-		if (entity != null) {			
+		if (entity != null) {
 			showEditionTab(entity, "Editar", FontAwesome.EDIT);
 		} else {
 			ViewHelper.showNotification("No has seleccionado ningún registro", Notification.Type.WARNING_MESSAGE);
@@ -125,7 +136,7 @@ public abstract class AbstractEditableLayout<E> extends VerticalLayout implement
 	protected void deleteButtonAction() {
 		E entity = getSelected();
 		if (entity != null) {
-			
+
 			showDeleteConfirmationDialog(entity);
 		} else {
 			ViewHelper.showNotification("No has seleccionado ningún registro", Notification.Type.WARNING_MESSAGE);
@@ -165,10 +176,6 @@ public abstract class AbstractEditableLayout<E> extends VerticalLayout implement
 					Notification.Type.ERROR_MESSAGE);
 		}
 	}
-	
-	
-	
-	
 
 	protected void afterSave(String caption) {
 		fillGridData();
@@ -187,7 +194,7 @@ public abstract class AbstractEditableLayout<E> extends VerticalLayout implement
 	}
 
 	protected abstract AbstractOrderedLayout buildListView();
-	
+
 	protected abstract AbstractOrderedLayout buildEditionView(E entity);
 
 	protected abstract Panel buildGridPanel();

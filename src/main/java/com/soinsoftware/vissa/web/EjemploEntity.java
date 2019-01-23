@@ -1,5 +1,7 @@
 package com.soinsoftware.vissa.web;
 
+import static com.soinsoftware.vissa.web.VissaUI.KEY_WAREHOUSE;
+
 import java.io.IOException;
 import java.math.BigInteger;
 import java.util.Set;
@@ -55,7 +57,7 @@ public class EjemploEntity extends AbstractEditableLayout<Warehouse> {
 	private ConfigurableFilterDataProvider<Warehouse, Void, SerializablePredicate<Warehouse>> filterProductDataProvider;
 
 	public EjemploEntity(boolean list) throws IOException {
-		super("Bodegas");
+		super("Bodegas", KEY_WAREHOUSE);
 		listMode = list;
 		warehouseBll = WarehouseBll.getInstance();
 		tableSequenceBll = TableSequenceBll.getInstance();
@@ -65,7 +67,7 @@ public class EjemploEntity extends AbstractEditableLayout<Warehouse> {
 	}
 
 	public EjemploEntity() throws IOException {
-		super("Bodegas");
+		super("Bodegas", KEY_WAREHOUSE);
 		warehouseBll = WarehouseBll.getInstance();
 		tableSequenceBll = TableSequenceBll.getInstance();
 		if (listMode) {

@@ -1,8 +1,9 @@
 package com.soinsoftware.vissa.web;
 
+import static com.soinsoftware.vissa.web.VissaUI.KEY_CUSTOMER;
+
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Date;
 import java.util.Set;
 
 import org.apache.log4j.Logger;
@@ -14,14 +15,10 @@ import com.soinsoftware.vissa.bll.SupplierBll;
 import com.soinsoftware.vissa.model.BankAccount;
 import com.soinsoftware.vissa.model.BankAccountType;
 import com.soinsoftware.vissa.model.DocumentIdType;
-import com.soinsoftware.vissa.model.MeasurementUnit;
 import com.soinsoftware.vissa.model.PaymentMethod;
 import com.soinsoftware.vissa.model.PaymentType;
 import com.soinsoftware.vissa.model.Person;
 import com.soinsoftware.vissa.model.PersonType;
-import com.soinsoftware.vissa.model.Product;
-import com.soinsoftware.vissa.model.ProductCategory;
-import com.soinsoftware.vissa.model.ProductType;
 import com.soinsoftware.vissa.model.Supplier;
 import com.soinsoftware.vissa.util.ViewHelper;
 import com.vaadin.data.provider.ConfigurableFilterDataProvider;
@@ -77,7 +74,7 @@ public class CustomerLayout extends AbstractEditableLayout<Supplier> {
 	private ConfigurableFilterDataProvider<Supplier, Void, SerializablePredicate<Supplier>> filterDataProvider;
 
 	public CustomerLayout(boolean list, String type) throws IOException {
-		super("Clientes");
+		super("Clientes", KEY_CUSTOMER);
 		listMode = list;
 		supplierBll = SupplierBll.getInstance();
 		payMethodBll = PaymentMethodBll.getInstance();
@@ -90,7 +87,7 @@ public class CustomerLayout extends AbstractEditableLayout<Supplier> {
 	}
 
 	public CustomerLayout() throws IOException {
-		super("Clientes");
+		super("Clientes", KEY_CUSTOMER);
 		supplierBll = SupplierBll.getInstance();
 		personBll = PersonBll.getInstance();
 		payMethodBll = PaymentMethodBll.getInstance();

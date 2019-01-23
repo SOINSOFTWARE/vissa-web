@@ -1,5 +1,7 @@
 package com.soinsoftware.vissa.web;
 
+import static com.soinsoftware.vissa.web.VissaUI.KEY_PERSON;
+
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Set;
@@ -103,7 +105,7 @@ public class PersonLayout extends AbstractEditableLayout<Person> {
 
 	public PersonLayout(boolean list) throws IOException {
 
-		super("");
+		super("", KEY_PERSON);
 		if (Commons.PERSON_TYPE.equals(PersonType.SUPPLIER.getName())) {
 			personType = PersonType.SUPPLIER;
 			this.pageTitle = "Proveedores";
@@ -129,7 +131,7 @@ public class PersonLayout extends AbstractEditableLayout<Person> {
 	}
 
 	public PersonLayout() throws IOException {
-		super("");
+		super("", KEY_PERSON);
 		if (Commons.PERSON_TYPE.equals(PersonType.SUPPLIER.getName())) {
 			personType = PersonType.SUPPLIER;
 			this.pageTitle = "Proveedores";
