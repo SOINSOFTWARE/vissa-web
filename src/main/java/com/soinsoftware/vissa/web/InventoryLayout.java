@@ -8,6 +8,7 @@ import com.soinsoftware.vissa.bll.InventoryTransactionBll;
 import com.soinsoftware.vissa.model.Document;
 import com.soinsoftware.vissa.model.InventoryTransaction;
 import com.soinsoftware.vissa.model.Product;
+import com.soinsoftware.vissa.util.DateUtil;
 import com.soinsoftware.vissa.util.ViewHelper;
 import com.vaadin.data.provider.ConfigurableFilterDataProvider;
 import com.vaadin.data.provider.ListDataProvider;
@@ -20,6 +21,7 @@ import com.vaadin.ui.HorizontalLayout;
 import com.vaadin.ui.Panel;
 import com.vaadin.ui.TextField;
 import com.vaadin.ui.VerticalLayout;
+import com.vaadin.ui.themes.ValoTheme;
 
 public class InventoryLayout extends AbstractEditableLayout<Product> {
 
@@ -87,7 +89,7 @@ public class InventoryLayout extends AbstractEditableLayout<Product> {
 		
 		inventoryGrid.addColumn(invTransaction -> {
 			if(invTransaction.getDocument() != null) {
-				return invTransaction.getDocument().getDocumentDate();
+				return DateUtil.dateToString(invTransaction.getDocument().getDocumentDate());
 			} else {
 				return null;
 			}
@@ -151,6 +153,7 @@ public class InventoryLayout extends AbstractEditableLayout<Product> {
 	private Panel buildFilterPanel() {
 		HorizontalLayout layout = ViewHelper.buildHorizontalLayout(true, true);
 		txtFilterByProdCode = new TextField("Codigo Producto");
+		txtFilterByProdCode.addStyleName(ValoTheme.TEXTFIELD_TINY);
 		txtFilterByProdCode.addValueChangeListener(e -> refreshGrid());
 		layout.addComponent(txtFilterByProdCode);
 		return ViewHelper.buildPanel("Filtrar por", layout);

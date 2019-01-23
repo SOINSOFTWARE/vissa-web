@@ -95,8 +95,20 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 		lotGrid = ViewHelper.buildGrid(SelectionMode.SINGLE);
 		lotGrid.setSizeFull();
 		lotGrid.addColumn(Lot::getCode).setCaption("Código");
-		lotGrid.addColumn(Lot::getLotDate).setCaption("Fecha de fabricación");
-		lotGrid.addColumn(Lot::getExpirationDate).setCaption("Fecha de vencimiento");
+		lotGrid.addColumn(lot -> {
+			if (lot != null && lot.getLotDate() != null) {
+				return DateUtil.dateToString(lot.getLotDate());
+			} else {
+				return null;
+			}
+		}).setCaption("Fecha de fabricación");
+		lotGrid.addColumn(lot -> {
+			if (lot != null && lot.getExpirationDate() != null) {
+				return DateUtil.dateToString(lot.getExpirationDate());
+			} else {
+				return null;
+			}
+		}).setCaption("Fecha de vencimiento");
 		lotGrid.addColumn(Lot::getQuantity).setCaption("Cantidad de productos");
 		lotGrid.addColumn(lot -> {
 			if (lot != null && lot.getWarehouse() != null) {
@@ -157,7 +169,8 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 		ListDataProvider<Warehouse> countryDataProv = new ListDataProvider<>(warehouseBll.selectAll());
 		cbWarehouse.setDataProvider(countryDataProv);
 		cbWarehouse.setItemCaptionGenerator(Warehouse::getName);
-		cbWarehouse.setValue(entity == null && warehouse != null ? warehouse : entity.getWarehouse());
+		cbWarehouse.setValue(
+				entity == null && warehouse != null ? warehouse : entity != null ? entity.getWarehouse() : null);
 		if (warehouse != null) {
 			cbWarehouse.setReadOnly(true);
 		}
