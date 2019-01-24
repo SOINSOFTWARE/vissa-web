@@ -56,6 +56,7 @@ import com.vaadin.ui.Button;
 import com.vaadin.ui.ComboBox;
 import com.vaadin.ui.DateTimeField;
 import com.vaadin.ui.Grid;
+import com.vaadin.ui.Grid.Column;
 import com.vaadin.ui.HorizontalLayout;
 import com.vaadin.ui.Label;
 import com.vaadin.ui.Notification;
@@ -63,6 +64,7 @@ import com.vaadin.ui.Panel;
 import com.vaadin.ui.TextField;
 import com.vaadin.ui.VerticalLayout;
 import com.vaadin.ui.Window;
+import com.vaadin.ui.components.grid.FooterRow;
 import com.vaadin.ui.themes.ValoTheme;
 
 @SuppressWarnings("deprecation")
@@ -117,6 +119,12 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	private List<DocumentDetailLot> detailLotList = new ArrayList<>();
 
 	private TransactionType transactionType;
+	
+	private ListDataProvider<DocumentDetail> dataProvider;
+	private ConfigurableFilterDataProvider<DocumentDetail, Void, SerializablePredicate<DocumentDetail>> filterDataProv;
+	private Column<?, ?> columnQuantity;
+	private Column<?, ?> columnTotal;
+	private FooterRow footer;
 
 	public InvoiceLayout() throws IOException {
 		super();
@@ -390,20 +398,21 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 		// Columna cantidad editable
 		TextField txtCant = new TextField();
-		detailGrid.addColumn(DocumentDetail::getQuantity).setCaption("Cantidad").setEditorComponent(txtCant,
-				DocumentDetail::setQuantity);
+		columnQuantity = detailGrid.addColumn(DocumentDetail::getQuantity).setCaption("Cantidad")
+				.setEditorComponent(txtCant, DocumentDetail::setQuantity);
 
-		txtCant.addValueChangeListener(e -> changeQuantity(new Object()));
-
-		detailGrid.addColumn(documentDetail -> {
+		columnTotal = detailGrid.addColumn(documentDetail -> {
 			if (documentDetail.getSubtotal() != 0) {
 				return documentDetail.getSubtotal();
 			} else {
 				return "";
 			}
 		}).setCaption("Subtotal");
+		
+		txtCant.addBlurListener(e -> dataProvider.refreshAll());
+		footer = detailGrid.prependFooterRow();
+		footer.getCell(columnQuantity).setHtml("<b>Total:</b>");
 
-	
 		/*
 		 * TextField lSubtotal = new TextField(); lSubtotal.setEnabled(false);
 		 * detailGrid.addColumn(DocumentDetail::getSubtotalStr).setCaption("Subtotal").
@@ -412,11 +421,6 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		 */
 		detailGrid.getEditor().setEnabled(true);
 
-		ListDataProvider<DocumentDetail> detailDataProv = new ListDataProvider<>(Arrays.asList(new DocumentDetail()));
-		ConfigurableFilterDataProvider<DocumentDetail, Void, SerializablePredicate<DocumentDetail>> filterDataProvider = detailDataProv
-				.withConfigurableFilter();
-		detailGrid.setDataProvider(filterDataProvider);
-
 		HorizontalLayout itemsLayout = ViewHelper.buildHorizontalLayout(false, false);
 		itemsLayout.setSizeFull();
 		itemsLayout.addComponents(ViewHelper.buildPanel(null, detailGrid));
@@ -424,6 +428,14 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		layout.addComponents(searchProductBt, itemsLayout);
 
 		return ViewHelper.buildPanel("Productos", layout);
+	}
+
+	private String calculateTotal(ListDataProvider<DocumentDetail> detailDataProv) {
+		log.info("Calculando total");
+		return "<b>"
+				+ String.valueOf(detailDataProv.fetch(new Query<>()).mapToDouble(DocumentDetail::getSubtotal).sum())
+				+ "</b>";
+
 	}
 
 	private void changeQuantity(Object obj) {
@@ -682,7 +694,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	private void selectLot() {
 		selectedLot = lotLayout.getSelected();
 
-		log.info("selectedLot:" + selectedLot.getCode());
+		log.info("selectedLot:" + selectedLot);
 
 		if (selectedLot != null) {
 
@@ -717,10 +729,12 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	 */
 	private void fillDetailGridData(List<DocumentDetail> detailList) {
 
-		ListDataProvider<DocumentDetail> dataProvider = new ListDataProvider<>(detailList);
-		ConfigurableFilterDataProvider<DocumentDetail, Void, SerializablePredicate<DocumentDetail>> filterDataProv = dataProvider
-				.withConfigurableFilter();
+		dataProvider = new ListDataProvider<>(detailList);
+		filterDataProv = dataProvider.withConfigurableFilter();
 		detailGrid.setDataProvider(filterDataProv);
+		
+		dataProvider.addDataProviderListener(event -> footer.getCell(columnTotal).setHtml(calculateTotal(dataProvider)));
+		dataProvider.refreshAll();
 	}
 
 	@Transactional(rollbackFor = Exception.class)
