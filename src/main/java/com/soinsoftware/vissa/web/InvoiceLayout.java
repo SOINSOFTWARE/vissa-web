@@ -119,12 +119,14 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	private List<DocumentDetailLot> detailLotList = new ArrayList<>();
 
 	private TransactionType transactionType;
-	
+
 	private ListDataProvider<DocumentDetail> dataProvider;
 	private ConfigurableFilterDataProvider<DocumentDetail, Void, SerializablePredicate<DocumentDetail>> filterDataProv;
 	private Column<?, ?> columnQuantity;
 	private Column<?, ?> columnTotal;
 	private FooterRow footer;
+
+	private boolean withoutLot;
 
 	public InvoiceLayout() throws IOException {
 		super();
@@ -328,7 +330,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		cbDocumentStatus.setStyleName(ValoTheme.COMBOBOX_TINY);
 
 		txtTotal = new TextField("Total Factura");
-		txtTotal.setEnabled(false);
+		txtTotal.setReadOnly(true);
 		txtTotal.setStyleName(ValoTheme.TEXTFIELD_TINY);
 
 		HorizontalLayout headerLayout1 = ViewHelper.buildHorizontalLayout(false, false);
@@ -358,9 +360,16 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	private Panel buildDetailPanel() {
 		VerticalLayout layout = ViewHelper.buildVerticalLayout(true, true);
 
-		Button searchProductBt = new Button("Buscar productos", FontAwesome.PLUS);
-		searchProductBt.addStyleName(ValoTheme.BUTTON_SMALL);
-		searchProductBt.addClickListener(e -> buildProductWindow());
+		HorizontalLayout buttonlayout = ViewHelper.buildHorizontalLayout(false, false);
+		Button addProductBt = new Button("Agregar producto", FontAwesome.PLUS);
+		addProductBt.addStyleName(ValoTheme.BUTTON_TINY);
+		addProductBt.addClickListener(e -> buildProductWindow());
+
+		Button deleteProductBt = new Button("Eliminar producto", FontAwesome.ERASER);
+		deleteProductBt.addStyleName(ValoTheme.BUTTON_TINY);
+		deleteProductBt.addClickListener(e -> deleteProductGrid());
+
+		buttonlayout.addComponents(addProductBt, deleteProductBt);
 
 		detailGrid = new Grid<>();
 		detailGrid.setSizeFull();
@@ -408,62 +417,31 @@ public class InvoiceLayout extends VerticalLayout implements View {
 				return "";
 			}
 		}).setCaption("Subtotal");
-		
+
+		txtCant.setMaxLength(100);
+		txtCant.setRequiredIndicatorVisible(true);
+
 		txtCant.addBlurListener(e -> dataProvider.refreshAll());
 		footer = detailGrid.prependFooterRow();
 		footer.getCell(columnQuantity).setHtml("<b>Total:</b>");
 
-		/*
-		 * TextField lSubtotal = new TextField(); lSubtotal.setEnabled(false);
-		 * detailGrid.addColumn(DocumentDetail::getSubtotalStr).setCaption("Subtotal").
-		 * setEditorComponent(lSubtotal, DocumentDetail::setSubtotalStr);
-		 * lSubtotal.addValueChangeListener(e -> setTotalDocument());
-		 */
 		detailGrid.getEditor().setEnabled(true);
 
 		HorizontalLayout itemsLayout = ViewHelper.buildHorizontalLayout(false, false);
 		itemsLayout.setSizeFull();
 		itemsLayout.addComponents(ViewHelper.buildPanel(null, detailGrid));
 
-		layout.addComponents(searchProductBt, itemsLayout);
+		layout.addComponents(buttonlayout, itemsLayout);
 
 		return ViewHelper.buildPanel("Productos", layout);
 	}
 
 	private String calculateTotal(ListDataProvider<DocumentDetail> detailDataProv) {
 		log.info("Calculando total");
-		return "<b>"
-				+ String.valueOf(detailDataProv.fetch(new Query<>()).mapToDouble(DocumentDetail::getSubtotal).sum())
-				+ "</b>";
-
-	}
-
-	private void changeQuantity(Object obj) {
-		Product prod = (Product) obj;
-		log.info("prod:" + prod);
-		Set<DocumentDetail> details = detailGrid.getSelectedItems();
-		log.info("Details:" + details.size());
-		if (!details.isEmpty()) {
-			DocumentDetail detail = details.iterator().next();
-			log.info("details: " + detail.getQuantity() + detail.getProduct().getName());
-		}
-
-	}
-
-	private void setTotalDocument() {
-		List<DocumentDetail> detailList = detailGrid.getDataProvider().fetch(new Query<>())
-				.collect(Collectors.toList());
-
-		log.info("detailList:" + detailList.size());
-		Double total = 0.0;
-
-		for (Iterator<DocumentDetail> iterator = detailList.iterator(); iterator.hasNext();) {
-			total = total + iterator.next().getSubtotal();
-		}
-
-		log.info("Total:" + total);
-
-		txtTotal.setValue(String.valueOf(total));
+		String total = String
+				.valueOf(detailDataProv.fetch(new Query<>()).mapToDouble(DocumentDetail::getSubtotal).sum());
+		txtTotal.setValue(total);
+		return "<b>" + total + "</b>";
 
 	}
 
@@ -572,6 +550,9 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	 * Metodo que construye la venta para buscar productos
 	 */
 	private void buildProductWindow() {
+		selectedProduct = null;
+		selectedLot = null;
+		withoutLot = false;
 
 		productSubwindow = ViewHelper.buildSubwindow("75%");
 		productSubwindow.setCaption("Productos");
@@ -628,14 +609,18 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 					// ---Panel de lotes
 					try {
-
-						buildLotWindow(selectedProduct);
-						if (selectedLot != null) {
+						log.info("withoutLot:" + withoutLot);
+						if (selectedLot == null && !withoutLot) {
+							buildLotWindow(selectedProduct);
+						} else if (selectedLot != null || withoutLot) {
 							itemsList.add(docDetail);
-							DocumentDetailLot detailLot = DocumentDetailLot.builder().documentDetail(docDetail)
-									.lot(selectedLot).initialStockLot(selectedLot.getQuantity()).build();
-							detailLotList.add(detailLot);
 							fillDetailGridData(itemsList);
+							// If hay lote, se asocia al registro de detail
+							if (selectedLot != null) {
+								DocumentDetailLot detailLot = DocumentDetailLot.builder().documentDetail(docDetail)
+										.lot(selectedLot).initialStockLot(selectedLot.getQuantity()).build();
+								detailLotList.add(detailLot);
+							}
 							productSubwindow.close();
 						}
 					} catch (Exception e) {
@@ -644,7 +629,9 @@ public class InvoiceLayout extends VerticalLayout implements View {
 				}
 			}
 
-		} else {
+		} else
+
+		{
 			ViewHelper.showNotification("No ha seleccionado un producto", Notification.Type.WARNING_MESSAGE);
 		}
 
@@ -654,6 +641,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	 * Metodo que construye la venta para buscar productos
 	 */
 	private void buildLotWindow(Product product) {
+		withoutLot = false;
 
 		lotSubwindow = ViewHelper.buildSubwindow("70%");
 		lotSubwindow.setCaption("Lotes del producto " + product.getName());
@@ -692,6 +680,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	 * Metodo para escoger lotes para tomar los productos
 	 */
 	private void selectLot() {
+		
 		selectedLot = lotLayout.getSelected();
 
 		log.info("selectedLot:" + selectedLot);
@@ -708,7 +697,9 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			ConfirmDialog.show(Page.getCurrent().getUI(), "Confirmar", "No ha seleccionado un lote. Desea continuar",
 					"Si", "No", e -> {
 						if (e.isConfirmed()) {
+							withoutLot = true;
 							closeWindow(lotSubwindow);
+
 						}
 					});
 		}
@@ -732,8 +723,9 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		dataProvider = new ListDataProvider<>(detailList);
 		filterDataProv = dataProvider.withConfigurableFilter();
 		detailGrid.setDataProvider(filterDataProv);
-		
-		dataProvider.addDataProviderListener(event -> footer.getCell(columnTotal).setHtml(calculateTotal(dataProvider)));
+
+		dataProvider
+				.addDataProviderListener(event -> footer.getCell(columnTotal).setHtml(calculateTotal(dataProvider)));
 		dataProvider.refreshAll();
 	}
 
@@ -895,6 +887,16 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 	private void closeWindow(Window w) {
 		w.close();
+	}
+
+	private void deleteProductGrid() {
+		itemsList.remove(getSelectedDetail());
+		fillDetailGridData(itemsList);
+	}
+
+	private DocumentDetail getSelectedDetail() {
+		Set<DocumentDetail> detailSet = detailGrid.getSelectedItems();
+		return detailSet.iterator().next();
 	}
 
 }
