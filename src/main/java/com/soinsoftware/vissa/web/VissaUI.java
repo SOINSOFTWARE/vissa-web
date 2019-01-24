@@ -4,7 +4,6 @@ import java.io.File;
 import java.io.IOException;
 import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
-import java.util.LinkedHashMap;
 
 import javax.servlet.annotation.WebServlet;
 
@@ -81,12 +80,12 @@ public class VissaUI extends UI {
 	protected static final String KEY_REPORTS = "Reportes";
 	protected static final String KEY_PERSON = "Personas";
 	protected static final String KEY_INVOICES = "Facturas";
+	protected static final String KEY_ADMINISTRATION = "Administración";
+	protected static final String KEY_USERS = "Usuarios";
 
-	private LinkedHashMap<String, String> menuItems = new LinkedHashMap<String, String>();
-	private LinkedHashMap<String, FontAwesome> menuIconItems = new LinkedHashMap<String, FontAwesome>();
 	private PermissionUtil permissionUtil;
 
-	TreeDataProvider dataProvider;
+	TreeDataProvider<String> dataProvider;
 	TreeData<String> treeData;
 	Tree<String> tree;
 	ValoMenuLayout root;
@@ -111,11 +110,10 @@ public class VissaUI extends UI {
 		Panel panel = new Panel();
 		panel.setStyleName("well");
 		panel.setContent(root);
-		// setContent(root);
 		setContent(root);
 	}
 
-	private void buildMenuItems2() {
+	private void buildMenuItems() {
 		if (permissionUtil.canView(KEY_PURCHASES)) {
 			treeData.addItem(null, KEY_PURCHASES);
 			if (permissionUtil.canView(KEY_PURCHASE_INVOICES)) {
@@ -153,6 +151,13 @@ public class VissaUI extends UI {
 			}
 			if (permissionUtil.canView(KEY_PURCHASES_REPORT)) {
 				treeData.addItem(KEY_REPORTS, KEY_PURCHASES_REPORT);
+			}
+		}
+
+		if (permissionUtil.canView(KEY_ADMINISTRATION)) {
+			treeData.addItem(null, KEY_ADMINISTRATION);
+			if (permissionUtil.canView(KEY_USERS)) {
+				treeData.addItem(KEY_ADMINISTRATION, KEY_USERS);
 			}
 		}
 	}
@@ -213,14 +218,14 @@ public class VissaUI extends UI {
 		return settings;
 	}
 
-	@SuppressWarnings("unchecked")
+
 	private Component buildMenuItemsLayout2(ValoMenuLayout root) {
 		VerticalLayout layout = ViewHelper.buildVerticalLayout(false, false);
 
 		tree = new Tree<>();
 		treeData = new TreeData<>();
 
-		buildMenuItems2();
+		buildMenuItems();
 
 		buildNavigator();
 		dataProvider = new TreeDataProvider<>(treeData);
@@ -237,6 +242,9 @@ public class VissaUI extends UI {
 			tree.expand(KEY_INVENTORY);
 		}
 		if (permissionUtil.canView(KEY_REPORTS)) {
+			tree.expand(KEY_REPORTS);
+		}
+		if (permissionUtil.canView(KEY_ADMINISTRATION)) {
 			tree.expand(KEY_REPORTS);
 		}
 
@@ -266,6 +274,9 @@ public class VissaUI extends UI {
 		if (item.equals(KEY_CUSTOMER)) {
 			Commons.PERSON_TYPE = PersonType.CUSTOMER.getName();
 		}
+		if (item.equals(KEY_USERS)) {
+			Commons.PERSON_TYPE = PersonType.USER.getName();
+		}
 		UI.getCurrent().getNavigator().navigateTo(item);
 	}
 
@@ -283,6 +294,7 @@ public class VissaUI extends UI {
 		navigator.addView(KEY_WAREHOUSE, WarehouseLayout.class);
 		navigator.addView(KEY_SALES_REPORT, InvoiceListLayout.class);
 		navigator.addView(KEY_PURCHASES_REPORT, InvoiceListLayout.class);
+		navigator.addView(KEY_USERS, PersonLayout.class);
 		navigator.setErrorView(DefaultView.class);
 		UI.getCurrent().setNavigator(navigator);
 

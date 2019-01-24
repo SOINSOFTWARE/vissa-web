@@ -3,6 +3,8 @@ package com.soinsoftware.vissa.web;
 import static com.soinsoftware.vissa.web.VissaUI.KEY_PERSON;
 
 import java.io.IOException;
+import java.security.NoSuchAlgorithmException;
+import java.security.spec.InvalidKeySpecException;
 import java.util.Arrays;
 import java.util.Set;
 
@@ -16,8 +18,10 @@ import com.soinsoftware.vissa.bll.CountryBll;
 import com.soinsoftware.vissa.bll.PaymentMethodBll;
 import com.soinsoftware.vissa.bll.PaymentTypeBll;
 import com.soinsoftware.vissa.bll.PersonBll;
+import com.soinsoftware.vissa.bll.RoleBll;
 import com.soinsoftware.vissa.bll.StateBll;
 import com.soinsoftware.vissa.bll.SupplierBll;
+import com.soinsoftware.vissa.bll.UserBll;
 import com.soinsoftware.vissa.exception.ModelValidationException;
 import com.soinsoftware.vissa.model.Bank;
 import com.soinsoftware.vissa.model.BankAccount;
@@ -30,8 +34,10 @@ import com.soinsoftware.vissa.model.PaymentMethod;
 import com.soinsoftware.vissa.model.PaymentType;
 import com.soinsoftware.vissa.model.Person;
 import com.soinsoftware.vissa.model.PersonType;
+import com.soinsoftware.vissa.model.Role;
 import com.soinsoftware.vissa.model.State;
 import com.soinsoftware.vissa.model.Supplier;
+import com.soinsoftware.vissa.model.User;
 import com.soinsoftware.vissa.util.Commons;
 import com.soinsoftware.vissa.util.ViewHelper;
 import com.vaadin.data.provider.ConfigurableFilterDataProvider;
@@ -47,6 +53,7 @@ import com.vaadin.ui.Grid.SelectionMode;
 import com.vaadin.ui.HorizontalLayout;
 import com.vaadin.ui.Notification;
 import com.vaadin.ui.Panel;
+import com.vaadin.ui.PasswordField;
 import com.vaadin.ui.TextField;
 import com.vaadin.ui.VerticalLayout;
 import com.vaadin.ui.themes.ValoTheme;
@@ -63,12 +70,14 @@ public class PersonLayout extends AbstractEditableLayout<Person> {
 
 	private final SupplierBll supplierBll;
 	private final PersonBll personBll;
+	private final UserBll userBll;
 	private final PaymentMethodBll payMethodBll;
 	private final PaymentTypeBll payTypeBll;
 	private final CountryBll countryBll;
 	private final StateBll stateBll;
 	private final CityBll cityBll;
 	private final BankBll bankBll;
+	private final RoleBll roleBll;
 
 	private TextField txFilterByName;
 	private TextField txFilterByCode;
@@ -97,6 +106,9 @@ public class PersonLayout extends AbstractEditableLayout<Person> {
 	private ComboBox<BankAccountType> cbAccountType;
 	private ComboBox<Bank> cbBank;
 	private ComboBox<BankAccountStatus> cbAccountStatus;
+	private TextField txtLogin;
+	private PasswordField txtPassword;
+	private ComboBox<Role> cbRole;
 
 	private boolean listMode;
 	private PersonType personType;
@@ -120,10 +132,12 @@ public class PersonLayout extends AbstractEditableLayout<Person> {
 		payMethodBll = PaymentMethodBll.getInstance();
 		payTypeBll = PaymentTypeBll.getInstance();
 		personBll = PersonBll.getInstance();
+		userBll = UserBll.getInstance();
 		countryBll = CountryBll.getInstance();
 		stateBll = StateBll.getInstance();
 		cityBll = CityBll.getInstance();
 		bankBll = BankBll.getInstance();
+		roleBll = RoleBll.getInstance();
 
 		if (listMode) {
 			addListTab();
@@ -140,15 +154,21 @@ public class PersonLayout extends AbstractEditableLayout<Person> {
 			personType = PersonType.CUSTOMER;
 			this.pageTitle = "Clientes";
 		}
+		if (Commons.PERSON_TYPE.equals(PersonType.USER.getName())) {
+			personType = PersonType.USER;
+			this.pageTitle = "Usuarios";
+		}
 
 		supplierBll = SupplierBll.getInstance();
 		personBll = PersonBll.getInstance();
+		userBll = UserBll.getInstance();
 		payMethodBll = PaymentMethodBll.getInstance();
 		payTypeBll = PaymentTypeBll.getInstance();
 		countryBll = CountryBll.getInstance();
 		stateBll = StateBll.getInstance();
 		cityBll = CityBll.getInstance();
 		bankBll = BankBll.getInstance();
+		roleBll = RoleBll.getInstance();
 
 		if (listMode) {
 			addListTab();
@@ -177,10 +197,10 @@ public class PersonLayout extends AbstractEditableLayout<Person> {
 	@Override
 	protected AbstractOrderedLayout buildEditionView(Person entity) {
 		VerticalLayout layout = ViewHelper.buildVerticalLayout(false, false);
-		Panel buttonPanel = buildButtonPanelForEdition(entity);
+		Panel buttonPanelUpper = buildButtonPanelForEdition(entity);
 		Component dataPanel = buildEditionComponent(entity);
-		Panel buttonPanel2 = buildButtonPanelForEdition(entity);
-		layout.addComponents(buttonPanel, dataPanel, buttonPanel2);
+		Panel buttonPanelLower = buildButtonPanelForEdition(entity);
+		layout.addComponents(buttonPanelUpper, dataPanel, buttonPanelLower);
 		return layout;
 	}
 
@@ -206,6 +226,11 @@ public class PersonLayout extends AbstractEditableLayout<Person> {
 	protected Component buildEditionComponent(Person person) {
 		VerticalLayout layout = ViewHelper.buildVerticalLayout(false, false);
 
+		Panel basicPanel;
+		Panel contactPanel;
+		Panel paymentPanel;
+		Panel bankPanel;
+		Panel userPanel;
 		/// 1. Informacion basica de la persona
 		cbDocumentType = new ComboBox<>("Tipo de documento");
 		cbDocumentType.setDescription("Tipo");
@@ -232,132 +257,174 @@ public class PersonLayout extends AbstractEditableLayout<Person> {
 
 		FormLayout basicForm = ViewHelper.buildForm("Datos basicos", true, false);
 		basicForm.addComponents(cbDocumentType, txtDocumentId, txtName, txtLastName);
-		Panel basicPanel = ViewHelper.buildPanel("Datos basicos", basicForm);
+		basicPanel = ViewHelper.buildPanel("Datos basicos", basicForm);
+		layout.addComponents(basicPanel);
 
-		// 2. Datos de contacto
-		txtContactName = new TextField("Nombre de contacto");
-		txtContactName.setStyleName(ValoTheme.TEXTFIELD_TINY);
+		if (personType.equals(PersonType.USER)) {
+			userPanel = (Panel) buildUserPanel(person);
+			layout.addComponents(userPanel);
+		} else {
 
-		txtAddress = new TextField("Dirección");
-		txtAddress.setStyleName(ValoTheme.TEXTFIELD_TINY);
+			// 2. Datos de contacto
+			txtContactName = new TextField("Nombre de contacto");
+			txtContactName.setStyleName(ValoTheme.TEXTFIELD_TINY);
 
-		cbCountry = new ComboBox<>("País");
-		cbCountry.setEmptySelectionCaption("Seleccione");
-		cbCountry.setStyleName(ValoTheme.COMBOBOX_TINY);
-		ListDataProvider<Country> countryDataProv = new ListDataProvider<>(countryBll.selectAll());
-		cbCountry.setDataProvider(countryDataProv);
-		cbCountry.setItemCaptionGenerator(Country::getName);
+			txtAddress = new TextField("Dirección");
+			txtAddress.setStyleName(ValoTheme.TEXTFIELD_TINY);
 
-		cbState = new ComboBox<>("Departamento");
-		cbState.setEmptySelectionCaption("Seleccione");
-		cbState.setStyleName(ValoTheme.COMBOBOX_TINY);
-		ListDataProvider<State> stateDataProv = new ListDataProvider<>(stateBll.selectAll());
-		cbState.setDataProvider(stateDataProv);
-		cbState.setItemCaptionGenerator(State::getName);
+			cbCountry = new ComboBox<>("País");
+			cbCountry.setEmptySelectionCaption("Seleccione");
+			cbCountry.setStyleName(ValoTheme.COMBOBOX_TINY);
+			ListDataProvider<Country> countryDataProv = new ListDataProvider<>(countryBll.selectAll());
+			cbCountry.setDataProvider(countryDataProv);
+			cbCountry.setItemCaptionGenerator(Country::getName);
 
-		cbCity = new ComboBox<>("Ciudad");
-		cbCity.setEmptySelectionCaption("Seleccione");
-		cbCity.setStyleName(ValoTheme.COMBOBOX_TINY);
-		ListDataProvider<City> cityDataProv = new ListDataProvider<>(cityBll.selectAll());
-		cbCity.setDataProvider(cityDataProv);
-		cbCity.setItemCaptionGenerator(City::getName);
+			cbState = new ComboBox<>("Departamento");
+			cbState.setEmptySelectionCaption("Seleccione");
+			cbState.setStyleName(ValoTheme.COMBOBOX_TINY);
+			ListDataProvider<State> stateDataProv = new ListDataProvider<>(stateBll.selectAll());
+			cbState.setDataProvider(stateDataProv);
+			cbState.setItemCaptionGenerator(State::getName);
 
-		txtNeighborhood = new TextField("Barrio");
-		txtNeighborhood.setStyleName(ValoTheme.TEXTFIELD_TINY);
+			cbCity = new ComboBox<>("Ciudad");
+			cbCity.setEmptySelectionCaption("Seleccione");
+			cbCity.setStyleName(ValoTheme.COMBOBOX_TINY);
+			ListDataProvider<City> cityDataProv = new ListDataProvider<>(cityBll.selectAll());
+			cbCity.setDataProvider(cityDataProv);
+			cbCity.setItemCaptionGenerator(City::getName);
 
-		txtMobile = new TextField("Teléfono móvil");
-		txtMobile.setStyleName(ValoTheme.TEXTFIELD_TINY);
+			txtNeighborhood = new TextField("Barrio");
+			txtNeighborhood.setStyleName(ValoTheme.TEXTFIELD_TINY);
 
-		txtPhone = new TextField("Teléfono fijo");
-		txtPhone.setStyleName(ValoTheme.TEXTFIELD_TINY);
+			txtMobile = new TextField("Teléfono móvil");
+			txtMobile.setStyleName(ValoTheme.TEXTFIELD_TINY);
 
-		txtEmail = new TextField("Correo electrónico");
-		txtEmail.setStyleName(ValoTheme.TEXTFIELD_TINY);
+			txtPhone = new TextField("Teléfono fijo");
+			txtPhone.setStyleName(ValoTheme.TEXTFIELD_TINY);
 
-		txtWebSite = new TextField("Sitio web");
-		txtWebSite.setStyleName(ValoTheme.TEXTFIELD_TINY);
+			txtEmail = new TextField("Correo electrónico");
+			txtEmail.setStyleName(ValoTheme.TEXTFIELD_TINY);
 
-		// Establecer valores de persona
+			txtWebSite = new TextField("Sitio web");
+			txtWebSite.setStyleName(ValoTheme.TEXTFIELD_TINY);
 
-		// Eventos
-		cbCountry.addValueChangeListener(e -> {
-			selectCountry();
-		});
+			// Establecer valores de persona
 
-		cbState.addValueChangeListener(e -> {
-			selectState();
-		});
+			// Eventos
+			cbCountry.addValueChangeListener(e -> {
+				selectCountry();
+			});
 
-		cbCity.addValueChangeListener(e -> {
-			selectCity();
-		});
+			cbState.addValueChangeListener(e -> {
+				selectState();
+			});
 
-		FormLayout contactForm = ViewHelper.buildForm("Datos de contacto", true, false);
-		contactForm.addComponents(txtContactName, txtAddress, cbCountry, cbState, cbCity, txtNeighborhood, txtMobile,
-				txtPhone, txtEmail, txtWebSite);
+			cbCity.addValueChangeListener(e -> {
+				selectCity();
+			});
 
-		Panel contactPanel = ViewHelper.buildPanel("Datos de contacto", contactForm);
+			FormLayout contactForm = ViewHelper.buildForm("Datos de contacto", true, false);
+			contactForm.addComponents(txtContactName, txtAddress, cbCountry, cbState, cbCity, txtNeighborhood,
+					txtMobile, txtPhone, txtEmail, txtWebSite);
 
-		// 3. Condiciones comerciales
-		cbPaymentType = new ComboBox<>("Tipo de pago");
-		cbPaymentType.setEmptySelectionCaption("Seleccione");
-		cbPaymentType.setStyleName(ValoTheme.COMBOBOX_TINY);
-		ListDataProvider<PaymentType> payTypeDataProv = new ListDataProvider<>(payTypeBll.selectAll());
-		cbPaymentType.setDataProvider(payTypeDataProv);
-		cbPaymentType.setItemCaptionGenerator(PaymentType::getName);
+			contactPanel = ViewHelper.buildPanel("Datos de contacto", contactForm);
 
-		cbPaymentMethod = new ComboBox<>("Forma de pago");
-		cbPaymentMethod.setEmptySelectionCaption("Seleccione");
-		cbPaymentMethod.setStyleName(ValoTheme.COMBOBOX_TINY);
-		ListDataProvider<PaymentMethod> payMetDataProv = new ListDataProvider<>(payMethodBll.selectAll());
-		cbPaymentMethod.setDataProvider(payMetDataProv);
-		cbPaymentMethod.setItemCaptionGenerator(PaymentMethod::getName);
+			// 3. Condiciones comerciales
+			cbPaymentType = new ComboBox<>("Tipo de pago");
+			cbPaymentType.setEmptySelectionCaption("Seleccione");
+			cbPaymentType.setStyleName(ValoTheme.COMBOBOX_TINY);
+			ListDataProvider<PaymentType> payTypeDataProv = new ListDataProvider<>(payTypeBll.selectAll());
+			cbPaymentType.setDataProvider(payTypeDataProv);
+			cbPaymentType.setItemCaptionGenerator(PaymentType::getName);
 
-		txtPaymentTerm = new TextField("Plazo");
-		txtPaymentTerm.setStyleName(ValoTheme.TEXTFIELD_TINY);
+			cbPaymentMethod = new ComboBox<>("Forma de pago");
+			cbPaymentMethod.setEmptySelectionCaption("Seleccione");
+			cbPaymentMethod.setStyleName(ValoTheme.COMBOBOX_TINY);
+			ListDataProvider<PaymentMethod> payMetDataProv = new ListDataProvider<>(payMethodBll.selectAll());
+			cbPaymentMethod.setDataProvider(payMetDataProv);
+			cbPaymentMethod.setItemCaptionGenerator(PaymentMethod::getName);
 
-		FormLayout paymentForm = ViewHelper.buildForm("Datos para pagos", true, false);
-		paymentForm.addComponents(cbPaymentType, cbPaymentMethod, txtPaymentTerm);
-		Panel paymentPanel = ViewHelper.buildPanel("Datos para pagos", paymentForm);
+			txtPaymentTerm = new TextField("Plazo");
+			txtPaymentTerm.setStyleName(ValoTheme.TEXTFIELD_TINY);
 
-		// 3. Datos bancarios
-		cbAccountType = new ComboBox<>("Tipo de cuenta");
-		cbAccountType.setEmptySelectionCaption("Seleccione");
-		cbAccountType.setStyleName(ValoTheme.COMBOBOX_TINY);
-		ListDataProvider<BankAccountType> accTypeDataProv = new ListDataProvider<>(
-				Arrays.asList(BankAccountType.values()));
-		cbAccountType.setDataProvider(accTypeDataProv);
-		cbAccountType.setItemCaptionGenerator(BankAccountType::getDisplay);
+			FormLayout paymentForm = ViewHelper.buildForm("Datos para pagos", true, false);
+			paymentForm.addComponents(cbPaymentType, cbPaymentMethod, txtPaymentTerm);
+			paymentPanel = ViewHelper.buildPanel("Datos para pagos", paymentForm);
 
-		txtAccountNumber = new TextField("Número de cuenta");
-		txtAccountNumber.setStyleName(ValoTheme.TEXTFIELD_TINY);
+			// 3. Datos bancarios
+			cbAccountType = new ComboBox<>("Tipo de cuenta");
+			cbAccountType.setEmptySelectionCaption("Seleccione");
+			cbAccountType.setStyleName(ValoTheme.COMBOBOX_TINY);
+			ListDataProvider<BankAccountType> accTypeDataProv = new ListDataProvider<>(
+					Arrays.asList(BankAccountType.values()));
+			cbAccountType.setDataProvider(accTypeDataProv);
+			cbAccountType.setItemCaptionGenerator(BankAccountType::getDisplay);
 
-		cbBank = new ComboBox<>("Entidad financiera");
-		cbBank.setEmptySelectionCaption("Seleccione");
-		cbBank.setStyleName(ValoTheme.COMBOBOX_TINY);
-		ListDataProvider<Bank> bankDataProv = new ListDataProvider<>(bankBll.selectAll());
-		cbBank.setDataProvider(bankDataProv);
-		cbBank.setItemCaptionGenerator(Bank::getName);
+			txtAccountNumber = new TextField("Número de cuenta");
+			txtAccountNumber.setStyleName(ValoTheme.TEXTFIELD_TINY);
 
-		cbAccountStatus = new ComboBox<>("Estado");
-		cbAccountStatus.setEmptySelectionCaption("Seleccione");
-		cbAccountStatus.setStyleName(ValoTheme.COMBOBOX_TINY);
-		ListDataProvider<BankAccountStatus> accStatusDataProv = new ListDataProvider<>(
-				Arrays.asList(BankAccountStatus.values()));
-		cbAccountStatus.setDataProvider(accStatusDataProv);
-		cbAccountStatus.setItemCaptionGenerator(BankAccountStatus::getDisplay);
+			cbBank = new ComboBox<>("Entidad financiera");
+			cbBank.setEmptySelectionCaption("Seleccione");
+			cbBank.setStyleName(ValoTheme.COMBOBOX_TINY);
+			ListDataProvider<Bank> bankDataProv = new ListDataProvider<>(bankBll.selectAll());
+			cbBank.setDataProvider(bankDataProv);
+			cbBank.setItemCaptionGenerator(Bank::getName);
 
-		FormLayout bankForm = ViewHelper.buildForm("Datos bancarios", false, false);
-		bankForm.addComponents(cbAccountType, txtAccountNumber, cbBank, cbAccountStatus);
-		Panel bankPanel = ViewHelper.buildPanel("Datos bancarios", bankForm);
-		// ----------------------------------------------------------------------------------
+			cbAccountStatus = new ComboBox<>("Estado");
+			cbAccountStatus.setEmptySelectionCaption("Seleccione");
+			cbAccountStatus.setStyleName(ValoTheme.COMBOBOX_TINY);
+			ListDataProvider<BankAccountStatus> accStatusDataProv = new ListDataProvider<>(
+					Arrays.asList(BankAccountStatus.values()));
+			cbAccountStatus.setDataProvider(accStatusDataProv);
+			cbAccountStatus.setItemCaptionGenerator(BankAccountStatus::getDisplay);
 
-		layout.addComponents(basicPanel, contactPanel, paymentPanel, bankPanel);
-		setFieldValue(person);
+			FormLayout bankForm = ViewHelper.buildForm("Datos bancarios", false, false);
+			bankForm.addComponents(cbAccountType, txtAccountNumber, cbBank, cbAccountStatus);
+			bankPanel = ViewHelper.buildPanel("Datos bancarios", bankForm);
+			// ----------------------------------------------------------------------------------
+			layout.addComponents(contactPanel, paymentPanel, bankPanel);
+		}
+
+		setFieldValues(person);
 		return layout;
 	}
 
-	private void setFieldValue(Person person) {
+	private Component buildUserPanel(Person person) {
+		User user = null;
+		if (person != null) {
+			user = userBll.select(person);
+		}
+		txtLogin = new TextField("Nombre de usuario");
+		txtLogin.setRequiredIndicatorVisible(true);
+		txtLogin.setStyleName(ValoTheme.TEXTFIELD_TINY);
+
+		txtPassword = new PasswordField("Contraseña");
+		txtPassword.setRequiredIndicatorVisible(true);
+		txtPassword.setStyleName(ValoTheme.TEXTFIELD_TINY);
+
+		cbRole = new ComboBox<>("Rol");
+		cbRole.setEmptySelectionCaption("Seleccione");
+		cbRole.setStyleName(ValoTheme.COMBOBOX_TINY);
+		cbRole.setRequiredIndicatorVisible(true);
+		ListDataProvider<Role> roleDataProv = new ListDataProvider<>(roleBll.selectAll());
+		cbRole.setDataProvider(roleDataProv);
+		cbRole.setItemCaptionGenerator(Role::getName);
+
+		if (user != null) {
+			txtLogin.setValue(user.getLogin());
+			txtPassword.setValue(user.getPassword());
+			cbRole.setValue(user.getRole());
+		}
+
+		FormLayout authForm = ViewHelper.buildForm("Datos de autenticación", false, false);
+		authForm.addComponents(txtLogin, txtPassword);
+		Panel authPanel = ViewHelper.buildPanel("Datos de autenticación", authForm);
+
+		return authPanel;
+
+	}
+
+	private void setFieldValues(Person person) {
 		// Establecer datos a los campos
 		if (person != null) {
 			cbDocumentType.setValue(person.getDocumentType() != null ? person.getDocumentType() : null);
@@ -455,90 +522,23 @@ public class PersonLayout extends AbstractEditableLayout<Person> {
 				throw new Exception(message);
 			}
 
-			Person.Builder personBuilder = null;
-			if (person == null) {
-				personBuilder = Person.builder();
-			} else {
-				personBuilder = Person.builder(person);
-			}
-
-			String lastName = txtLastName.getValue() != null ? txtLastName.getValue() : null;
-
-			City city = cbCity.getSelectedItem().isPresent() ? cbCity.getSelectedItem().get() : null;
-
-			PaymentType paymentType = cbPaymentType.getSelectedItem().isPresent()
-					? cbPaymentType.getSelectedItem().get()
-					: null;
-			PaymentMethod paymentMethod = cbPaymentMethod.getSelectedItem().isPresent()
-					? cbPaymentMethod.getSelectedItem().get()
-					: null;
-
-			// Construir objeto con datos bancarios
-			BankAccount bankAccount = null;
-			BankAccount.Builder bankAccountBuilder = null;
-			if (person != null && person.getBankAccount() != null) {
-				bankAccount = person.getBankAccount();
-				bankAccountBuilder = BankAccount.builder(bankAccount);
-			} else {
-				bankAccountBuilder = BankAccount.builder();
-			}
-
-			BankAccountType accountType = cbAccountType.getSelectedItem().isPresent()
-					? cbAccountType.getSelectedItem().get()
-					: null;
-			Bank bank = cbBank.getSelectedItem().isPresent() ? cbBank.getSelectedItem().get() : null;
-			BankAccountStatus accountStatus = cbAccountStatus.getSelectedItem().isPresent()
-					? cbAccountStatus.getSelectedItem().get()
-					: null;
-
-			// objeto cuenta bancaria
-			bankAccount = bankAccountBuilder.type(accountType).account(txtAccountNumber.getValue()).bank(bank)
-					.status(accountStatus).build();
-
-			if (bankAccount != null && bankAccount.getType() == null) {
-				bankAccount = null;
-			}
-
-			// Objeto persona
-			DocumentIdType documentIdType = cbDocumentType.getSelectedItem().isPresent()
-					? cbDocumentType.getSelectedItem().get()
-					: null;
-			String docId = txtDocumentId.getValue() != null ? txtDocumentId.getValue() : "";
-
-			person = personBuilder.documentType(documentIdType).documentNumber(docId).name(txtName.getValue())
-					.lastName(lastName).type(personType).contactName(txtContactName.getValue())
-					.address(txtAddress.getValue()).city(city).neighborhood(txtNeighborhood.getValue())
-					.mobile(txtMobile.getValue()).phone(txtPhone.getValue()).email(txtEmail.getValue())
-					.webSite(txtWebSite.getValue()).bankAccount(bankAccount).build();
-
-			log.info("person:" + person.toString());
+			Person personSaved = null;
+			Supplier supplierSaved = null;
+			User userSaved = null;
 
 			try {
-				personBll.save(person);
-				// afterSave("Persona guardada");
-
-				Supplier supplier = null;
-				Supplier.Builder supplierBuilder = null;
-				Person personObj = personBll.select(person.getDocumentNumber());
-				supplier = supplierBll.select(personObj.getDocumentNumber());
-
-				if (supplier == null) {
-					supplierBuilder = Supplier.builder();
-				} else {
-					supplierBuilder = Supplier.builder(supplier);
+				personSaved = savePerson(person);
+				if (personSaved != null) {
+					if (personType.equals(PersonType.SUPPLIER) || personType.equals(PersonType.CUSTOMER)) {
+						supplierSaved = saveThird(personSaved);
+					} else {
+						userSaved = saveUser(personSaved);
+					}
 				}
 
-				// Objeto proveedor
-				supplier = supplierBuilder.person(personObj).paymentType(paymentType).paymentMethod(paymentMethod)
-						.paymentTerm(txtPaymentTerm.getValue()).build();
-
-				log.info("supplier:" + supplier.toString());
-
-				supplierBll.save(supplier);
-				afterSave("Persona guardada");
-
-				ViewHelper.showNotification("Persona guardada", Notification.Type.WARNING_MESSAGE);
-
+				if (supplierSaved != null || userSaved != null) {
+					ViewHelper.showNotification("Persona guardada", Notification.Type.WARNING_MESSAGE);
+				}
 			} catch (ModelValidationException ex) {
 				log.error(ex);
 				ViewHelper.showNotification(ex.getMessage(), Notification.Type.ERROR_MESSAGE);
@@ -555,6 +555,175 @@ public class PersonLayout extends AbstractEditableLayout<Person> {
 			ViewHelper.showNotification(e.getMessage(), Notification.Type.ERROR_MESSAGE);
 		}
 
+	}
+
+	// Guardar datos básicos de persona
+	private Person savePerson(Person person) {
+		Person.Builder personBuilder = null;
+		Person personSaved = null;
+		if (person == null) {
+			personBuilder = Person.builder();
+		} else {
+			personBuilder = Person.builder(person);
+		}
+
+		// Objeto persona
+		String lastName = txtLastName.getValue() != null ? txtLastName.getValue() : null;
+		DocumentIdType documentIdType = cbDocumentType.getSelectedItem().isPresent()
+				? cbDocumentType.getSelectedItem().get()
+				: null;
+		String docId = txtDocumentId.getValue() != null ? txtDocumentId.getValue() : "";
+
+		City city = cbCity.getSelectedItem().isPresent() ? cbCity.getSelectedItem().get() : null;
+
+		// Construir objeto con datos bancarios
+		BankAccount bankAccount = null;
+		BankAccount.Builder bankAccountBuilder = null;
+		if (person != null && person.getBankAccount() != null) {
+			bankAccount = person.getBankAccount();
+			bankAccountBuilder = BankAccount.builder(bankAccount);
+		} else {
+			bankAccountBuilder = BankAccount.builder();
+		}
+
+		BankAccountType accountType = cbAccountType.getSelectedItem().isPresent()
+				? cbAccountType.getSelectedItem().get()
+				: null;
+		Bank bank = cbBank.getSelectedItem().isPresent() ? cbBank.getSelectedItem().get() : null;
+		BankAccountStatus accountStatus = cbAccountStatus.getSelectedItem().isPresent()
+				? cbAccountStatus.getSelectedItem().get()
+				: null;
+
+		// objeto cuenta bancaria
+		bankAccount = bankAccountBuilder.type(accountType).account(txtAccountNumber.getValue()).bank(bank)
+				.status(accountStatus).build();
+
+		if (bankAccount != null && bankAccount.getType() == null) {
+			bankAccount = null;
+		}
+
+		person = personBuilder.documentType(documentIdType).documentNumber(docId).name(txtName.getValue())
+				.lastName(lastName).type(personType).contactName(txtContactName.getValue())
+				.address(txtAddress.getValue()).city(city).neighborhood(txtNeighborhood.getValue())
+				.mobile(txtMobile.getValue()).phone(txtPhone.getValue()).email(txtEmail.getValue())
+				.webSite(txtWebSite.getValue()).bankAccount(bankAccount).build();
+
+		log.info("person:" + person.toString());
+
+		try {
+			personBll.save(person);
+			// afterSave("Persona guardada");
+
+			// Consultar el objeto guardado
+			personSaved = personBll.select(person.getDocumentNumber());
+
+		} catch (ModelValidationException ex) {
+			person = null;
+			log.error(ex);
+			ViewHelper.showNotification(ex.getMessage(), Notification.Type.ERROR_MESSAGE);
+		} catch (HibernateException ex) {
+			person = null;
+			log.error(ex);
+			personBll.rollback();
+			ViewHelper.showNotification(
+					"Los datos de la persona no pudieron ser guardados, contacte al administrador (3002007694)",
+					Notification.Type.ERROR_MESSAGE);
+		}
+
+		return personSaved;
+	}
+
+	// Guardar un cliente o proveedor
+	private Supplier saveThird(Person person) {
+		Supplier supplier = null;
+		Supplier.Builder supplierBuilder = null;
+
+		try {
+			Person personObj = personBll.select(person.getDocumentNumber());
+			supplier = supplierBll.select(personObj.getDocumentNumber());
+
+			if (supplier == null) {
+				supplierBuilder = Supplier.builder();
+			} else {
+				supplierBuilder = Supplier.builder(supplier);
+			}
+
+			PaymentType paymentType = cbPaymentType.getSelectedItem().isPresent()
+					? cbPaymentType.getSelectedItem().get()
+					: null;
+			PaymentMethod paymentMethod = cbPaymentMethod.getSelectedItem().isPresent()
+					? cbPaymentMethod.getSelectedItem().get()
+					: null;
+
+			// Objeto proveedor
+			supplier = supplierBuilder.person(personObj).paymentType(paymentType).paymentMethod(paymentMethod)
+					.paymentTerm(txtPaymentTerm.getValue()).build();
+
+			log.info("tercero:" + supplier.toString());
+
+			supplierBll.save(supplier);
+			// afterSave("Persona guardada");
+
+		} catch (ModelValidationException ex) {
+			supplier = null;
+			log.error(ex);
+			ViewHelper.showNotification(ex.getMessage(), Notification.Type.ERROR_MESSAGE);
+		} catch (HibernateException ex) {
+			supplier = null;
+			log.error(ex);
+			personBll.rollback();
+			ViewHelper.showNotification(
+					"Los datos de la persona no pudieron ser guardados, contacte al administrador (3002007694)",
+					Notification.Type.ERROR_MESSAGE);
+		}
+		return supplier;
+	}
+
+	// Guardar un usuario
+	private User saveUser(Person person) {
+		User user = null;
+		User.Builder userBuilder = null;
+
+		try {
+			user = userBll.select(person);
+
+			if (user == null) {
+				userBuilder = User.builder();
+			} else {
+				userBuilder = User.builder(user);
+			}
+
+			Role role = cbRole.getSelectedItem().isPresent() ? cbRole.getSelectedItem().get() : null;
+
+			// Objeto usuario
+			user = userBuilder.person(person).login(txtLogin.getValue()).password(txtPassword.getValue()).role(role)
+					.build();
+
+			log.info("usuario:" + user.toString());
+
+			userBll.save(user);
+			// afterSave("Persona guardada");
+
+		} catch (ModelValidationException ex) {
+			user = null;
+			log.error(ex);
+			ViewHelper.showNotification(ex.getMessage(), Notification.Type.ERROR_MESSAGE);
+		} catch (HibernateException ex) {
+			user = null;
+			log.error(ex);
+			personBll.rollback();
+			ViewHelper.showNotification(
+					"Los datos de la persona no pudieron ser guardados, contacte al administrador (3002007694)",
+					Notification.Type.ERROR_MESSAGE);
+
+		} catch (NoSuchAlgorithmException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (InvalidKeySpecException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return user;
 	}
 
 	private String validateRequiredFields() {
