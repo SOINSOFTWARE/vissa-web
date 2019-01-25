@@ -275,7 +275,8 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		}
 		txtPerson = new TextField(title);
 		// txtPerson.setWidth("28%");
-		txtPerson.setEnabled(false);
+		txtPerson.setReadOnly(true);
+		txtPerson.setRequiredIndicatorVisible(true);
 		txtPerson.setStyleName(ValoTheme.TEXTFIELD_TINY);
 		Button searchSupplierButton = new Button("Buscar proveedor", FontAwesome.SEARCH);
 		searchSupplierButton.addClickListener(e -> buildPersonWindow(txtPerson.getValue()));
@@ -518,7 +519,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			txtDocNumber.setValue(String.valueOf(documentType.getSequence()));
 
 		} else {
-			ViewHelper.showNotification("El tipo de documento no tiene consecutivo configurado",
+			ViewHelper.showNotification("El tipo de factura no tiene consecutivo configurado",
 					Notification.Type.ERROR_MESSAGE);
 		}
 	}
@@ -680,7 +681,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	 * Metodo para escoger lotes para tomar los productos
 	 */
 	private void selectLot() {
-		
+
 		selectedLot = lotLayout.getSelected();
 
 		log.info("selectedLot:" + selectedLot);
@@ -739,6 +740,9 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		}
 
 		Date docDate = DateUtil.localDateTimeToDate(dtfDocumentDate.getValue());
+		Date expirationDate = dtfExpirationDate.getValue() != null
+				? DateUtil.localDateTimeToDate(dtfExpirationDate.getValue())
+				: null;
 
 		List<DocumentDetail> detailList = detailGrid.getDataProvider().fetch(new Query<>())
 				.collect(Collectors.toList());
@@ -746,13 +750,14 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 		DocumentStatus documentStatus = docStatusBll.select("Registrada").get(0);
 
+		Double total = txtTotal.getValue() != null ? Double.parseDouble(txtTotal.getValue()) : 0;
+
 		documentEntity = docBuilder.code(txtDocNumber.getValue())
 				.reference(txtReference.getValue() != null ? txtReference.getValue() : "")
 				.documentType(cbDocumentType.getValue()).person(selectedPerson).documentDate(docDate)
 				.paymentMethod(cbPaymentMethod.getValue()).paymentType(cbPaymentType.getValue())
-				.paymentTerm(txtPaymentTerm.getValue())
-				.expirationDate(DateUtil.localDateTimeToDate(dtfExpirationDate.getValue())).status(documentStatus)
-				.build();
+				.paymentTerm(txtPaymentTerm.getValue()).expirationDate(expirationDate).totalValue(total)
+				.status(documentStatus).build();
 
 		// Guardar documento
 		try {
@@ -767,6 +772,10 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			log.error(ex);
 			documentBll.rollback();
 			ViewHelper.showNotification("Los datos no pudieron ser salvados, contacte al administrador (3007200405)",
+					Notification.Type.ERROR_MESSAGE);
+		} catch (Exception ex) {
+			log.error(ex);
+			ViewHelper.showNotification("Se presentó un error, por favor contacte al adminisrador",
 					Notification.Type.ERROR_MESSAGE);
 		}
 
@@ -850,7 +859,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		txtReference.clear();
 		txtPerson.clear();
 		txtPaymentTerm.clear();
-		cbDocumentType.clear();
+		// cbDocumentType.clear();
 		cbPaymentMethod.clear();
 		cbPaymentType.clear();
 		cbDocumentStatus.clear();

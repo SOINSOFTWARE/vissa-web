@@ -245,7 +245,7 @@ public class VissaUI extends UI {
 			tree.expand(KEY_REPORTS);
 		}
 		if (permissionUtil.canView(KEY_ADMINISTRATION)) {
-			tree.expand(KEY_REPORTS);
+			tree.expand(KEY_ADMINISTRATION);
 		}
 
 		tree.addItemClickListener(e -> selectItem(e));
@@ -295,6 +295,7 @@ public class VissaUI extends UI {
 		navigator.addView(KEY_SALES_REPORT, InvoiceListLayout.class);
 		navigator.addView(KEY_PURCHASES_REPORT, InvoiceListLayout.class);
 		navigator.addView(KEY_USERS, PersonLayout.class);
+		navigator.addView(KEY_ADMINISTRATION, ReportLayout.class);
 		navigator.setErrorView(DefaultView.class);
 		UI.getCurrent().setNavigator(navigator);
 

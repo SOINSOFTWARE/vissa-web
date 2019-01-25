@@ -236,6 +236,7 @@ public class PersonLayout extends AbstractEditableLayout<Person> {
 		cbDocumentType.setDescription("Tipo");
 		cbDocumentType.setEmptySelectionAllowed(false);
 		cbDocumentType.setRequiredIndicatorVisible(true);
+		cbDocumentType.focus();
 		cbDocumentType.setStyleName(ValoTheme.COMBOBOX_TINY);
 		ListDataProvider<DocumentIdType> docTypeDataProv = new ListDataProvider<>(
 				Arrays.asList(DocumentIdType.values()));
@@ -537,6 +538,7 @@ public class PersonLayout extends AbstractEditableLayout<Person> {
 				}
 
 				if (supplierSaved != null || userSaved != null) {
+					afterSave("Persona guardada");
 					ViewHelper.showNotification("Persona guardada", Notification.Type.WARNING_MESSAGE);
 				}
 			} catch (ModelValidationException ex) {

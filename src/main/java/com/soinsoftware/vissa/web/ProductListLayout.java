@@ -44,14 +44,14 @@ import com.vaadin.ui.Window;
 import com.vaadin.ui.themes.ValoTheme;
 
 @SuppressWarnings("unchecked")
-public class InvoiceListLayout extends AbstractEditableLayout<Document> {
+public class ProductListLayout extends AbstractEditableLayout<Document> {
 
 	/**
 	 * 
 	 */
 	private static final long serialVersionUID = 5076502522106126046L;
 
-	protected static final Logger log = Logger.getLogger(InvoiceListLayout.class);
+	protected static final Logger log = Logger.getLogger(ProductListLayout.class);
 
 	private final DocumentBll documentBll;
 	private final DocumentTypeBll documentTypeBll;
@@ -74,7 +74,7 @@ public class InvoiceListLayout extends AbstractEditableLayout<Document> {
 
 	private ConfigurableFilterDataProvider<Document, Void, SerializablePredicate<Document>> filterDataProvider;
 
-	public InvoiceListLayout() throws IOException {
+	public ProductListLayout() throws IOException {
 		super("", KEY_INVOICES);
 
 		documentBll = DocumentBll.getInstance();
