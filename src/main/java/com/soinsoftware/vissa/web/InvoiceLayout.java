@@ -39,8 +39,10 @@ import com.soinsoftware.vissa.model.Person;
 import com.soinsoftware.vissa.model.PersonType;
 import com.soinsoftware.vissa.model.Product;
 import com.soinsoftware.vissa.model.TransactionType;
+import com.soinsoftware.vissa.model.User;
 import com.soinsoftware.vissa.util.Commons;
 import com.soinsoftware.vissa.util.DateUtil;
+import com.soinsoftware.vissa.util.PermissionUtil;
 import com.soinsoftware.vissa.util.ViewHelper;
 import com.vaadin.data.provider.ConfigurableFilterDataProvider;
 import com.vaadin.data.provider.ListDataProvider;
@@ -128,6 +130,8 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 	private boolean withoutLot;
 
+	private PermissionUtil permissionUtil;
+
 	public InvoiceLayout() throws IOException {
 		super();
 
@@ -151,6 +155,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 		View.super.enter(event);
 
+		this.permissionUtil = new PermissionUtil(getSession().getAttribute(User.class).getRole().getPermissions());
 		// setMargin(true);
 		String title = "";
 		if (transactionType.equals(TransactionType.ENTRADA)) {
@@ -192,23 +197,30 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	private Panel buildButtonPanel() {
 
 		HorizontalLayout layout = ViewHelper.buildHorizontalLayout(true, true);
-		Button newBtn = new Button("Nuevo", FontAwesome.SAVE);
-		newBtn.addStyleName("mystyle-btn");
-		newBtn.addClickListener(e -> cleanButtonAction());
+		if (permissionUtil.canEdit(Commons.MENU_NAME)) {
+			Button newBtn = new Button("Nuevo", FontAwesome.SAVE);
+			newBtn.addStyleName("mystyle-btn");
+			newBtn.addClickListener(e -> cleanButtonAction());
+			layout.addComponents(newBtn);
 
-		Button saveBtn = new Button("Guardar", FontAwesome.SAVE);
-		saveBtn.addStyleName("mystyle-btn");
-		saveBtn.addClickListener(e -> saveButtonAction(null));
+			Button saveBtn = new Button("Guardar", FontAwesome.SAVE);
+			saveBtn.addStyleName("mystyle-btn");
+			saveBtn.addClickListener(e -> saveButtonAction(null));
+			layout.addComponents(saveBtn);
 
-		Button editBtn = new Button("Edit", FontAwesome.EDIT);
-		editBtn.addStyleName("mystyle-btn");
-		// editBtn.addClickListener(e -> saveButtonAction(null));
+			Button editBtn = new Button("Edit", FontAwesome.EDIT);
+			editBtn.addStyleName("mystyle-btn");
+			// editBtn.addClickListener(e -> saveButtonAction(null));
+			// layout.addComponents(editBtn);
+		}
 
-		Button deleteBtn = new Button("Cancelar", FontAwesome.ERASER);
-		deleteBtn.addStyleName("mystyle-btn");
-		// deleteBtn.addClickListener(e -> saveButtonAction(document));
+		if (permissionUtil.canDelete(Commons.MENU_NAME)) {
+			Button deleteBtn = new Button("Cancelar", FontAwesome.ERASER);
+			deleteBtn.addStyleName("mystyle-btn");
+			deleteBtn.addClickListener(e -> deleteButtonAction());
+			layout.addComponents(deleteBtn);
+		}
 
-		layout.addComponents(newBtn, saveBtn, deleteBtn);
 		addComponent(layout);
 		return ViewHelper.buildPanel(null, layout);
 	}
@@ -733,9 +745,12 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	@Transactional(rollbackFor = Exception.class)
 	private void saveButtonAction(Document documentEntity) {
 		Document.Builder docBuilder = null;
+		DocumentStatus documentStatus = null;
 		if (documentEntity == null) {
 			docBuilder = Document.builder();
+			documentStatus = docStatusBll.select("Registrada").get(0);
 		} else {
+			documentStatus = documentEntity.getStatus();
 			docBuilder = Document.builder(documentEntity);
 		}
 
@@ -748,7 +763,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 				.collect(Collectors.toList());
 		log.info("personSelected:" + selectedPerson);
 
-		DocumentStatus documentStatus = docStatusBll.select("Registrada").get(0);
+		
 
 		Double total = txtTotal.getValue() != null ? Double.parseDouble(txtTotal.getValue()) : 0;
 
@@ -870,6 +885,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	}
 
 	private void searchDocument(String documentNumber) {
+		log.info("searchDocument");
 		if (documentNumber != null && !documentNumber.isEmpty()) {
 			document = documentBll.select(documentNumber);
 			if (document != null) {
@@ -880,6 +896,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 				cbPaymentType.setValue(document.getPaymentType());
 				cbPaymentMethod.setValue(document.getPaymentMethod());
 				txtPaymentTerm.setValue(document.getPaymentTerm() != null ? document.getPaymentTerm() : "");
+				selectedPerson = document.getPerson();
 				txtPerson.setValue(document.getPerson().getName() + " " + document.getPerson().getLastName());
 				dtfExpirationDate.setValue(DateUtil.dateToLocalDateTime(document.getExpirationDate()));
 				Set<DocumentDetail> detailSet = document.getDetails();
@@ -906,6 +923,28 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	private DocumentDetail getSelectedDetail() {
 		Set<DocumentDetail> detailSet = detailGrid.getSelectedItems();
 		return detailSet.iterator().next();
+	}
+
+	private void deleteButtonAction() {
+		if (document != null) {
+			ConfirmDialog.show(Page.getCurrent().getUI(), "Confirmar",
+					"Desea cancelar la factura. Esta pasará a estado CANCELADA", "Si", "No", e -> {
+						if (e.isConfirmed()) {
+							deleteDocument();
+						}
+					});
+		}else {
+			ViewHelper.showNotification("No hay factura cargada", Notification.Type.WARNING_MESSAGE);
+		}
+	}
+
+	private void deleteDocument() {
+
+		DocumentStatus status = docStatusBll.select("Cancelada").get(0);
+		Document documentEntity = Document.builder(document).status(status).build();
+		saveButtonAction(documentEntity);
+		;
+
 	}
 
 }

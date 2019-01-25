@@ -218,7 +218,6 @@ public class VissaUI extends UI {
 		return settings;
 	}
 
-
 	private Component buildMenuItemsLayout2(ValoMenuLayout root) {
 		VerticalLayout layout = ViewHelper.buildVerticalLayout(false, false);
 
@@ -277,6 +276,7 @@ public class VissaUI extends UI {
 		if (item.equals(KEY_USERS)) {
 			Commons.PERSON_TYPE = PersonType.USER.getName();
 		}
+		Commons.MENU_NAME = item;
 		UI.getCurrent().getNavigator().navigateTo(item);
 	}
 
@@ -295,7 +295,7 @@ public class VissaUI extends UI {
 		navigator.addView(KEY_SALES_REPORT, InvoiceListLayout.class);
 		navigator.addView(KEY_PURCHASES_REPORT, InvoiceListLayout.class);
 		navigator.addView(KEY_USERS, PersonLayout.class);
-		navigator.addView(KEY_ADMINISTRATION, ReportLayout.class);
+		// navigator.addView(KEY_ADMINISTRATION, ReportLayout.class);
 		navigator.setErrorView(DefaultView.class);
 		UI.getCurrent().setNavigator(navigator);
 
