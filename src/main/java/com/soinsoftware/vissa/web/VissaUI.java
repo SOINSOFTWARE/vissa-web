@@ -153,6 +153,7 @@ public class VissaUI extends UI {
 			if (permissionUtil.canView(KEY_PURCHASES_REPORT)) {
 				treeData.addItem(KEY_REPORTS, KEY_PURCHASES_REPORT);
 			}
+			treeData.addItem(KEY_REPORTS, "test");
 		}
 
 		if (permissionUtil.canView(KEY_ADMINISTRATION)) {
@@ -296,7 +297,7 @@ public class VissaUI extends UI {
 		navigator.addView(KEY_SALES_REPORT, InvoiceListLayout.class);
 		navigator.addView(KEY_PURCHASES_REPORT, InvoiceListLayout.class);
 		navigator.addView(KEY_USERS, PersonLayout.class);
-		// navigator.addView(KEY_ADMINISTRATION, ReportLayout.class);
+		navigator.addView("test", ReportLayout.class);
 		navigator.setErrorView(DefaultView.class);
 		UI.getCurrent().setNavigator(navigator);
 

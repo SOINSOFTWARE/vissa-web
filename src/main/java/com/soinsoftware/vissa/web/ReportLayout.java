@@ -1,213 +1,74 @@
 package com.soinsoftware.vissa.web;
 
-import static com.soinsoftware.vissa.web.VissaUI.KEY_WAREHOUSE;
-
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
-import java.math.BigInteger;
-import java.util.HashSet;
-import java.util.Set;
 
-import org.apache.log4j.Logger;
-
-import com.soinsoftware.vissa.bll.TableSequenceBll;
-import com.soinsoftware.vissa.bll.WarehouseBll;
-import com.soinsoftware.vissa.model.TableSequence;
-import com.soinsoftware.vissa.model.Warehouse;
-import com.soinsoftware.vissa.report.Company;
-import com.soinsoftware.vissa.report.Ledger;
-import com.soinsoftware.vissa.report.LedgerItem;
-import com.soinsoftware.vissa.util.Commons;
-import com.soinsoftware.vissa.util.ViewHelper;
-import com.vaadin.data.provider.ConfigurableFilterDataProvider;
-import com.vaadin.data.provider.ListDataProvider;
-import com.vaadin.server.SerializablePredicate;
-import com.vaadin.ui.AbstractOrderedLayout;
+import com.soinsoftware.vissa.bll.UserBll;
+import com.soinsoftware.vissa.util.AdvancedFileDownloader;
+import com.soinsoftware.vissa.util.AdvancedFileDownloader.AdvancedDownloaderListener;
+import com.soinsoftware.vissa.util.AdvancedFileDownloader.DownloaderEvent;
+import com.vaadin.navigator.View;
+import com.vaadin.navigator.ViewChangeListener.ViewChangeEvent;
 import com.vaadin.ui.Button;
-import com.vaadin.ui.Component;
-import com.vaadin.ui.Grid;
-import com.vaadin.ui.Grid.SelectionMode;
-import com.vaadin.ui.HorizontalLayout;
-import com.vaadin.ui.Notification;
-import com.vaadin.ui.Panel;
-import com.vaadin.ui.TextField;
 import com.vaadin.ui.VerticalLayout;
 
-@SuppressWarnings("unchecked")
-public class ReportLayout extends AbstractEditableLayout<Warehouse> {
+import net.sf.dynamicreports.jasper.builder.JasperReportBuilder;
+import net.sf.dynamicreports.report.builder.DynamicReports;
+import net.sf.dynamicreports.report.builder.column.Columns;
+import net.sf.dynamicreports.report.builder.component.Components;
+import net.sf.dynamicreports.report.builder.datatype.DataTypes;
+import net.sf.dynamicreports.report.constant.HorizontalAlignment;
+import net.sf.dynamicreports.report.exception.DRException;
 
-	/**
-	 * 
-	 */
-	private static final long serialVersionUID = 5076502522106126046L;
+public class ReportLayout extends VerticalLayout implements View {
 
-	protected static final Logger log = Logger.getLogger(ReportLayout.class);
-
-	private final WarehouseBll warehouseBll;
-
-	private final TableSequenceBll tableSequenceBll;
-
-	private Grid<Warehouse> warehouseGrid;
-
-	private TextField txFilterByName;
-	private TextField txFilterByCode;
-	private TextField txtCode;
-	private TextField txtName;
-
-	private boolean listMode;
-	private TableSequence tableSequence;
-
-	private ConfigurableFilterDataProvider<Warehouse, Void, SerializablePredicate<Warehouse>> filterProductDataProvider;
-
-	public ReportLayout(boolean list) throws IOException {
-		super("Bodegas", KEY_WAREHOUSE);
-		listMode = list;
-		warehouseBll = WarehouseBll.getInstance();
-		tableSequenceBll = TableSequenceBll.getInstance();
-		if (listMode) {
-			addListTab();
-		}
-	}
+	private static final long serialVersionUID = -1662071302695761216L;
+	private final UserBll userBll;
 
 	public ReportLayout() throws IOException {
-		super("Bodegas", KEY_WAREHOUSE);
-		warehouseBll = WarehouseBll.getInstance();
-		tableSequenceBll = TableSequenceBll.getInstance();
-		if (listMode) {
-			addListTab();
-		}
-		listMode = false;
+		userBll = UserBll.getInstance();
 	}
 
 	@Override
-	protected AbstractOrderedLayout buildListView() {
-		VerticalLayout layout = ViewHelper.buildVerticalLayout(false, false);
-		Panel buttonPanel = null;
-		if (listMode) {
-			buttonPanel = buildButtonPanelListMode();
-		} else {
-			buttonPanel = buildButtonPanelForLists();
-		}
-		Panel filterPanel = buildFilterPanel();
-		Panel dataPanel = buildGridPanel();
-		layout.addComponents(buttonPanel, filterPanel, dataPanel);
-		this.setMargin(false);
-		this.setSpacing(false);
-		return layout;
-	}
+	public void enter(ViewChangeEvent event) {
+		View.super.enter(event);
+		Button button = new Button("descargar");
+		final AdvancedFileDownloader downloader = new AdvancedFileDownloader();
+		downloader.addAdvancedDownloaderListener(new AdvancedDownloaderListener() {
 
-	@Override
-	protected AbstractOrderedLayout buildEditionView(Warehouse entity) {
-		VerticalLayout layout = ViewHelper.buildVerticalLayout(false, false);
-		Panel buttonPanel = buildButtonPanelForEdition(entity);
-		Component dataPanel = buildEditionComponent(entity);
-		layout.addComponents(buttonPanel, dataPanel);
-		return layout;
-	}
+			/**
+			 * This method will be invoked just before the download starts. Thus, a new file
+			 * path can be set.
+			 *
+			 * @param downloadEvent
+			 */
+			@Override
+			public void beforeDownload(DownloaderEvent downloadEvent) {
+				JasperReportBuilder report = DynamicReports.report();
+				report.columns(Columns.column("Login", "login", DataTypes.stringType()),
+						Columns.column("First Name", "person.name", DataTypes.stringType()),
+						Columns.column("Last Name", "person.lastName", DataTypes.stringType()),
+						Columns.column("Role", "role.name", DataTypes.stringType()))
+						.title(Components.text("SimpleReportExample")
+								.setHorizontalAlignment(HorizontalAlignment.CENTER))
+						.pageFooter(Components.pageXofY()).setDataSource(userBll.selectAll());
+				try {
+					File file = File.createTempFile("user", "pdf");
+					report.toPdf(new FileOutputStream(file));
+					String filePath = file.getAbsolutePath();
 
-	@Override
-	protected Panel buildGridPanel() {
-		VerticalLayout layout = ViewHelper.buildVerticalLayout(true, true);
-		warehouseGrid = ViewHelper.buildGrid(SelectionMode.SINGLE);
-		warehouseGrid.addColumn(Warehouse::getCode).setCaption("Código");
-		warehouseGrid.addColumn(Warehouse::getName).setCaption("Nombre");
+					downloader.setFilePath(filePath);
 
-		layout.addComponent(ViewHelper.buildPanel(null, warehouseGrid));
-		fillGridData();
-		return ViewHelper.buildPanel(null, layout);
-	}
+					System.out.println("Starting downlad by button " + filePath.substring(filePath.lastIndexOf("/")));
+				} catch (DRException | IOException e) {
+					e.printStackTrace();
+				}
+			}
 
-	@Override
-	protected Component buildEditionComponent(Warehouse warehouse) {
-		// Cosultar consecutivo de productos
-		getSequence();
-		VerticalLayout layout = ViewHelper.buildVerticalLayout(true, true);
-		final Ledger report = new Ledger(new Company(), "ledger", Commons.FORMAT_DATE,  new HashSet<LedgerItem>());
-	//	final ReportGenerator generator = new ReportGenerator(report);
-	//	generator.start();
-	//	
-	//	layout.addComponents(form, lotPanel);
-		return layout;
-	}
+		});
 
-	protected Panel buildButtonPanelListMode() {
-		HorizontalLayout layout = ViewHelper.buildHorizontalLayout(true, true);
-		Button btNew = buildButtonForNewAction("");
-		Button btEdit = buildButtonForEditAction("mystyle-btn");
-		Button btDelete = buildButtonForDeleteAction("mystyle-btn");
-		layout.addComponents(btNew, btEdit, btDelete);
-		return ViewHelper.buildPanel(null, layout);
-	}
-
-	@Override
-	protected void fillGridData() {
-		ListDataProvider<Warehouse> dataProvider = new ListDataProvider<>(warehouseBll.selectAll(false));
-		filterProductDataProvider = dataProvider.withConfigurableFilter();
-		warehouseGrid.setDataProvider(filterProductDataProvider);
-	}
-
-	@Override
-	protected void saveButtonAction(Warehouse entity) {
-		Warehouse.Builder warehouseBuilder = null;
-		if (entity == null) {
-			warehouseBuilder = Warehouse.builder();
-		} else {
-			warehouseBuilder = Warehouse.builder(entity);
-		}
-
-		entity = warehouseBuilder.code(txtCode.getValue()).name(txtName.getValue()).archived(false).build();
-		save(warehouseBll, entity, "Bodega guardada");
-		tableSequenceBll.save(tableSequence);
-	}
-
-	@Override
-	public Warehouse getSelected() {
-		Warehouse warehouseObj = null;
-		Set<Warehouse> warehouses = warehouseGrid.getSelectedItems();
-		if (warehouses != null && !warehouses.isEmpty()) {
-			warehouseObj = (Warehouse) warehouses.toArray()[0];
-		}
-		return warehouseObj;
-	}
-
-	@Override
-	protected void delete(Warehouse entity) {
-		entity = Warehouse.builder(entity).archived(true).build();
-		save(warehouseBll, entity, "Bodega borrada");
-	}
-
-	private Panel buildFilterPanel() {
-		HorizontalLayout layout = ViewHelper.buildHorizontalLayout(true, true);
-		txFilterByName = new TextField("Nombre");
-		txFilterByName.addValueChangeListener(e -> refreshGrid());
-		txFilterByCode = new TextField("Código");
-		txFilterByCode.addValueChangeListener(e -> refreshGrid());
-		layout.addComponents(txFilterByCode, txFilterByName);
-		return ViewHelper.buildPanel("Filtrar por", layout);
-	}
-
-	private void refreshGrid() {
-		filterProductDataProvider.setFilter(filterGrid());
-		warehouseGrid.getDataProvider().refreshAll();
-	}
-
-	private SerializablePredicate<Warehouse> filterGrid() {
-		SerializablePredicate<Warehouse> columnPredicate = null;
-		String codeFilter = txFilterByCode.getValue().trim();
-		String nameFilter = txFilterByName.getValue().trim();
-		columnPredicate = warehouse -> (warehouse.getName().toLowerCase().contains(nameFilter.toLowerCase())
-				&& warehouse.getCode().toLowerCase().contains(codeFilter.toLowerCase()));
-		return columnPredicate;
-	}
-
-	private void getSequence() {
-		BigInteger seq = null;
-		TableSequence tableSeqObj = tableSequenceBll.select(Warehouse.class.getSimpleName());
-		if (tableSeqObj != null) {
-			seq = tableSeqObj.getSequence().add(BigInteger.valueOf(1L));
-			TableSequence.Builder builder = TableSequence.builder(tableSeqObj);
-			tableSequence = builder.sequence(seq).build();
-		} else {
-			ViewHelper.showNotification("No hay consecutivo configurado para bodegas", Notification.Type.ERROR_MESSAGE);
-		}
+		downloader.extend(button);
+		this.addComponent(button);
 	}
 }
