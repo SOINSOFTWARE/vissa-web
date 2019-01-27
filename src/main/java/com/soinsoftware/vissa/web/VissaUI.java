@@ -45,6 +45,7 @@ import com.vaadin.ui.TextField;
 import com.vaadin.ui.Tree;
 import com.vaadin.ui.UI;
 import com.vaadin.ui.VerticalLayout;
+import com.vaadin.ui.Window;
 import com.vaadin.ui.themes.ValoTheme;
 
 /**
@@ -335,6 +336,11 @@ public class VissaUI extends UI {
 		loginButton.addStyleName("mystyle");
 		layout.addComponent(loginButton);
 
+		Button changePasswordBtn = new Button("Cambiar contraseña");
+		changePasswordBtn.setStyleName(ValoTheme.BUTTON_LINK);
+		changePasswordBtn.addClickListener(e -> buildChangePasswordWindow(txtUsername.getValue()));
+		layout.addComponent(changePasswordBtn);
+
 		contentLayout.addComponent(layout);
 		contentLayout.setComponentAlignment(layout, Alignment.TOP_CENTER);
 
@@ -356,6 +362,38 @@ public class VissaUI extends UI {
 			log.error(ex);
 			ViewHelper.showNotification("Contacte al administrador (3002007694)", Notification.Type.ERROR_MESSAGE);
 		}
+	}
+
+	private void buildChangePasswordWindow(String login) {
+		Window userWindow = ViewHelper.buildSubwindow("50%");
+		UserLayout userLayout;
+		log.info("login=" + login);
+		try {
+			if (login != null) {
+				Commons.LOGIN = login;
+				ComponentContainer viewContainer = root.getContentContainer();
+				Navigator navigator = new Navigator(this, viewContainer);
+				navigator.addView(KEY_SUPPLIER, UserLayout.class);
+				
+				userLayout = new UserLayout();
+				userLayout.setCaption("Lotes");
+				userLayout.setMargin(false);
+				userLayout.setSpacing(false);
+				
+				VerticalLayout subContent = ViewHelper.buildVerticalLayout(true, true);
+				subContent.addComponents(userLayout);
+
+				userWindow.setContent(subContent);
+				getUI().addWindow(userWindow);
+			} else {
+				ViewHelper.showNotification("Ingrese su usuario", Notification.Type.WARNING_MESSAGE);
+			}
+
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
 	}
 
 	@WebServlet(urlPatterns = "/*", name = "MyUIServlet", asyncSupported = true)

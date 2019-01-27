@@ -432,37 +432,38 @@ public class PersonLayout extends AbstractEditableLayout<Person> {
 			txtDocumentId.setValue(person.getDocumentNumber() != null ? person.getDocumentNumber() : "");
 			txtName.setValue(person.getName() != null ? person.getName() : "");
 			txtLastName.setValue(person.getLastName() != null ? person.getLastName() : "");
-			txtContactName.setValue(person.getContactName() != null ? person.getContactName() : "");
-			txtAddress.setValue(person.getAddress() != null ? person.getAddress() : "");
+			if (!personType.equals(PersonType.USER)) {
+				txtContactName.setValue(person.getContactName() != null ? person.getContactName() : "");
+				txtAddress.setValue(person.getAddress() != null ? person.getAddress() : "");
 
-			cbCountry.setValue(person.getCity() != null && person.getCity().getState() != null
-					? person.getCity().getState().getCountry()
-					: null);
-			cbState.setValue(
-					person.getCity() != null && person.getCity().getState() != null ? person.getCity().getState()
-							: null);
-			cbCity.setValue(person.getCity() != null ? person.getCity() : null);
+				cbCountry.setValue(person.getCity() != null && person.getCity().getState() != null
+						? person.getCity().getState().getCountry()
+						: null);
+				cbState.setValue(
+						person.getCity() != null && person.getCity().getState() != null ? person.getCity().getState()
+								: null);
+				cbCity.setValue(person.getCity() != null ? person.getCity() : null);
 
-			txtNeighborhood.setValue(person.getNeighborhood() != null ? person.getNeighborhood() : "");
-			txtMobile.setValue(person.getMobile() != null ? person.getMobile() : "");
-			txtPhone.setValue(person.getPhone() != null ? person.getPhone() : "");
-			txtEmail.setValue(person.getEmail() != null ? person.getEmail() : "");
-			txtWebSite.setValue(person.getWebSite() != null ? person.getWebSite() : "");
+				txtNeighborhood.setValue(person.getNeighborhood() != null ? person.getNeighborhood() : "");
+				txtMobile.setValue(person.getMobile() != null ? person.getMobile() : "");
+				txtPhone.setValue(person.getPhone() != null ? person.getPhone() : "");
+				txtEmail.setValue(person.getEmail() != null ? person.getEmail() : "");
+				txtWebSite.setValue(person.getWebSite() != null ? person.getWebSite() : "");
 
-			if (person.getBankAccount() != null) {
-				cbAccountType.setValue(person.getBankAccount().getType());
-				txtAccountNumber.setValue(person.getBankAccount().getAccountNumber());
-				cbBank.setValue(person.getBankAccount().getBank());
-				cbAccountStatus.setValue(person.getBankAccount().getStatus());
+				if (person.getBankAccount() != null) {
+					cbAccountType.setValue(person.getBankAccount().getType());
+					txtAccountNumber.setValue(person.getBankAccount().getAccountNumber());
+					cbBank.setValue(person.getBankAccount().getBank());
+					cbAccountStatus.setValue(person.getBankAccount().getStatus());
+				}
+
+				Supplier supplier = supplierBll.select(person.getDocumentNumber());
+				if (supplier != null) {
+					cbPaymentType.setValue(supplier.getPaymentType());
+					cbPaymentMethod.setValue(supplier.getPaymentMethod());
+					txtPaymentTerm.setValue(supplier.getPaymentTerm() != null ? supplier.getPaymentTerm() : "");
+				}
 			}
-
-			Supplier supplier = supplierBll.select(person.getDocumentNumber());
-			if (supplier != null) {
-				cbPaymentType.setValue(supplier.getPaymentType());
-				cbPaymentMethod.setValue(supplier.getPaymentMethod());
-				txtPaymentTerm.setValue(supplier.getPaymentTerm() != null ? supplier.getPaymentTerm() : "");
-			}
-
 		}
 
 	}
