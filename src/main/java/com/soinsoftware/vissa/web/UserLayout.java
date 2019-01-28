@@ -48,12 +48,13 @@ public class UserLayout extends VerticalLayout implements View {
 		System.out.println("UserLayout");
 
 		userBll = UserBll.getInstance();
-	//	getUser();
+		buildComponents();
 
 	}
 
 	private void getUser() {
 		user = userBll.select(Commons.LOGIN);
+		log.info("user.person:" + user.getPerson());
 
 	}
 
@@ -83,6 +84,30 @@ public class UserLayout extends VerticalLayout implements View {
 
 	}
 
+	public void buildComponents() {
+
+		System.out.println("enter");
+		getUser();
+
+		VerticalLayout layout = ViewHelper.buildVerticalLayout(false, false);
+
+		Label tittle = new Label("Cambiar contraseña");
+		tittle.addStyleName(ValoTheme.LABEL_H2);
+		addComponent(tittle);
+
+		// Panel de botones
+		Panel buttonPanel = buildButtonPanel();
+
+		// Panel de campos
+		Panel editPanel = buildEditionPanel();
+
+		layout.addComponents(buttonPanel, editPanel);
+		addComponent(layout);
+		this.setMargin(false);
+		this.setSpacing(false);
+
+	}
+
 	/**
 	 * Construcción del panel de botones
 	 * 
@@ -95,7 +120,7 @@ public class UserLayout extends VerticalLayout implements View {
 
 		Button saveBtn = new Button("Guardar", FontAwesome.SAVE);
 		saveBtn.addStyleName("mystyle-btn");
-		saveBtn.addClickListener(e -> saveButtonAction(null));
+		saveBtn.addClickListener(e -> saveButtonAction());
 		layout.addComponents(saveBtn);
 
 		Button cancelBtn = new Button("Cancelar", FontAwesome.SAVE);
@@ -131,19 +156,19 @@ public class UserLayout extends VerticalLayout implements View {
 
 		FormLayout userForm = ViewHelper.buildForm("Cambiar contraseña", false, false);
 		userForm.addComponents(txtPerson, txtLogin, txtPassword);
-		Panel userPanel = ViewHelper.buildPanel("Cambiar contra", userForm);
+		Panel userPanel = ViewHelper.buildPanel("", userForm);
 
 		return userPanel;
 
 	}
 
 	@Transactional(rollbackFor = Exception.class)
-	private void saveButtonAction(User user) {
+	private void saveButtonAction() {
+		log.info("saveButtonAction:" + user);
 		User.Builder userBuilder = null;
 
 		// Guardar Usuario
 		try {
-
 			if (user == null) {
 				userBuilder = User.builder();
 			} else {
