@@ -1,7 +1,5 @@
 package com.soinsoftware.vissa.web;
 
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -9,19 +7,13 @@ import java.util.HashMap;
 import java.util.Map;
 
 import com.soinsoftware.vissa.bll.DocumentDetailBll;
-import com.soinsoftware.vissa.bll.UserBll;
 import com.soinsoftware.vissa.util.AdvancedFileDownloader;
 import com.soinsoftware.vissa.util.AdvancedFileDownloader.AdvancedDownloaderListener;
 import com.soinsoftware.vissa.util.AdvancedFileDownloader.DownloaderEvent;
 import com.vaadin.navigator.View;
 import com.vaadin.navigator.ViewChangeListener.ViewChangeEvent;
-import com.vaadin.server.VaadinService;
 import com.vaadin.ui.Button;
 import com.vaadin.ui.VerticalLayout;
-
-import net.sf.dynamicreports.jasper.builder.JasperReportBuilder;
-import net.sf.dynamicreports.report.builder.DynamicReports;
-import net.sf.dynamicreports.report.exception.DRException;
 
 public class ReportLayout extends VerticalLayout implements View {
 
@@ -54,7 +46,7 @@ public class ReportLayout extends VerticalLayout implements View {
 			 */
 			@Override
 			public void beforeDownload(DownloaderEvent downloadEvent) {
-				JasperReportBuilder report = DynamicReports.report();
+				/*JasperReportBuilder report = DynamicReports.report();
 				try {
 					String basepath = VaadinService.getCurrent().getBaseDirectory().getAbsolutePath();
 					report.setTemplateDesign(new File(basepath + REPORT_NAME));
@@ -68,7 +60,7 @@ public class ReportLayout extends VerticalLayout implements View {
 					 * .setHorizontalAlignment(HorizontalAlignment.CENTER))
 					 * .pageFooter(Components.pageXofY()).setDataSource(userBll.selectAll());
 					 */
-					try {
+					/*try {
 						File file = File.createTempFile("user", "pdf");
 						report.toPdf(new FileOutputStream(file));
 						String filePath = file.getAbsolutePath();
@@ -82,7 +74,7 @@ public class ReportLayout extends VerticalLayout implements View {
 					}
 				} catch (DRException e1) {
 					e1.printStackTrace();
-				}
+				}*/
 			}
 
 			private Map<String, Object> createParameters() {
