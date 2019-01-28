@@ -3,8 +3,8 @@ package com.soinsoftware.vissa.web;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
@@ -15,9 +15,9 @@ import org.hibernate.HibernateException;
 import org.springframework.transaction.annotation.Transactional;
 import org.vaadin.dialogs.ConfirmDialog;
 
-import com.mysql.cj.xdevapi.Table;
 import com.soinsoftware.vissa.bll.DocumentBll;
 import com.soinsoftware.vissa.bll.DocumentDetailBll;
+import com.soinsoftware.vissa.bll.DocumentDetailLotBll;
 import com.soinsoftware.vissa.bll.DocumentStatusBll;
 import com.soinsoftware.vissa.bll.DocumentTypeBll;
 import com.soinsoftware.vissa.bll.InventoryTransactionBll;
@@ -25,6 +25,7 @@ import com.soinsoftware.vissa.bll.LotBll;
 import com.soinsoftware.vissa.bll.PaymentMethodBll;
 import com.soinsoftware.vissa.bll.PaymentTypeBll;
 import com.soinsoftware.vissa.bll.ProductBll;
+import com.soinsoftware.vissa.common.CommonsUtil;
 import com.soinsoftware.vissa.exception.ModelValidationException;
 import com.soinsoftware.vissa.model.Document;
 import com.soinsoftware.vissa.model.DocumentDetail;
@@ -89,6 +90,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	private final DocumentTypeBll documentTypeBll;
 	private final DocumentStatusBll docStatusBll;
 	private final LotBll lotBll;
+	private final DocumentDetailLotBll detailLotBll;
 
 	// Components
 	private TextField txtDocNumFilter;
@@ -118,7 +120,8 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	private LotLayout lotLayout = null;
 	private PersonLayout personLayout = null;
 	private DocumentType documentType;
-	private List<DocumentDetailLot> detailLotList = new ArrayList<>();
+
+	private HashMap<DocumentDetail, DocumentDetailLot> detailLotMap = new HashMap<DocumentDetail, DocumentDetailLot>();
 
 	private TransactionType transactionType;
 
@@ -132,6 +135,8 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 	private PermissionUtil permissionUtil;
 
+	private User user;
+
 	public InvoiceLayout() throws IOException {
 		super();
 
@@ -143,6 +148,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		inventoryBll = InventoryTransactionBll.getInstance();
 		documentTypeBll = DocumentTypeBll.getInstance();
 		docStatusBll = DocumentStatusBll.getInstance();
+		detailLotBll = DocumentDetailLotBll.getInstance();
 		lotBll = LotBll.getInstance();
 		document = new Document();
 		itemsList = new ArrayList<>();
@@ -155,7 +161,8 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 		View.super.enter(event);
 
-		this.permissionUtil = new PermissionUtil(getSession().getAttribute(User.class).getRole().getPermissions());
+		this.user = getSession().getAttribute(User.class);
+		this.permissionUtil = new PermissionUtil(user.getRole().getPermissions());
 		// setMargin(true);
 		String title = "";
 		if (transactionType.equals(TransactionType.ENTRADA)) {
@@ -419,9 +426,9 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		}).setCaption("Precio");
 
 		// Columna cantidad editable
-		TextField txtCant = new TextField();
+		TextField txtQuantity = new TextField();
 		columnQuantity = detailGrid.addColumn(DocumentDetail::getQuantity).setCaption("Cantidad")
-				.setEditorComponent(txtCant, DocumentDetail::setQuantity);
+				.setEditorComponent(txtQuantity, DocumentDetail::setQuantity);
 
 		columnTotal = detailGrid.addColumn(documentDetail -> {
 			if (documentDetail.getSubtotal() != 0) {
@@ -431,10 +438,10 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			}
 		}).setCaption("Subtotal");
 
-		txtCant.setMaxLength(100);
-		txtCant.setRequiredIndicatorVisible(true);
+		txtQuantity.setMaxLength(100);
+		txtQuantity.setRequiredIndicatorVisible(true);
 
-		txtCant.addBlurListener(e -> dataProvider.refreshAll());
+		txtQuantity.addBlurListener(e -> changeQuantity(txtQuantity.getValue()));
 		footer = detailGrid.prependFooterRow();
 		footer.getCell(columnQuantity).setHtml("<b>Total:</b>");
 
@@ -447,6 +454,57 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		layout.addComponents(buttonlayout, itemsLayout);
 
 		return ViewHelper.buildPanel("Productos", layout);
+	}
+
+	private void changeQuantity(String quantity) {
+		dataProvider.refreshAll();
+		String message = "";
+		boolean correct = false;
+		Integer qty;
+		try {
+			qty = Integer.parseInt(quantity);
+
+			if (qty > 0) {
+				if (!withoutLot) {
+					DocumentDetail currentDetail = CommonsUtil.currentDocumentDetail;
+					log.info("currentDetail:" + currentDetail);
+					DocumentDetailLot detailLot = detailLotMap.get(currentDetail);
+					log.info("detailLot:" + detailLot);
+					if (detailLot != null) {
+						if (qty > detailLot.getInitialStockLot()) {
+							message = "Cantidad del lote menor a la cantidad solicitada";
+							throw new Exception(message);
+						} else {
+							Integer finalStock = detailLot.getInitialStockLot() - qty;
+							DocumentDetailLot detailLotTmp = DocumentDetailLot.builder(detailLot).quantity(qty)
+									.finalStockLot(finalStock).build();
+							log.info("currentDetail again:" + currentDetail);
+							log.info("detailLotTmp:" + detailLotTmp);
+							detailLotMap.put(currentDetail, detailLotTmp);
+						}
+					}
+				}
+				correct = true;
+
+			} else {
+				message = "La cantidad debe ser mayor a 0";
+				throw new Exception(message);
+			}
+
+		} catch (NumberFormatException nfe) {
+			log.error(nfe.getMessage());
+			message = "Formato de cantidad no valido";
+		} catch (Exception e) {
+			log.error(e.getMessage());
+			message = e.getMessage();
+		} finally {
+			log.info("Correct: " + correct);
+			if (!correct && message != null) {
+				ViewHelper.showNotification(message, Notification.Type.ERROR_MESSAGE);
+			}
+
+		}
+
 	}
 
 	private String calculateTotal(ListDataProvider<DocumentDetail> detailDataProv) {
@@ -628,11 +686,11 @@ public class InvoiceLayout extends VerticalLayout implements View {
 						} else if (selectedLot != null || withoutLot) {
 							itemsList.add(docDetail);
 							fillDetailGridData(itemsList);
-							// If hay lote, se asocia al registro de detail
+							// Si hay lote, se asocia al registro de detail
 							if (selectedLot != null) {
 								DocumentDetailLot detailLot = DocumentDetailLot.builder().documentDetail(docDetail)
 										.lot(selectedLot).initialStockLot(selectedLot.getQuantity()).build();
-								detailLotList.add(detailLot);
+								detailLotMap.put(docDetail, detailLot);
 							}
 							productSubwindow.close();
 						}
@@ -744,6 +802,16 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 	@Transactional(rollbackFor = Exception.class)
 	private void saveButtonAction(Document documentEntity) {
+		ConfirmDialog.show(Page.getCurrent().getUI(), "Confirmar", "Está seguro de guardar la factura", "Si", "No",
+				e -> {
+					if (e.isConfirmed()) {
+						saveDocument(documentEntity);
+					}
+				});
+	}
+
+	@Transactional(rollbackFor = Exception.class)
+	private void saveDocument(Document documentEntity) {
 		Document.Builder docBuilder = null;
 		DocumentStatus documentStatus = null;
 		if (documentEntity == null) {
@@ -763,8 +831,6 @@ public class InvoiceLayout extends VerticalLayout implements View {
 				.collect(Collectors.toList());
 		log.info("personSelected:" + selectedPerson);
 
-		
-
 		Double total = txtTotal.getValue() != null ? Double.parseDouble(txtTotal.getValue()) : 0;
 
 		documentEntity = docBuilder.code(txtDocNumber.getValue())
@@ -772,7 +838,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 				.documentType(cbDocumentType.getValue()).person(selectedPerson).documentDate(docDate)
 				.paymentMethod(cbPaymentMethod.getValue()).paymentType(cbPaymentType.getValue())
 				.paymentTerm(txtPaymentTerm.getValue()).expirationDate(expirationDate).totalValue(total)
-				.status(documentStatus).build();
+				.status(documentStatus).salesman(user.getPerson()).build();
 
 		// Guardar documento
 		try {
@@ -794,77 +860,102 @@ public class InvoiceLayout extends VerticalLayout implements View {
 					Notification.Type.ERROR_MESSAGE);
 		}
 
+		documentEntity = documentBll.select(documentEntity.getCode(), documentEntity.getDocumentType());
+		log.info("Document saved:" + documentEntity);
 		// Guardar el detalle de la factura
 		for (DocumentDetail detObj : detailList) {
 			if (detObj.getQuantity() == null) {
 				ViewHelper.showNotification("Cantidad no ingresada", Notification.Type.ERROR_MESSAGE);
-			}
-			// Guardar Detail
-			DocumentDetail.Builder detailBuilder = DocumentDetail.builder();
-			log.info("Cant=" + detObj.getQuantity());
-			Integer cant = Integer.parseInt(detObj.getQuantity());
-			Product prod = detObj.getProduct();
-			Double subtotal = cant * prod.getSalePrice();
-			DocumentDetail detail = detailBuilder.product(prod).document(documentEntity).quantity(cant + "")
-					.description(detObj.getDescription()).subtotal(subtotal).build();
+				documentBll.rollback();
+				break;
+			} else {
+				// Guardar Detail
+				DocumentDetail.Builder detailBuilder = DocumentDetail.builder();
+				log.info("Cant=" + detObj.getQuantity());
+				Integer cant = Integer.parseInt(detObj.getQuantity());
+				Product prod = detObj.getProduct();
+				Double subtotal = cant * prod.getSalePrice();
 
-			// Guardar inventario
-			InventoryTransaction.Builder invBuilder = InventoryTransaction.builder();
+				// Dedtail sin relacion al documento
+				DocumentDetail detail = detailBuilder.document(documentEntity).product(prod).quantity(cant + "")
+						.description(detObj.getDescription()).subtotal(subtotal).build();
 
-			Integer stock = detObj.getProduct().getStock();
-			int initialStock = stock != null ? stock : 0;
-			log.info("initialStock=" + initialStock);
-			log.info("cant=" + cant);
-			int finalStock = initialStock != 0 ? initialStock - cant : cant;
-			log.info("finalStock=" + finalStock);
-			InventoryTransaction inv = invBuilder.product(detObj.getProduct()).transactionType(transactionType)
-					.initialStock(initialStock).quantity(cant).finalStock(finalStock).document(documentEntity).build();
+				// Relacion detail con lote
+				// DocumentDetailLot detailLot = detailLotMap.get(detail);
+				// log.info("Detail lot a guardar:" + detailLot);
 
-			// Actualizar stock total del producto
-			Product productObj = productBll.select(detObj.getProduct().getCode());
-			productObj.setStock(finalStock);
-			productObj.setStockDate(new Date());
+				// Dedtail con relacion al documento
+				// detail = detailBuilder.document(documentEntity).build();
 
-			// Actualizar lotes del producto
-			List<Lot> lotList = lotBll.select(detObj.getProduct());
-			Lot lotObj = null;
-			if (lotList.size() > 0) {
-				Lot lot = lotList.get(0);
-				log.info("lote más pronto a vencer:" + lot.getExpirationDate());
+				log.info("detail a guardar:" + detail);
 
-				lotObj = lotBll.select(lot.getCode());
-				int newLotStock = lotObj.getQuantity() - cant;
-				lotObj.setQuantity(newLotStock);
-			}
+				// Guardar inventario
+				InventoryTransaction.Builder invBuilder = InventoryTransaction.builder();
 
-			try {
+				Integer stock = detObj.getProduct().getStock();
+				int initialStock = stock != null ? stock : 0;
+				log.info("initialStock=" + initialStock);
+				log.info("cant=" + cant);
+				int finalStock = 0;
+				if (transactionType.equals(TransactionType.ENTRADA)) {
+					finalStock = initialStock != 0 ? initialStock + cant : cant;
+				} else if (transactionType.equals(TransactionType.SALIDA)) {
+					finalStock = initialStock != 0 ? initialStock - cant : cant;
+				}
+				log.info("finalStock=" + finalStock);
+				InventoryTransaction inv = invBuilder.product(detObj.getProduct()).transactionType(transactionType)
+						.initialStock(initialStock).quantity(cant).finalStock(finalStock).document(documentEntity)
+						.build();
 
-				docDetailBll.save(detail);
-				inventoryBll.save(inv);
-				productBll.save(productObj);
-				if (lotObj != null) {
-					lotBll.save(lotObj);
+				// Actualizar stock total del producto
+				Product productObj = productBll.select(detObj.getProduct().getCode());
+				productObj.setStock(finalStock);
+				productObj.setStockDate(new Date());
+
+				// Actualizar lotes del producto
+				List<Lot> lotList = lotBll.select(detObj.getProduct());
+				Lot lotObj = null;
+				if (lotList.size() > 0) {
+					Lot lot = lotList.get(0);
+					log.info("lote más pronto a vencer:" + lot.getExpirationDate());
+
+					lotObj = lotBll.select(lot.getCode());
+					int newLotStock = lotObj.getQuantity() - cant;
+					lotObj.setQuantity(newLotStock);
 				}
 
-				// Actualizar consecutivo de tipo de documento
-				documentTypeBll.save(documentType);
+				try {
 
-				// afterSave(caption);
-			} catch (ModelValidationException ex) {
-				log.error(ex);
-				ViewHelper.showNotification(ex.getMessage(), Notification.Type.ERROR_MESSAGE);
-			} catch (HibernateException ex) {
-				log.error(ex);
-				// bll.rollback();
-				ViewHelper.showNotification(
-						"Los datos no pudieron ser salvados, contacte al administrador (3007200405)",
-						Notification.Type.ERROR_MESSAGE);
+					docDetailBll.save(detail);
+					/*
+					 * if (detailLot != null) { detailLotBll.save(detailLot); }
+					 */
+					inventoryBll.save(inv);
+					productBll.save(productObj);
+					if (lotObj != null) {
+						lotBll.save(lotObj);
+					}
+
+					// Actualizar consecutivo de tipo de documento
+					documentTypeBll.save(documentType);
+
+					// afterSave(caption);
+				} catch (ModelValidationException ex) {
+					log.error(ex);
+					ViewHelper.showNotification(ex.getMessage(), Notification.Type.ERROR_MESSAGE);
+				} catch (HibernateException ex) {
+					log.error(ex);
+					// bll.rollback();
+					ViewHelper.showNotification(
+							"Los datos no pudieron ser salvados, contacte al administrador (3007200405)",
+							Notification.Type.ERROR_MESSAGE);
+				}
+
 			}
 
 		}
 
 		ViewHelper.showNotification("Factura guardada con exito", Notification.Type.WARNING_MESSAGE);
-
 	}
 
 	private void cleanButtonAction() {
@@ -933,7 +1024,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 							deleteDocument();
 						}
 					});
-		}else {
+		} else {
 			ViewHelper.showNotification("No hay factura cargada", Notification.Type.WARNING_MESSAGE);
 		}
 	}
