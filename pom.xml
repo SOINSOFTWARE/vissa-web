@@ -31,14 +31,6 @@
 			<id>vaadin-addons</id>
 			<url>http://maven.vaadin.com/vaadin-addons</url>
 		</repository>
-		<repository>
-            <id>jaspersoft-third-party</id>
-            <url>http://jaspersoft.artifactoryonline.com/jaspersoft/third-party-ce-artifacts/</url>
-        </repository>
-		<repository>
-	        <id>jasperreports</id>
-	        <url>http://jasperreports.sourceforge.net/maven2</url>
-	    </repository>
 	</repositories>
 
 	<dependencyManagement>
@@ -101,11 +93,6 @@
 			<artifactId>vissa-model</artifactId>
 			<version>1.0.0</version>
 			<scope>compile</scope>
-		</dependency>
-		<dependency>
-		  	<groupId>net.sourceforge.dynamicreports</groupId>
-			<artifactId>dynamicreports-core</artifactId>
-			<version>4.1.1</version>
 		</dependency>
 				
 	</dependencies>
