@@ -8,12 +8,14 @@ import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.soinsoftware.vissa.bll.DocumentDetailBll;
 import com.soinsoftware.vissa.bll.UserBll;
 import com.soinsoftware.vissa.util.AdvancedFileDownloader;
 import com.soinsoftware.vissa.util.AdvancedFileDownloader.AdvancedDownloaderListener;
 import com.soinsoftware.vissa.util.AdvancedFileDownloader.DownloaderEvent;
 import com.vaadin.navigator.View;
 import com.vaadin.navigator.ViewChangeListener.ViewChangeEvent;
+import com.vaadin.server.VaadinService;
 import com.vaadin.ui.Button;
 import com.vaadin.ui.VerticalLayout;
 
@@ -24,18 +26,17 @@ import net.sf.dynamicreports.report.exception.DRException;
 public class ReportLayout extends VerticalLayout implements View {
 
 	private static final long serialVersionUID = -1662071302695761216L;
-	protected static final String REPORT_NAME = "/reports/accountabilityReport.jasper";
-	public static final String PARAM_CEO = "CEO";
+	protected static final String REPORT_NAME = "/WEB-INF/reports/invoice.jrxml";
+	
 	public static final String PARAM_COMPANY = "Company";
-	public static final String PARAM_DOCUMENT = "Document";
-	public static final String PARAM_DOCUMENT_CEO = "DocumentCEO";
-	public static final String PARAM_IS_JURIDICA = "IsJuridica";
-	public static final String PARAM_REPORT_DATE = "ReportDate";
+	public static final String PARAM_INVOICE_NUMBER = "InvoiceNumber";
+	public static final String PARAM_CUSTOMER = "Customer";	
+	public static final String PARAM_INVOICE_DATE = "InvoiceDate";
 	public static final String PARAM_REPORT_NAME = "ReportName";
-	private final UserBll userBll;
+	private final DocumentDetailBll detailBll;
 
 	public ReportLayout() throws IOException {
-		userBll = UserBll.getInstance();
+		detailBll = DocumentDetailBll.getInstance();
 	}
 
 	@Override
@@ -55,8 +56,9 @@ public class ReportLayout extends VerticalLayout implements View {
 			public void beforeDownload(DownloaderEvent downloadEvent) {
 				JasperReportBuilder report = DynamicReports.report();
 				try {
-					report.setTemplateDesign(new File(REPORT_NAME));
-					report.setParameters(this.createParameters()).setDataSource(userBll.selectAll());
+					String basepath = VaadinService.getCurrent().getBaseDirectory().getAbsolutePath();
+					report.setTemplateDesign(new File(basepath + REPORT_NAME));
+					report.setParameters(this.createParameters()).setDataSource(detailBll.selectAll());
 					/*
 					 * report.columns(Columns.column("Login", "login", DataTypes.stringType()),
 					 * Columns.column("First Name", "person.name", DataTypes.stringType()),
@@ -86,13 +88,11 @@ public class ReportLayout extends VerticalLayout implements View {
 			private Map<String, Object> createParameters() {
 				final Map<String, Object> parameters = new HashMap<>();
 				parameters.put(PARAM_COMPANY, "Vissa");
-				parameters.put(PARAM_DOCUMENT, "123456789");
-				parameters.put(PARAM_REPORT_DATE,
+				parameters.put(PARAM_INVOICE_NUMBER, "123456789");
+				parameters.put(PARAM_INVOICE_DATE,
 						LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss")));
-				parameters.put(PARAM_REPORT_NAME, "reporte");
-				parameters.put(PARAM_IS_JURIDICA, true);
-				parameters.put(PARAM_CEO, "CEO");
-				parameters.put(PARAM_DOCUMENT_CEO, "123456789");
+				parameters.put(PARAM_REPORT_NAME, "reporte");				
+				parameters.put(PARAM_CUSTOMER, "Cliente 1");				
 
 				return parameters;
 			}
