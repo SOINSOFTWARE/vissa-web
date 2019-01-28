@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Created with Jaspersoft Studio version 6.2.2.final using JasperReports Library version 6.2.2  -->
-<!-- 2019-01-27T18:24:06 -->
+<!-- 2019-01-27T19:40:17 -->
 <jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="balance" pageWidth="595" pageHeight="842" columnWidth="555" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="5e1d5157-98c3-414e-9fb8-b09b4c865862">
 	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="New Data Adapter "/>
 	<parameter name="Company" class="java.lang.String"/>
@@ -26,17 +26,11 @@
 	<field name="subtotal" class="java.math.BigDecimal">
 		<fieldDescription><![CDATA[subtotal]]></fieldDescription>
 	</field>
-	<field name="total" class="java.math.BigDecimal">
-		<fieldDescription><![CDATA[total]]></fieldDescription>
-	</field>
-	<field name="creditvalue" class="java.lang.Long">
-		<fieldDescription><![CDATA[creditvalue]]></fieldDescription>
+	<field name="product.sale.price" class="java.lang.Double">
+		<fieldDescription><![CDATA[product.sale.price]]></fieldDescription>
 	</field>
 	<variable name="total" class="java.lang.Long" calculation="Sum">
 		<variableExpression><![CDATA[$F{subtotal}]]></variableExpression>
-	</variable>
-	<variable name="totalCredit" class="java.lang.Long" calculation="Sum">
-		<variableExpression><![CDATA[$F{creditvalue}]]></variableExpression>
 	</variable>
 	<background>
 		<band splitType="Stretch"/>
@@ -259,7 +253,7 @@
 					<bottomPen lineWidth="1.0"/>
 					<rightPen lineWidth="1.0"/>
 				</box>
-				<textFieldExpression><![CDATA[$F{quantity}]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$F{product.sale.price}]]></textFieldExpression>
 			</textField>
 			<textField isStretchWithOverflow="true">
 				<reportElement stretchType="RelativeToTallestObject" x="270" y="-90" width="135" height="20" uuid="1e70bd42-61b9-49cf-9849-489671f636ce">
@@ -274,7 +268,7 @@
 					<bottomPen lineWidth="1.0"/>
 					<rightPen lineWidth="1.0"/>
 				</box>
-				<textFieldExpression><![CDATA[$F{subtotal}]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$F{quantity}]]></textFieldExpression>
 			</textField>
 			<textField>
 				<reportElement stretchType="RelativeToTallestObject" x="405" y="-90" width="80" height="20" uuid="e05ef776-06b2-490e-8f13-cbe0b5f91d62">
@@ -290,7 +284,7 @@
 					<rightPen lineWidth="1.0"/>
 				</box>
 				<textElement textAlignment="Right"/>
-				<textFieldExpression><![CDATA[new javax.swing.text.NumberFormatter(new  java.text.DecimalFormat("$#,##0")).valueToString($F{subtotal}) ]]></textFieldExpression>
+				<textFieldExpression><![CDATA[new javax.swing.text.NumberFormatter(new  java.text.DecimalFormat("$#,##0")).valueToString($F{subtotal})]]></textFieldExpression>
 			</textField>
 			<textField isStretchWithOverflow="true">
 				<reportElement stretchType="RelativeToTallestObject" x="65" y="-90" width="80" height="20" uuid="577206a9-dbb4-4682-b014-689837937234">
