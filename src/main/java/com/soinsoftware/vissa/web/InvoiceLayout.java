@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.vaadin.dialogs.ConfirmDialog;
 
 import com.soinsoftware.vissa.bll.DocumentBll;
+import com.soinsoftware.vissa.bll.DocumentDetailBll;
 import com.soinsoftware.vissa.bll.DocumentDetailLotBll;
 import com.soinsoftware.vissa.bll.DocumentStatusBll;
 import com.soinsoftware.vissa.bll.DocumentTypeBll;
@@ -86,6 +87,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	private final PaymentMethodBll payMethodBll;
 	private final PaymentTypeBll payTypeBll;
 	private final DocumentBll documentBll;
+	private final DocumentDetailBll documentDetailBll;
 	private final InventoryTransactionBll inventoryBll;
 	private final DocumentTypeBll documentTypeBll;
 	private final DocumentStatusBll docStatusBll;
@@ -148,6 +150,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		documentTypeBll = DocumentTypeBll.getInstance();
 		docStatusBll = DocumentStatusBll.getInstance();
 		detailLotBll = DocumentDetailLotBll.getInstance();
+		documentDetailBll = DocumentDetailBll.getInstance();
 		lotBll = LotBll.getInstance();
 		document = new Document();
 		itemsList = new ArrayList<>();
@@ -802,7 +805,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 				});
 	}
 
-	@Transactional(rollbackFor = Exception.class)
+
 	private void saveDocument(Document document) {
 		Document documentEntity = saveDocumentEntity(document);
 		log.info("Document saved:" + documentEntity);
@@ -824,8 +827,8 @@ public class InvoiceLayout extends VerticalLayout implements View {
 					Double subtotal = cant * prod.getSalePrice();
 
 					// Detail sin relacion al documento
-					DocumentDetail detail = detailBuilder.product(prod).quantity(cant + "")
-							.description(detObj.getDescription()).subtotal(subtotal).build();
+					DocumentDetail detail = detailBuilder.product(detObj.getProduct()).quantity(detObj.getQuantity())
+							.description(detObj.getDescription()).subtotal(detObj.getSubtotal()).build();
 
 					// Relacion detail con lote
 					DocumentDetailLot detailLot = detailLotMap.get(detail);
@@ -834,8 +837,9 @@ public class InvoiceLayout extends VerticalLayout implements View {
 					// Detail con relacion al documento
 					detail = detailBuilder.document(documentEntity).build();
 					log.info("Detail a guardar:" + detail);
+					log.info("HASHCODE Detail a guardar:" + detail);
 
-					detailLot = DocumentDetailLot.builder(detailLot).documentDetail(detail).build();
+					detailLot = DocumentDetailLot.builder(detailLot).documentDetail(detObj).build();
 
 					// Guardar inventario
 					InventoryTransaction.Builder invBuilder = InventoryTransaction.builder();
@@ -875,12 +879,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 					try {
 
-						log.info("Detail lot a guardar 2:" + detailLot);
-						// Guardar relación item factura con lote
-						if (detailLot != null) {
-							detailLotBll.save(detailLot, false);
-						}
-
+					
 						// Guardar movimiento de inventario
 						inventoryBll.save(inventoryObj, false);
 
@@ -891,6 +890,14 @@ public class InvoiceLayout extends VerticalLayout implements View {
 						if (lotObj != null) {
 							lotBll.save(lotObj, false);
 						}
+						
+						// documentDetailBll.save(detail, false);
+						log.info("Detail lot a guardar final:" + detailLot);
+						// Guardar relación item factura con lote
+						if (detailLot != null) {
+							detailLotBll.save(detailLot, false);
+						}
+
 
 						// afterSave(caption);
 					} catch (ModelValidationException ex) {
