@@ -12,6 +12,7 @@ import org.apache.log4j.Logger;
 import com.soinsoftware.vissa.bll.UserBll;
 import com.soinsoftware.vissa.model.Person;
 import com.soinsoftware.vissa.model.PersonType;
+import com.soinsoftware.vissa.model.Product;
 import com.soinsoftware.vissa.model.TransactionType;
 import com.soinsoftware.vissa.model.User;
 import com.soinsoftware.vissa.util.Commons;
@@ -366,26 +367,22 @@ public class VissaUI extends UI {
 	}
 
 	private void buildChangePasswordWindow(String login) {
-		Window userWindow = ViewHelper.buildSubwindow("50%");
+		Window subWindow = ViewHelper.buildSubwindow("50%");
 		UserLayout userLayout;
 		log.info("login=" + login);
 		try {
 			if (login != null) {
 				Commons.LOGIN = login;
-				ComponentContainer viewContainer = root.getContentContainer();
-				Navigator navigator = new Navigator(this, viewContainer);
-				navigator.addView(KEY_SUPPLIER, UserLayout.class);
-				
 				userLayout = new UserLayout();
-				userLayout.setCaption("Lotes");
+				userLayout.setCaption("Usuario");
 				userLayout.setMargin(false);
 				userLayout.setSpacing(false);
-				
+
 				VerticalLayout subContent = ViewHelper.buildVerticalLayout(true, true);
 				subContent.addComponents(userLayout);
-
-				userWindow.setContent(subContent);
-				getUI().addWindow(userWindow);
+				subWindow.setContent(subContent);
+				
+				addWindow(subWindow);
 			} else {
 				ViewHelper.showNotification("Ingrese su usuario", Notification.Type.WARNING_MESSAGE);
 			}

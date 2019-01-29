@@ -67,6 +67,7 @@ public class WarehouseLayout extends AbstractEditableLayout<Warehouse> {
 
 	public WarehouseLayout() throws IOException {
 		super("Bodegas", KEY_WAREHOUSE);
+		log.info("WarehouseLayout");
 		warehouseBll = WarehouseBll.getInstance();
 		tableSequenceBll = TableSequenceBll.getInstance();
 		if (listMode) {
@@ -77,6 +78,7 @@ public class WarehouseLayout extends AbstractEditableLayout<Warehouse> {
 
 	@Override
 	protected AbstractOrderedLayout buildListView() {
+		log.info("buildListView");
 		VerticalLayout layout = ViewHelper.buildVerticalLayout(false, false);
 		Panel buttonPanel = null;
 		if (listMode) {
