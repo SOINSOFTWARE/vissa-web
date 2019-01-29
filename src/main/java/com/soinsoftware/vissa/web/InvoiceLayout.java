@@ -18,7 +18,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.vaadin.dialogs.ConfirmDialog;
 
 import com.soinsoftware.vissa.bll.DocumentBll;
-import com.soinsoftware.vissa.bll.DocumentDetailBll;
 import com.soinsoftware.vissa.bll.DocumentDetailLotBll;
 import com.soinsoftware.vissa.bll.DocumentStatusBll;
 import com.soinsoftware.vissa.bll.DocumentTypeBll;
@@ -87,7 +86,6 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	private final PaymentMethodBll payMethodBll;
 	private final PaymentTypeBll payTypeBll;
 	private final DocumentBll documentBll;
-	private final DocumentDetailBll docDetailBll;
 	private final InventoryTransactionBll inventoryBll;
 	private final DocumentTypeBll documentTypeBll;
 	private final DocumentStatusBll docStatusBll;
@@ -146,7 +144,6 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		payMethodBll = PaymentMethodBll.getInstance();
 		payTypeBll = PaymentTypeBll.getInstance();
 		documentBll = DocumentBll.getInstance();
-		docDetailBll = DocumentDetailBll.getInstance();
 		inventoryBll = InventoryTransactionBll.getInstance();
 		documentTypeBll = DocumentTypeBll.getInstance();
 		docStatusBll = DocumentStatusBll.getInstance();
@@ -341,7 +338,6 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		cbPaymentMethod.setItemCaptionGenerator(PaymentMethod::getName);
 		cbPaymentMethod.setStyleName(ValoTheme.COMBOBOX_TINY);
 
-		
 		cbDocumentStatus = new ComboBox<DocumentStatus>("Estado de la factura");
 		cbDocumentStatus.setEmptySelectionAllowed(false);
 		cbDocumentStatus.setEmptySelectionCaption("Seleccione");
@@ -812,14 +808,11 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		log.info("Document saved:" + documentEntity);
 
 		if (documentEntity != null) {
-
-			// Guardar el detalle de la factura
-			List<DocumentDetail> detailList = detailGrid.getDataProvider().fetch(new Query<>())
-					.collect(Collectors.toList());
-
-			for (DocumentDetail detObj : detailList) {
+			boolean hasErrors = false;
+			for (DocumentDetail detObj : documentEntity.getDetails()) {
 				if (detObj.getQuantity() == null) {
 					ViewHelper.showNotification("Cantidad no ingresada", Notification.Type.ERROR_MESSAGE);
+					hasErrors = true;
 					documentBll.rollback();
 					break;
 				} else {
@@ -882,32 +875,31 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 					try {
 
-						// Guardar detalle de la factura
-						docDetailBll.save(detail);
 						log.info("Detail lot a guardar 2:" + detailLot);
 						// Guardar relación item factura con lote
 						if (detailLot != null) {
-							detailLotBll.save(detailLot);
+							detailLotBll.save(detailLot, false);
 						}
 
 						// Guardar movimiento de inventario
-						inventoryBll.save(inventoryObj);
+						inventoryBll.save(inventoryObj, false);
 
 						// Actualizar stock producto
-						productBll.save(productObj);
+						productBll.save(productObj, false);
 
 						// Actualizar stock de lote
 						if (lotObj != null) {
-							lotBll.save(lotObj);
+							lotBll.save(lotObj, false);
 						}
 
 						// afterSave(caption);
 					} catch (ModelValidationException ex) {
+						hasErrors = true;
 						log.error(ex);
 						ViewHelper.showNotification(ex.getMessage(), Notification.Type.ERROR_MESSAGE);
 					} catch (HibernateException ex) {
+						hasErrors = true;
 						log.error(ex);
-						// bll.rollback();
 						ViewHelper.showNotification(
 								"Los datos no pudieron ser salvados, contacte al administrador (3007200405)",
 								Notification.Type.ERROR_MESSAGE);
@@ -917,10 +909,14 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 			}
 
-			// Actualizar consecutivo de tipo de documento
-			documentTypeBll.save(documentType);
-
-			ViewHelper.showNotification("Factura guardada con exito", Notification.Type.WARNING_MESSAGE);
+			if (!hasErrors) {
+				// Actualizar consecutivo de tipo de documento
+				documentTypeBll.save(documentType, false);
+				documentTypeBll.commit();
+				ViewHelper.showNotification("Factura guardada con exito", Notification.Type.WARNING_MESSAGE);
+			} else {
+				documentBll.rollback();
+			}
 		}
 	}
 
@@ -942,17 +938,19 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 		Double total = txtTotal.getValue() != null ? Double.parseDouble(txtTotal.getValue()) : 0;
 
+		Set<DocumentDetail> details = detailGrid.getDataProvider().fetch(new Query<>()).collect(Collectors.toSet());
+
 		documentEntity = docBuilder.code(txtDocNumber.getValue())
 				.reference(txtReference.getValue() != null ? txtReference.getValue() : "")
 				.documentType(cbDocumentType.getValue()).person(selectedPerson).documentDate(docDate)
 				.paymentMethod(cbPaymentMethod.getValue()).paymentType(cbPaymentType.getValue())
 				.paymentTerm(txtPaymentTerm.getValue()).expirationDate(expirationDate).totalValue(total)
-				.status(documentStatus).salesman(user.getPerson()).build();
+				.status(documentStatus).salesman(user.getPerson()).details(details).build();
 
 		// Guardar documento
 		try {
 
-			documentBll.save(documentEntity);
+			documentBll.save(documentEntity, false);
 
 			// afterSave("");
 		} catch (ModelValidationException ex) {
