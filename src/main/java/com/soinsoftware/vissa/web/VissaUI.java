@@ -12,7 +12,6 @@ import org.apache.log4j.Logger;
 import com.soinsoftware.vissa.bll.UserBll;
 import com.soinsoftware.vissa.model.Person;
 import com.soinsoftware.vissa.model.PersonType;
-import com.soinsoftware.vissa.model.Product;
 import com.soinsoftware.vissa.model.TransactionType;
 import com.soinsoftware.vissa.model.User;
 import com.soinsoftware.vissa.util.Commons;
@@ -84,6 +83,7 @@ public class VissaUI extends UI {
 	protected static final String KEY_INVOICES = "Facturas";
 	protected static final String KEY_ADMINISTRATION = "Administración";
 	protected static final String KEY_USERS = "Usuarios";
+	protected static final String KEY_ROLES = "Roles";
 
 	private PermissionUtil permissionUtil;
 
@@ -154,13 +154,16 @@ public class VissaUI extends UI {
 			if (permissionUtil.canView(KEY_PURCHASES_REPORT)) {
 				treeData.addItem(KEY_REPORTS, KEY_PURCHASES_REPORT);
 			}
-			treeData.addItem(KEY_REPORTS, "test");
+			//treeData.addItem(KEY_REPORTS, "test");
 		}
 
 		if (permissionUtil.canView(KEY_ADMINISTRATION)) {
 			treeData.addItem(null, KEY_ADMINISTRATION);
 			if (permissionUtil.canView(KEY_USERS)) {
 				treeData.addItem(KEY_ADMINISTRATION, KEY_USERS);
+			}
+			if (permissionUtil.canView(KEY_ROLES)) {
+				treeData.addItem(KEY_ADMINISTRATION, KEY_ROLES);
 			}
 		}
 	}
@@ -298,7 +301,8 @@ public class VissaUI extends UI {
 		navigator.addView(KEY_SALES_REPORT, InvoiceListLayout.class);
 		navigator.addView(KEY_PURCHASES_REPORT, InvoiceListLayout.class);
 		navigator.addView(KEY_USERS, PersonLayout.class);
-		navigator.addView("test", ReportLayout.class);
+		// navigator.addView("test", ReportLayout.class);
+		navigator.addView(KEY_ROLES, RoleLayout.class);
 		navigator.setErrorView(DefaultView.class);
 		UI.getCurrent().setNavigator(navigator);
 
@@ -374,14 +378,13 @@ public class VissaUI extends UI {
 			if (login != null) {
 				Commons.LOGIN = login;
 				userLayout = new UserLayout();
-				userLayout.setCaption("Usuario");
 				userLayout.setMargin(false);
 				userLayout.setSpacing(false);
 
 				VerticalLayout subContent = ViewHelper.buildVerticalLayout(true, true);
 				subContent.addComponents(userLayout);
 				subWindow.setContent(subContent);
-				
+
 				addWindow(subWindow);
 			} else {
 				ViewHelper.showNotification("Ingrese su usuario", Notification.Type.WARNING_MESSAGE);

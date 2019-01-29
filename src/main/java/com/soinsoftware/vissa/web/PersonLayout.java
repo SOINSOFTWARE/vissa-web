@@ -577,7 +577,8 @@ public class PersonLayout extends AbstractEditableLayout<Person> {
 				: null;
 		String docId = txtDocumentId.getValue() != null ? txtDocumentId.getValue() : "";
 
-		City city = cbCity.getSelectedItem().isPresent() ? cbCity.getSelectedItem().get() : null;
+		City city = cbCity != null ? cbCity.getSelectedItem().isPresent() ? cbCity.getSelectedItem().get() : null
+				: null;
 
 		// Construir objeto con datos bancarios
 		BankAccount bankAccount = null;
@@ -589,27 +590,35 @@ public class PersonLayout extends AbstractEditableLayout<Person> {
 			bankAccountBuilder = BankAccount.builder();
 		}
 
-		BankAccountType accountType = cbAccountType.getSelectedItem().isPresent()
-				? cbAccountType.getSelectedItem().get()
+		BankAccountType accountType = cbAccountType != null
+				? cbAccountType.getSelectedItem().isPresent() ? cbAccountType.getSelectedItem().get() : null
 				: null;
-		Bank bank = cbBank.getSelectedItem().isPresent() ? cbBank.getSelectedItem().get() : null;
-		BankAccountStatus accountStatus = cbAccountStatus.getSelectedItem().isPresent()
-				? cbAccountStatus.getSelectedItem().get()
+
+		Bank bank = cbBank != null ? cbBank.getSelectedItem().isPresent() ? cbBank.getSelectedItem().get() : null
+				: null;
+
+		BankAccountStatus accountStatus = cbAccountStatus != null
+				? cbAccountStatus.getSelectedItem().isPresent() ? cbAccountStatus.getSelectedItem().get() : null
 				: null;
 
 		// objeto cuenta bancaria
-		bankAccount = bankAccountBuilder.type(accountType).account(txtAccountNumber.getValue()).bank(bank)
-				.status(accountStatus).build();
+		bankAccount = bankAccountBuilder.type(accountType)
+				.account(txtAccountNumber != null ? txtAccountNumber.getValue() : null).bank(bank).status(accountStatus)
+				.build();
 
 		if (bankAccount != null && bankAccount.getType() == null) {
 			bankAccount = null;
 		}
 
 		person = personBuilder.documentType(documentIdType).documentNumber(docId).name(txtName.getValue())
-				.lastName(lastName).type(personType).contactName(txtContactName.getValue())
-				.address(txtAddress.getValue()).city(city).neighborhood(txtNeighborhood.getValue())
-				.mobile(txtMobile.getValue()).phone(txtPhone.getValue()).email(txtEmail.getValue())
-				.webSite(txtWebSite.getValue()).bankAccount(bankAccount).build();
+				.lastName(lastName).type(personType)
+				.contactName(txtContactName != null ? txtContactName.getValue() : null)
+				.address(txtAddress != null ? txtAddress.getValue() : null).city(city)
+				.neighborhood(txtNeighborhood != null ? txtNeighborhood.getValue() : null)
+				.mobile(txtMobile != null ? txtMobile.getValue() : null)
+				.phone(txtPhone != null ? txtPhone.getValue() : null)
+				.email(txtEmail != null ? txtEmail.getValue() : null)
+				.webSite(txtWebSite != null ? txtWebSite.getValue() : null).bankAccount(bankAccount).build();
 
 		log.info("person:" + person.toString());
 

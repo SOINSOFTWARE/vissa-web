@@ -39,7 +39,8 @@ public class UserLayout extends VerticalLayout implements View {
 	// Components
 	private TextField txtPerson;
 	private TextField txtLogin;
-	private PasswordField txtPassword;
+	private PasswordField txtOldPassword;
+	private PasswordField txtNewPassword;
 
 	private User user = null;
 
@@ -92,7 +93,7 @@ public class UserLayout extends VerticalLayout implements View {
 		VerticalLayout layout = ViewHelper.buildVerticalLayout(false, false);
 
 		Label tittle = new Label("Cambiar contraseña");
-		tittle.addStyleName(ValoTheme.LABEL_H2);
+		tittle.addStyleName(ValoTheme.LABEL_H3);
 		addComponent(tittle);
 
 		// Panel de botones
@@ -101,7 +102,7 @@ public class UserLayout extends VerticalLayout implements View {
 		// Panel de campos
 		Panel editPanel = buildEditionPanel();
 
-		layout.addComponents(buttonPanel, editPanel);
+		layout.addComponents(editPanel, buttonPanel);
 		addComponent(layout);
 		this.setMargin(false);
 		this.setSpacing(false);
@@ -119,13 +120,13 @@ public class UserLayout extends VerticalLayout implements View {
 		HorizontalLayout layout = ViewHelper.buildHorizontalLayout(true, true);
 
 		Button saveBtn = new Button("Guardar", FontAwesome.SAVE);
-		saveBtn.addStyleName("mystyle-btn");
+		saveBtn.addStyleName(ValoTheme.BUTTON_SMALL);
 		saveBtn.addClickListener(e -> saveButtonAction());
 		layout.addComponents(saveBtn);
 
-		Button cancelBtn = new Button("Cancelar", FontAwesome.SAVE);
-		cancelBtn.addStyleName("mystyle-btn");
-		// cancelBtn.addClickListener(e -> cleanButtonAction());
+		Button cancelBtn = new Button("Cancelar", FontAwesome.CLOSE);
+		cancelBtn.addStyleName(ValoTheme.BUTTON_SMALL);
+		cancelBtn.addClickListener(e -> closeWindow());
 		layout.addComponents(cancelBtn);
 
 		addComponent(layout);
@@ -145,17 +146,21 @@ public class UserLayout extends VerticalLayout implements View {
 		txtLogin.setReadOnly(true);
 		txtPerson.setStyleName(ValoTheme.TEXTFIELD_TINY);
 
-		txtPassword = new PasswordField("Contraseña");
-		txtPassword.setStyleName(ValoTheme.TEXTFIELD_TINY);
+		txtOldPassword = new PasswordField("Contraseña anterior");
+		txtOldPassword.setStyleName(ValoTheme.TEXTFIELD_TINY);
+		txtOldPassword.setRequiredIndicatorVisible(true);
+
+		txtNewPassword = new PasswordField("Contraseña nueva");
+		txtNewPassword.setStyleName(ValoTheme.TEXTFIELD_TINY);
+		txtNewPassword.setRequiredIndicatorVisible(true);
 
 		if (user != null) {
 			txtPerson.setValue(user.getPerson().getName() + " " + user.getPerson().getLastName());
 			txtLogin.setValue(user.getLogin());
-			txtPassword.setValue(user.getPassword());
 		}
 
 		FormLayout userForm = ViewHelper.buildForm("Cambiar contraseña", false, false);
-		userForm.addComponents(txtPerson, txtLogin, txtPassword);
+		userForm.addComponents(txtPerson, txtLogin, txtOldPassword, txtNewPassword);
 		Panel userPanel = ViewHelper.buildPanel("", userForm);
 
 		return userPanel;
@@ -165,20 +170,32 @@ public class UserLayout extends VerticalLayout implements View {
 	@Transactional(rollbackFor = Exception.class)
 	private void saveButtonAction() {
 		log.info("saveButtonAction:" + user);
-		User.Builder userBuilder = null;
 
 		// Guardar Usuario
 		try {
-			if (user == null) {
-				userBuilder = User.builder();
+			if (txtOldPassword.getValue() != null && !txtOldPassword.getValue().isEmpty()) {
+				if (txtNewPassword.getValue() != null && !txtNewPassword.getValue().isEmpty()) {
+					if (txtNewPassword.getValue().length() >= 6) {
+						User userTmp = User.builder(user).password(txtOldPassword.getValue()).build();
+						if (userTmp.getPassword().equals(user.getPassword())) {
+							user = User.builder(user).password(txtNewPassword.getValue()).build();
+							userBll.save(user);
+							ViewHelper.showNotification("Contraseña cambiada con éxito",
+									Notification.Type.WARNING_MESSAGE);
+						} else {
+							ViewHelper.showNotification("La contraseña anterior no es correcta",
+									Notification.Type.ERROR_MESSAGE);
+						}
+					}else {
+						ViewHelper.showNotification("La contraseña debe tener mínimo 6 carácteres",
+								Notification.Type.ERROR_MESSAGE);
+					}
+				} else {
+					ViewHelper.showNotification("Ingrese su contraseña nueva", Notification.Type.WARNING_MESSAGE);
+				}
 			} else {
-				userBuilder = User.builder(user);
+				ViewHelper.showNotification("Ingrese su contraseña anterior", Notification.Type.WARNING_MESSAGE);
 			}
-			user = userBuilder.password(txtPassword.getValue()).build();
-
-			userBll.save(user);
-
-			ViewHelper.showNotification("Contraseña cambiada con éxito)", Notification.Type.WARNING_MESSAGE);
 
 		} catch (ModelValidationException ex) {
 			log.error(ex);
@@ -193,7 +210,10 @@ public class UserLayout extends VerticalLayout implements View {
 			ViewHelper.showNotification("Se presentó un error, por favor contacte al adminisrador",
 					Notification.Type.ERROR_MESSAGE);
 		}
+	}
 
+	private void closeWindow() {
+		// getUI().close();
 	}
 
 }

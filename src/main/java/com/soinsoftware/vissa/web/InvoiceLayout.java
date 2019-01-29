@@ -10,6 +10,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import javax.persistence.PersistenceException;
+
 import org.apache.log4j.Logger;
 import org.hibernate.HibernateException;
 import org.springframework.transaction.annotation.Transactional;
@@ -339,8 +341,8 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		cbPaymentMethod.setItemCaptionGenerator(PaymentMethod::getName);
 		cbPaymentMethod.setStyleName(ValoTheme.COMBOBOX_TINY);
 
+		
 		cbDocumentStatus = new ComboBox<DocumentStatus>("Estado de la factura");
-
 		cbDocumentStatus.setEmptySelectionAllowed(false);
 		cbDocumentStatus.setEmptySelectionCaption("Seleccione");
 		ListDataProvider<DocumentStatus> docStatusDataProv = new ListDataProvider<>(docStatusBll.selectAll());
@@ -348,6 +350,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		cbDocumentStatus.setItemCaptionGenerator(DocumentStatus::getName);
 		cbDocumentStatus.setSelectedItem(docStatusBll.select("Nueva").get(0));
 		cbDocumentStatus.setStyleName(ValoTheme.COMBOBOX_TINY);
+		cbDocumentStatus.setReadOnly(true);
 
 		txtTotal = new TextField("Total Factura");
 		txtTotal.setReadOnly(true);
@@ -777,13 +780,6 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 	}
 
-	private void addItemList() {
-		DocumentDetail docDetail = DocumentDetail.builder().product(selectedProduct).build();
-		itemsList.add(docDetail);
-		fillDetailGridData(itemsList);
-		productSubwindow.close();
-	}
-
 	/**
 	 * Metodo para llenar la data de la grid de detalle de la factura
 	 * 
@@ -811,7 +807,124 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	}
 
 	@Transactional(rollbackFor = Exception.class)
-	private void saveDocument(Document documentEntity) {
+	private void saveDocument(Document document) {
+		Document documentEntity = saveDocumentEntity(document);
+		log.info("Document saved:" + documentEntity);
+
+		if (documentEntity != null) {
+
+			// Guardar el detalle de la factura
+			List<DocumentDetail> detailList = detailGrid.getDataProvider().fetch(new Query<>())
+					.collect(Collectors.toList());
+
+			for (DocumentDetail detObj : detailList) {
+				if (detObj.getQuantity() == null) {
+					ViewHelper.showNotification("Cantidad no ingresada", Notification.Type.ERROR_MESSAGE);
+					documentBll.rollback();
+					break;
+				} else {
+					// Guardar Detail
+					DocumentDetail.Builder detailBuilder = DocumentDetail.builder();
+
+					Integer cant = Integer.parseInt(detObj.getQuantity());
+					Product prod = detObj.getProduct();
+					Double subtotal = cant * prod.getSalePrice();
+
+					// Detail sin relacion al documento
+					DocumentDetail detail = detailBuilder.product(prod).quantity(cant + "")
+							.description(detObj.getDescription()).subtotal(subtotal).build();
+
+					// Relacion detail con lote
+					DocumentDetailLot detailLot = detailLotMap.get(detail);
+					log.info("DetailLot a guardar:" + detailLot);
+
+					// Detail con relacion al documento
+					detail = detailBuilder.document(documentEntity).build();
+					log.info("Detail a guardar:" + detail);
+
+					detailLot = DocumentDetailLot.builder(detailLot).documentDetail(detail).build();
+
+					// Guardar inventario
+					InventoryTransaction.Builder invBuilder = InventoryTransaction.builder();
+
+					Integer stock = detObj.getProduct().getStock();
+					int initialStock = stock != null ? stock : 0;
+					log.info("initialStock:" + initialStock);
+					log.info("quantity:" + cant);
+					int finalStock = 0;
+
+					if (transactionType.equals(TransactionType.ENTRADA)) {
+						finalStock = initialStock != 0 ? initialStock + cant : cant;
+					} else if (transactionType.equals(TransactionType.SALIDA)) {
+						finalStock = initialStock != 0 ? initialStock - cant : cant;
+					}
+					log.info("finalStock:" + finalStock);
+					InventoryTransaction inventoryObj = invBuilder.product(detObj.getProduct())
+							.transactionType(transactionType).initialStock(initialStock).quantity(cant)
+							.finalStock(finalStock).document(documentEntity).build();
+
+					// Actualizar stock total del producto
+					Product productObj = productBll.select(detObj.getProduct().getCode());
+					productObj.setStock(finalStock);
+					productObj.setStockDate(new Date());
+
+					// Actualizar lotes del producto
+					List<Lot> lotList = lotBll.select(detObj.getProduct());
+					Lot lotObj = null;
+					if (lotList.size() > 0) {
+						Lot lot = lotList.get(0);
+						log.info("lote más pronto a vencer:" + lot.getExpirationDate());
+
+						lotObj = lotBll.select(lot.getCode());
+						int newLotStock = lotObj.getQuantity() - cant;
+						lotObj.setQuantity(newLotStock);
+					}
+
+					try {
+
+						// Guardar detalle de la factura
+						docDetailBll.save(detail);
+						log.info("Detail lot a guardar 2:" + detailLot);
+						// Guardar relación item factura con lote
+						if (detailLot != null) {
+							detailLotBll.save(detailLot);
+						}
+
+						// Guardar movimiento de inventario
+						inventoryBll.save(inventoryObj);
+
+						// Actualizar stock producto
+						productBll.save(productObj);
+
+						// Actualizar stock de lote
+						if (lotObj != null) {
+							lotBll.save(lotObj);
+						}
+
+						// afterSave(caption);
+					} catch (ModelValidationException ex) {
+						log.error(ex);
+						ViewHelper.showNotification(ex.getMessage(), Notification.Type.ERROR_MESSAGE);
+					} catch (HibernateException ex) {
+						log.error(ex);
+						// bll.rollback();
+						ViewHelper.showNotification(
+								"Los datos no pudieron ser salvados, contacte al administrador (3007200405)",
+								Notification.Type.ERROR_MESSAGE);
+					}
+
+				}
+
+			}
+
+			// Actualizar consecutivo de tipo de documento
+			documentTypeBll.save(documentType);
+
+			ViewHelper.showNotification("Factura guardada con exito", Notification.Type.WARNING_MESSAGE);
+		}
+	}
+
+	private Document saveDocumentEntity(Document documentEntity) {
 		Document.Builder docBuilder = null;
 		DocumentStatus documentStatus = null;
 		if (documentEntity == null) {
@@ -826,10 +939,6 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		Date expirationDate = dtfExpirationDate.getValue() != null
 				? DateUtil.localDateTimeToDate(dtfExpirationDate.getValue())
 				: null;
-
-		List<DocumentDetail> detailList = detailGrid.getDataProvider().fetch(new Query<>())
-				.collect(Collectors.toList());
-		log.info("personSelected:" + selectedPerson);
 
 		Double total = txtTotal.getValue() != null ? Double.parseDouble(txtTotal.getValue()) : 0;
 
@@ -854,108 +963,22 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			documentBll.rollback();
 			ViewHelper.showNotification("Los datos no pudieron ser salvados, contacte al administrador (3007200405)",
 					Notification.Type.ERROR_MESSAGE);
+		} catch (PersistenceException ex) {
+			log.error(ex);
+			documentBll.rollback();
+			ViewHelper.showNotification("Se presentó un error, por favor contacte al adminisrador (3007200405)",
+					Notification.Type.ERROR_MESSAGE);
 		} catch (Exception ex) {
 			log.error(ex);
-			ViewHelper.showNotification("Se presentó un error, por favor contacte al adminisrador",
+			documentBll.rollback();
+			ViewHelper.showNotification("Se presentó un error, por favor contacte al adminisrador (3007200405)",
 					Notification.Type.ERROR_MESSAGE);
 		}
 
-		documentEntity = documentBll.select(documentEntity.getCode(), documentEntity.getDocumentType());
-		log.info("Document saved:" + documentEntity);
-		// Guardar el detalle de la factura
-		for (DocumentDetail detObj : detailList) {
-			if (detObj.getQuantity() == null) {
-				ViewHelper.showNotification("Cantidad no ingresada", Notification.Type.ERROR_MESSAGE);
-				documentBll.rollback();
-				break;
-			} else {
-				// Guardar Detail
-				DocumentDetail.Builder detailBuilder = DocumentDetail.builder();
-				log.info("Cant=" + detObj.getQuantity());
-				Integer cant = Integer.parseInt(detObj.getQuantity());
-				Product prod = detObj.getProduct();
-				Double subtotal = cant * prod.getSalePrice();
+		Document documentSaved = documentBll.select(documentEntity.getCode(), documentEntity.getDocumentType());
 
-				// Dedtail sin relacion al documento
-				DocumentDetail detail = detailBuilder.document(documentEntity).product(prod).quantity(cant + "")
-						.description(detObj.getDescription()).subtotal(subtotal).build();
+		return documentSaved;
 
-				// Relacion detail con lote
-				// DocumentDetailLot detailLot = detailLotMap.get(detail);
-				// log.info("Detail lot a guardar:" + detailLot);
-
-				// Dedtail con relacion al documento
-				// detail = detailBuilder.document(documentEntity).build();
-
-				log.info("detail a guardar:" + detail);
-
-				// Guardar inventario
-				InventoryTransaction.Builder invBuilder = InventoryTransaction.builder();
-
-				Integer stock = detObj.getProduct().getStock();
-				int initialStock = stock != null ? stock : 0;
-				log.info("initialStock=" + initialStock);
-				log.info("cant=" + cant);
-				int finalStock = 0;
-				if (transactionType.equals(TransactionType.ENTRADA)) {
-					finalStock = initialStock != 0 ? initialStock + cant : cant;
-				} else if (transactionType.equals(TransactionType.SALIDA)) {
-					finalStock = initialStock != 0 ? initialStock - cant : cant;
-				}
-				log.info("finalStock=" + finalStock);
-				InventoryTransaction inv = invBuilder.product(detObj.getProduct()).transactionType(transactionType)
-						.initialStock(initialStock).quantity(cant).finalStock(finalStock).document(documentEntity)
-						.build();
-
-				// Actualizar stock total del producto
-				Product productObj = productBll.select(detObj.getProduct().getCode());
-				productObj.setStock(finalStock);
-				productObj.setStockDate(new Date());
-
-				// Actualizar lotes del producto
-				List<Lot> lotList = lotBll.select(detObj.getProduct());
-				Lot lotObj = null;
-				if (lotList.size() > 0) {
-					Lot lot = lotList.get(0);
-					log.info("lote más pronto a vencer:" + lot.getExpirationDate());
-
-					lotObj = lotBll.select(lot.getCode());
-					int newLotStock = lotObj.getQuantity() - cant;
-					lotObj.setQuantity(newLotStock);
-				}
-
-				try {
-
-					docDetailBll.save(detail);
-					/*
-					 * if (detailLot != null) { detailLotBll.save(detailLot); }
-					 */
-					inventoryBll.save(inv);
-					productBll.save(productObj);
-					if (lotObj != null) {
-						lotBll.save(lotObj);
-					}
-
-					// Actualizar consecutivo de tipo de documento
-					documentTypeBll.save(documentType);
-
-					// afterSave(caption);
-				} catch (ModelValidationException ex) {
-					log.error(ex);
-					ViewHelper.showNotification(ex.getMessage(), Notification.Type.ERROR_MESSAGE);
-				} catch (HibernateException ex) {
-					log.error(ex);
-					// bll.rollback();
-					ViewHelper.showNotification(
-							"Los datos no pudieron ser salvados, contacte al administrador (3007200405)",
-							Notification.Type.ERROR_MESSAGE);
-				}
-
-			}
-
-		}
-
-		ViewHelper.showNotification("Factura guardada con exito", Notification.Type.WARNING_MESSAGE);
 	}
 
 	private void cleanButtonAction() {
