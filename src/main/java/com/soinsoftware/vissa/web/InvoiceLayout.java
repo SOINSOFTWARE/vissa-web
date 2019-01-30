@@ -18,7 +18,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.vaadin.dialogs.ConfirmDialog;
 
 import com.soinsoftware.vissa.bll.DocumentBll;
-import com.soinsoftware.vissa.bll.DocumentDetailBll;
 import com.soinsoftware.vissa.bll.DocumentDetailLotBll;
 import com.soinsoftware.vissa.bll.DocumentStatusBll;
 import com.soinsoftware.vissa.bll.DocumentTypeBll;
@@ -87,7 +86,6 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	private final PaymentMethodBll payMethodBll;
 	private final PaymentTypeBll payTypeBll;
 	private final DocumentBll documentBll;
-	private final DocumentDetailBll documentDetailBll;
 	private final InventoryTransactionBll inventoryBll;
 	private final DocumentTypeBll documentTypeBll;
 	private final DocumentStatusBll docStatusBll;
@@ -150,7 +148,6 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		documentTypeBll = DocumentTypeBll.getInstance();
 		docStatusBll = DocumentStatusBll.getInstance();
 		detailLotBll = DocumentDetailLotBll.getInstance();
-		documentDetailBll = DocumentDetailBll.getInstance();
 		lotBll = LotBll.getInstance();
 		document = new Document();
 		itemsList = new ArrayList<>();
@@ -800,20 +797,19 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		ConfirmDialog.show(Page.getCurrent().getUI(), "Confirmar", "Está seguro de guardar la factura", "Si", "No",
 				e -> {
 					if (e.isConfirmed()) {
-						saveDocument(documentEntity);
+						saveInvoice(documentEntity);
 					}
 				});
 	}
 
-
-	private void saveDocument(Document document) {
-		Document documentEntity = saveDocumentEntity(document);
+	private void saveInvoice(Document document) {
+		Document documentEntity = saveInvoiceHeader(document);
 		log.info("Document saved:" + documentEntity);
 
 		if (documentEntity != null) {
 			boolean hasErrors = false;
-			for (DocumentDetail detObj : documentEntity.getDetails()) {
-				if (detObj.getQuantity() == null) {
+			for (DocumentDetail detail : documentEntity.getDetails()) {
+				if (detail.getQuantity() == null) {
 					ViewHelper.showNotification("Cantidad no ingresada", Notification.Type.ERROR_MESSAGE);
 					hasErrors = true;
 					documentBll.rollback();
@@ -822,82 +818,76 @@ public class InvoiceLayout extends VerticalLayout implements View {
 					// Guardar Detail
 					DocumentDetail.Builder detailBuilder = DocumentDetail.builder();
 
-					Integer cant = Integer.parseInt(detObj.getQuantity());
-					Product prod = detObj.getProduct();
-					Double subtotal = cant * prod.getSalePrice();
-
 					// Detail sin relacion al documento
-					DocumentDetail detail = detailBuilder.product(detObj.getProduct()).quantity(detObj.getQuantity())
-							.description(detObj.getDescription()).subtotal(detObj.getSubtotal()).build();
+					DocumentDetail detailTmp = detailBuilder.product(detail.getProduct()).quantity(detail.getQuantity())
+							.description(detail.getDescription()).subtotal(detail.getSubtotal()).build();
 
-					// Relacion detail con lote
-					DocumentDetailLot detailLot = detailLotMap.get(detail);
-					log.info("DetailLot a guardar:" + detailLot);
+					// Relacion detail con lote. Se busca DetailLot a partir del Detail
+					DocumentDetailLot detailLot = detailLotMap.get(detailTmp);
 
 					// Detail con relacion al documento
-					detail = detailBuilder.document(documentEntity).build();
-					log.info("Detail a guardar:" + detail);
-					log.info("HASHCODE Detail a guardar:" + detail);
+					detailTmp = detailBuilder.document(documentEntity).build();
 
-					detailLot = DocumentDetailLot.builder(detailLot).documentDetail(detObj).build();
+					// Se actualiza el detail del objeto DetailLot
+					detailLot = DocumentDetailLot.builder(detailLot).documentDetail(detail).build();
 
 					// Guardar inventario
 					InventoryTransaction.Builder invBuilder = InventoryTransaction.builder();
 
-					Integer stock = detObj.getProduct().getStock();
+					// Se actualiza stock en el movimiento de inventario
+					Integer stock = detail.getProduct().getStock();
 					int initialStock = stock != null ? stock : 0;
 					log.info("initialStock:" + initialStock);
-					log.info("quantity:" + cant);
 					int finalStock = 0;
+					int quantity = Integer.parseInt(detail.getQuantity());
+					log.info("quantity:" + quantity);
 
 					if (transactionType.equals(TransactionType.ENTRADA)) {
-						finalStock = initialStock != 0 ? initialStock + cant : cant;
+						finalStock = initialStock != 0 ? initialStock + quantity : quantity;
 					} else if (transactionType.equals(TransactionType.SALIDA)) {
-						finalStock = initialStock != 0 ? initialStock - cant : cant;
+						finalStock = initialStock != 0 ? initialStock - quantity : quantity;
 					}
 					log.info("finalStock:" + finalStock);
-					InventoryTransaction inventoryObj = invBuilder.product(detObj.getProduct())
-							.transactionType(transactionType).initialStock(initialStock).quantity(cant)
+					InventoryTransaction inventoryTransaction = invBuilder.product(detail.getProduct())
+							.transactionType(transactionType).initialStock(initialStock).quantity(quantity)
 							.finalStock(finalStock).document(documentEntity).build();
 
 					// Actualizar stock total del producto
-					Product productObj = productBll.select(detObj.getProduct().getCode());
-					productObj.setStock(finalStock);
-					productObj.setStockDate(new Date());
+					Product product = productBll.select(detail.getProduct().getCode());
+					product.setStock(finalStock);
+					product.setStockDate(new Date());
 
 					// Actualizar lotes del producto
-					List<Lot> lotList = lotBll.select(detObj.getProduct());
-					Lot lotObj = null;
+					List<Lot> lotList = lotBll.select(detail.getProduct());
+					Lot lot = null;
 					if (lotList.size() > 0) {
-						Lot lot = lotList.get(0);
-						log.info("lote más pronto a vencer:" + lot.getExpirationDate());
+						lot = lotList.get(0);
+						log.info("Lote más pronto a vencer:" + lot.getExpirationDate());
 
-						lotObj = lotBll.select(lot.getCode());
-						int newLotStock = lotObj.getQuantity() - cant;
-						lotObj.setQuantity(newLotStock);
+						int newLotStock = lot.getQuantity() - quantity;
+						lot.setQuantity(newLotStock);
 					}
 
 					try {
-
-					
-						// Guardar movimiento de inventario
-						inventoryBll.save(inventoryObj, false);
-
-						// Actualizar stock producto
-						productBll.save(productObj, false);
-
-						// Actualizar stock de lote
-						if (lotObj != null) {
-							lotBll.save(lotObj, false);
-						}
-						
-						// documentDetailBll.save(detail, false);
-						log.info("Detail lot a guardar final:" + detailLot);
 						// Guardar relación item factura con lote
 						if (detailLot != null) {
 							detailLotBll.save(detailLot, false);
 						}
+						log.info("detailLot saved:" + detailLot);
 
+						// Guardar movimiento de inventario
+						inventoryBll.save(inventoryTransaction, false);
+						log.info("inventoryTransaction saved:" + inventoryTransaction);
+
+						// Actualizar stock producto
+						productBll.save(product, false);
+						log.info("product saved:" + product);
+
+						// Actualizar stock de lote
+						if (lot != null) {
+							lotBll.save(lot, false);
+						}
+						log.info("lot saved:" + product);
 
 						// afterSave(caption);
 					} catch (ModelValidationException ex) {
@@ -917,8 +907,9 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			}
 
 			if (!hasErrors) {
-				// Actualizar consecutivo de tipo de documento
+				// Actualizar consecutivo de tipo de factura
 				documentTypeBll.save(documentType, false);
+				log.info("documentType saved:" + documentType);
 				documentTypeBll.commit();
 				ViewHelper.showNotification("Factura guardada con exito", Notification.Type.WARNING_MESSAGE);
 			} else {
@@ -927,7 +918,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		}
 	}
 
-	private Document saveDocumentEntity(Document documentEntity) {
+	private Document saveInvoiceHeader(Document documentEntity) {
 		Document.Builder docBuilder = null;
 		DocumentStatus documentStatus = null;
 		if (documentEntity == null) {
