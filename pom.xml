@@ -17,7 +17,7 @@
 	<properties>
 		<vaadin.version>8.6.3</vaadin.version>
 		<vaadin.plugin.version>8.6.3</vaadin.plugin.version>
-		<jetty.plugin.version>9.3.9.v20160517</jetty.plugin.version>
+		<jetty.plugin.version>9.4.14.v20181114</jetty.plugin.version>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<maven.compiler.source>1.8</maven.compiler.source>
 		<maven.compiler.target>1.8</maven.compiler.target>
@@ -94,12 +94,7 @@
 			<version>1.0.0</version>
 			<scope>compile</scope>
 		</dependency>
-		<dependency>
-			<groupId>com.soinsoftware.report</groupId>
-			<artifactId>dynamic-report</artifactId>
-			<version>1.0.0</version>
-			<scope>compile</scope>
-		</dependency>
+	
 				
 	</dependencies>
 
@@ -125,6 +120,9 @@
 						<goals>
 							<goal>update-theme</goal>
 							<goal>update-widgetset</goal>
+							<goal>compile</goal>
+							<!-- Comment out compile-theme goal to use on-the-fly theme compilation -->
+							<goal>compile-theme</goal>
 						</goals>
 					</execution>
 				</executions>

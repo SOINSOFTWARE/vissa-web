@@ -73,6 +73,7 @@ public class VissaUI extends UI {
 	protected static final String KEY_SALES = "Ventas";
 	protected static final String KEY_SALES_REPORT = "Reporte de Ventas";
 	protected static final String KEY_PURCHASES_REPORT = "Reporte de Compras";
+	protected static final String KEY_PRODUCTS_REPORT = "Reporte de Productos";
 	protected static final String KEY_SUPPLIER = "Proveedores";
 	protected static final String KEY_CUSTOMER = "Clientes";
 	protected static final String KEY_SALE_INVOICES = "Facturas de Venta";
@@ -154,7 +155,10 @@ public class VissaUI extends UI {
 			if (permissionUtil.canView(KEY_PURCHASES_REPORT)) {
 				treeData.addItem(KEY_REPORTS, KEY_PURCHASES_REPORT);
 			}
-			treeData.addItem(KEY_REPORTS, "test");
+			if (permissionUtil.canView(KEY_PRODUCTS_REPORT)) {
+				treeData.addItem(KEY_REPORTS, KEY_PRODUCTS_REPORT);
+			}
+			// treeData.addItem(KEY_REPORTS, "test");
 		}
 
 		if (permissionUtil.canView(KEY_ADMINISTRATION)) {
@@ -298,8 +302,9 @@ public class VissaUI extends UI {
 		navigator.addView(KEY_CUSTOMER, PersonLayout.class);
 		navigator.addView(KEY_INVENTORY_MOV, InventoryLayout.class);
 		navigator.addView(KEY_WAREHOUSE, WarehouseLayout.class);
-		navigator.addView(KEY_SALES_REPORT, InvoiceListLayout.class);
-		navigator.addView(KEY_PURCHASES_REPORT, InvoiceListLayout.class);
+		navigator.addView(KEY_SALES_REPORT, InvoiceReportLayout.class);
+		navigator.addView(KEY_PURCHASES_REPORT, InvoiceReportLayout.class);
+		navigator.addView(KEY_PRODUCTS_REPORT, ProductReportLayout.class);
 		navigator.addView(KEY_USERS, PersonLayout.class);
 		navigator.addView("test", ReportLayout.class);
 		navigator.addView(KEY_ROLES, RoleLayout.class);

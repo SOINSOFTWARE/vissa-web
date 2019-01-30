@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.soinsoftware.vissa.bll.DocumentBll;
 import com.soinsoftware.vissa.bll.DocumentTypeBll;
 import com.soinsoftware.vissa.model.Document;
+import com.soinsoftware.vissa.model.DocumentDetail;
 import com.soinsoftware.vissa.model.DocumentType;
 import com.soinsoftware.vissa.model.Person;
 import com.soinsoftware.vissa.model.PersonType;
@@ -34,7 +35,9 @@ import com.vaadin.ui.ComboBox;
 import com.vaadin.ui.Component;
 import com.vaadin.ui.DateTimeField;
 import com.vaadin.ui.Grid;
+import com.vaadin.ui.Grid.Column;
 import com.vaadin.ui.Grid.SelectionMode;
+import com.vaadin.ui.components.grid.FooterRow;
 import com.vaadin.ui.HorizontalLayout;
 import com.vaadin.ui.Notification;
 import com.vaadin.ui.Panel;
@@ -43,15 +46,15 @@ import com.vaadin.ui.VerticalLayout;
 import com.vaadin.ui.Window;
 import com.vaadin.ui.themes.ValoTheme;
 
-@SuppressWarnings("unchecked")
-public class ProductListLayout extends AbstractEditableLayout<Document> {
+@SuppressWarnings("deprecation")
+public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 
 	/**
 	 * 
 	 */
 	private static final long serialVersionUID = 5076502522106126046L;
 
-	protected static final Logger log = Logger.getLogger(ProductListLayout.class);
+	protected static final Logger log = Logger.getLogger(InvoiceReportLayout.class);
 
 	private final DocumentBll documentBll;
 	private final DocumentTypeBll documentTypeBll;
@@ -61,6 +64,7 @@ public class ProductListLayout extends AbstractEditableLayout<Document> {
 	private TextField txtFilterByPerson;
 	private DateTimeField dtfFilterIniDate;
 	private DateTimeField dtfFilterEndDate;
+	private TextField txtQuantity;
 	private TextField txtTotal;
 	private Grid<Document> grid;
 
@@ -71,10 +75,14 @@ public class ProductListLayout extends AbstractEditableLayout<Document> {
 	private PersonLayout personLayout = null;
 	private Person personSelected = null;
 	private DocumentType documentType;
+	private FooterRow footer;
+	private Column<?, ?> personColumn;
+	private Column<?, ?> totalColumn;
 
 	private ConfigurableFilterDataProvider<Document, Void, SerializablePredicate<Document>> filterDataProvider;
+	private ListDataProvider<Document> dataProvider;
 
-	public ProductListLayout() throws IOException {
+	public InvoiceReportLayout() throws IOException {
 		super("", KEY_INVOICES);
 
 		documentBll = DocumentBll.getInstance();
@@ -104,7 +112,7 @@ public class ProductListLayout extends AbstractEditableLayout<Document> {
 		Panel filterPanel = buildFilterPanel();
 		Panel totalPanel = builTotalPanel();
 		Panel dataPanel = buildGridPanel();
-		layout.addComponents(buttonPanel, filterPanel, totalPanel, dataPanel);
+		layout.addComponents(filterPanel, totalPanel, dataPanel);
 		this.setSpacing(false);
 		this.setMargin(false);
 		return layout;
@@ -120,6 +128,7 @@ public class ProductListLayout extends AbstractEditableLayout<Document> {
 		return layout;
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
 	protected Panel buildGridPanel() {
 		VerticalLayout layout = ViewHelper.buildVerticalLayout(true, true);
@@ -134,7 +143,7 @@ public class ProductListLayout extends AbstractEditableLayout<Document> {
 		}).setCaption("Tipo");
 		grid.addColumn(Document::getDocumentDate).setCaption("Fecha");
 
-		grid.addColumn(document -> {
+		personColumn = grid.addColumn(document -> {
 			if (document.getPerson() != null) {
 				return document.getPerson().getDocumentNumber() + "-" + document.getPerson().getName()
 						+ document.getPerson().getLastName();
@@ -142,10 +151,15 @@ public class ProductListLayout extends AbstractEditableLayout<Document> {
 				return null;
 			}
 		}).setCaption(Commons.PERSON_TYPE);
-		grid.addColumn(Document::getTotalValue).setCaption("Total");
+
+		totalColumn = grid.addColumn(Document::getTotalValue).setCaption("Total");
+
+		footer = grid.prependFooterRow();
+		footer.getCell(personColumn).setHtml("<b>Total:</b>");
 
 		layout.addComponent(ViewHelper.buildPanel(null, grid));
 		fillGridData();
+		refreshGrid();
 
 		return ViewHelper.buildPanel(null, layout);
 	}
@@ -159,9 +173,7 @@ public class ProductListLayout extends AbstractEditableLayout<Document> {
 
 	protected Panel buildButtonPanelListMode() {
 		HorizontalLayout layout = ViewHelper.buildHorizontalLayout(true, true);
-		// Button btNew = buildButtonForNewAction(ValoTheme.BUTTON_TINY);
 		Button btEdit = buildButtonForEditAction("mystyle-btn");
-		// Button btDelete = buildButtonForDeleteAction(ValoTheme.BUTTON_TINY);
 		layout.addComponents(btEdit);
 		return ViewHelper.buildPanel(null, layout);
 	}
@@ -178,14 +190,22 @@ public class ProductListLayout extends AbstractEditableLayout<Document> {
 
 	@Override
 	protected void fillGridData() {
+		List<DocumentType> types = documentTypeBll.select(transactionType);
+		dataProvider = new ListDataProvider<>(documentBll.select(types));
 
-		// List<DocumentType> documentTypeList =
-		// documentTypeBll.select(transactionType);
-		ListDataProvider<Document> dataProvider = new ListDataProvider<>(documentBll.select(documentType));
-		filterDataProvider = dataProvider.withConfigurableFilter();
-		grid.setDataProvider(filterDataProvider);
-		List<Document> documentList = filterDataProvider.fetch(new Query<>()).collect(Collectors.toList());
-		txtTotal.setValue(String.valueOf(documentList.size()));
+		// filterDataProvider = dataProvider.withConfigurableFilter();
+		grid.setDataProvider(dataProvider);
+		dataProvider
+				.addDataProviderListener(event -> footer.getCell(totalColumn).setHtml(calculateTotal(dataProvider)));
+	}
+
+	private String calculateTotal(ListDataProvider<Document> detailDataProv) {
+		log.info("Calculando total");
+		String total = String.valueOf(detailDataProv.fetch(new Query<>()).mapToDouble(Document::getTotalValue).sum());
+		String quantity = String.valueOf(detailDataProv.size(new Query<>()));
+		txtQuantity.setValue(quantity);
+		txtTotal.setValue(total);
+		return "<b>" + total + "</b>";
 
 	}
 
@@ -236,7 +256,7 @@ public class ProductListLayout extends AbstractEditableLayout<Document> {
 
 		dtfFilterIniDate = new DateTimeField("Fecha inicial");
 		dtfFilterIniDate.setResolution(DateTimeResolution.SECOND);
-		// dtfFilterIniDate.setValue(LocalDateTime.now());
+		dtfFilterIniDate.setValue(DateUtil.getDefaultIniDate());
 		dtfFilterIniDate.setDateFormat(Commons.FORMAT_DATE);
 		dtfFilterIniDate.setStyleName(ValoTheme.DATEFIELD_TINY);
 		dtfFilterIniDate.setRequiredIndicatorVisible(true);
@@ -244,7 +264,7 @@ public class ProductListLayout extends AbstractEditableLayout<Document> {
 
 		dtfFilterEndDate = new DateTimeField("Fecha final");
 		dtfFilterEndDate.setResolution(DateTimeResolution.SECOND);
-		// dtfFilterEndDate.setValue(LocalDateTime.now());
+		dtfFilterEndDate.setValue(DateUtil.getDefaultEndDate());
 		dtfFilterEndDate.setDateFormat(Commons.FORMAT_DATE);
 		dtfFilterEndDate.setStyleName(ValoTheme.DATEFIELD_TINY);
 		dtfFilterEndDate.setRequiredIndicatorVisible(true);
@@ -258,19 +278,27 @@ public class ProductListLayout extends AbstractEditableLayout<Document> {
 	private Panel builTotalPanel() {
 		HorizontalLayout layout = ViewHelper.buildHorizontalLayout(true, true);
 
-		txtTotal = new TextField("Total facturas:");
+		txtQuantity = new TextField("Cantidad:");
+		txtQuantity.setReadOnly(true);
+		txtQuantity.setStyleName(ValoTheme.TEXTFIELD_TINY);
+
+		txtTotal = new TextField("Total:");
 		txtTotal.setReadOnly(true);
 		txtTotal.setStyleName(ValoTheme.TEXTFIELD_TINY);
 
-		layout.addComponents(txtTotal);
+		layout.addComponents(txtQuantity, txtTotal);
 		return ViewHelper.buildPanel(null, layout);
 	}
 
 	private void refreshGrid() {
-		filterDataProvider.setFilter(filterGrid());
-		List<Document> documentList = filterDataProvider.fetch(new Query<>()).collect(Collectors.toList());
-		txtTotal.setValue(String.valueOf(documentList.size()));
-		grid.getDataProvider().refreshAll();
+
+		// filterDataProvider.setFilter(filterGrid());
+//		List<Document> documentList = filterDataProvider.fetch(new Query<>()).collect(Collectors.toList());
+		// txtQuantity.setValue(String.valueOf(documentList.size()));
+
+		// filterDataProvider.refreshAll();
+		dataProvider.setFilter(document -> filterGrid2(document));
+		;
 
 	}
 
@@ -306,6 +334,41 @@ public class ProductListLayout extends AbstractEditableLayout<Document> {
 			ViewHelper.showNotification(e.getMessage(), Notification.Type.ERROR_MESSAGE);
 		}
 		return columnPredicate;
+
+	}
+
+	private boolean filterGrid2(Document document) {
+		SerializablePredicate<Document> columnPredicate = null;
+		boolean result = false;
+		try {
+
+			String codeFilter = txtFilterByCode.getValue().trim();
+
+			String docTypeFilter = cbFilterByType.getSelectedItem().isPresent()
+					? cbFilterByType.getSelectedItem().get().getName()
+					: "";
+			Date iniDateFilter = dtfFilterIniDate.getValue() != null
+					? DateUtil.localDateTimeToDate(dtfFilterIniDate.getValue())
+					: DateUtil.stringToDate("01-01-2000 00:00:00");
+
+			Date endDateFilter = dtfFilterEndDate.getValue() != null
+					? DateUtil.localDateTimeToDate(dtfFilterEndDate.getValue())
+					: new Date();
+
+			if (endDateFilter.before(iniDateFilter)) {
+				throw new Exception("La fecha final debe ser mayor que la inicial");
+			} else {
+
+			}
+			Person personFilter = !txtFilterByPerson.isEmpty() ? personSelected : null;
+
+			result = personFilter != null ? document.getPerson().equals(personFilter)
+					: true && document.getDocumentDate().before(endDateFilter)
+							&& document.getDocumentDate().after(iniDateFilter);
+		} catch (Exception e) {
+			ViewHelper.showNotification(e.getMessage(), Notification.Type.ERROR_MESSAGE);
+		}
+		return result;
 
 	}
 
@@ -360,7 +423,7 @@ public class ProductListLayout extends AbstractEditableLayout<Document> {
 			refreshGrid();
 
 		} else {
-			ViewHelper.showNotification("Seleccione un proveedor", Notification.TYPE_WARNING_MESSAGE);
+			ViewHelper.showNotification("Seleccione un proveedor", Notification.Type.WARNING_MESSAGE);
 		}
 
 	}
