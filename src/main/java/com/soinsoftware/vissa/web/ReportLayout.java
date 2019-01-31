@@ -1,17 +1,21 @@
 package com.soinsoftware.vissa.web;
 
+import java.io.File;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.soinsoftware.report.dynamic.GeneratorException;
+import com.soinsoftware.report.dynamic.PdfGenerator;
 import com.soinsoftware.vissa.bll.DocumentDetailBll;
 import com.soinsoftware.vissa.util.AdvancedFileDownloader;
 import com.soinsoftware.vissa.util.AdvancedFileDownloader.AdvancedDownloaderListener;
 import com.soinsoftware.vissa.util.AdvancedFileDownloader.DownloaderEvent;
 import com.vaadin.navigator.View;
 import com.vaadin.navigator.ViewChangeListener.ViewChangeEvent;
+import com.vaadin.server.VaadinService;
 import com.vaadin.ui.Button;
 import com.vaadin.ui.VerticalLayout;
 
@@ -26,12 +30,12 @@ public class ReportLayout extends VerticalLayout implements View {
 	public static final String PARAM_INVOICE_DATE = "InvoiceDate";
 	public static final String PARAM_REPORT_NAME = "ReportName";
 	private final DocumentDetailBll detailBll;
-	//private final PdfGenerator pdfGenerator;
+	private final PdfGenerator pdfGenerator;
 
 	public ReportLayout() throws IOException {
 		detailBll = DocumentDetailBll.getInstance();
-		//pdfGenerator = new PdfGenerator(
-			//	new File(VaadinService.getCurrent().getBaseDirectory().getAbsolutePath() + REPORT_NAME), "ventas");
+		pdfGenerator = new PdfGenerator(
+				new File(VaadinService.getCurrent().getBaseDirectory().getAbsolutePath() + REPORT_NAME), "ventas");
 	}
 
 	@Override
@@ -49,14 +53,13 @@ public class ReportLayout extends VerticalLayout implements View {
 			 */
 			@Override
 			public void beforeDownload(DownloaderEvent downloadEvent) {
-			/*	try {
+				try {
 					String filePath = pdfGenerator.generate(createParameters(), detailBll.selectAll());
 					downloader.setFilePath(filePath);
 					System.out.println("Starting downlad by button " + filePath.substring(filePath.lastIndexOf("/")));
 				} catch (GeneratorException ex) {
 					ex.printStackTrace();
 				}
-				*/
 			}
 
 			private Map<String, Object> createParameters() {

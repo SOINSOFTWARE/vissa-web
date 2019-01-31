@@ -94,8 +94,17 @@
 			<version>1.0.0</version>
 			<scope>compile</scope>
 		</dependency>
-	
-				
+		<dependency>
+			<groupId>com.soinsoftware.report</groupId>
+			<artifactId>dynamic-report</artifactId>
+			<version>1.0.0</version>
+			<scope>compile</scope>
+		</dependency>
+		<dependency>
+		    <groupId>org.eclipse.jdt.core.compiler</groupId>
+		    <artifactId>ecj</artifactId>
+		    <version>4.6.1</version>
+		</dependency>			
 	</dependencies>
 
 	<build>
