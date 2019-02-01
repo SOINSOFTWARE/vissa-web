@@ -243,7 +243,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		txtStockDate = new TextField("Fecha actualización Stock");
 		txtStockDate.setWidth("50%");
 		txtStockDate.setEnabled(false);
-		txtStock.setValue(
+		txtStockDate.setValue(
 				product != null && product.getStockDate() != null ? DateUtil.dateToString(product.getStockDate()) : "");
 
 		txtStock.addValueChangeListener(e -> {

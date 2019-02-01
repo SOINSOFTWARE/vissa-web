@@ -799,6 +799,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			ConfirmDialog.show(Page.getCurrent().getUI(), "Confirmar", "No ha seleccionado un lote. Desea continuar",
 					"Si", "No", e -> {
 						if (e.isConfirmed()) {
+							selectedLot = null;
 							withoutLot = true;
 							closeWindow(lotSubwindow);
 
@@ -861,7 +862,9 @@ public class InvoiceLayout extends VerticalLayout implements View {
 					detailTmp = detailBuilder.document(documentEntity).build();
 
 					// Se actualiza el detail del objeto DetailLot
-					detailLot = DocumentDetailLot.builder(detailLot).documentDetail(detail).build();
+					if (detailLot != null) {
+						detailLot = DocumentDetailLot.builder(detailLot).documentDetail(detail).build();
+					}
 
 					// Guardar inventario
 					InventoryTransaction.Builder invBuilder = InventoryTransaction.builder();
@@ -1096,7 +1099,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	}
 
 	private void printDocument() {
-		
+
 		if (document != null) {
 			final AdvancedFileDownloader downloader = new AdvancedFileDownloader();
 			downloader.addAdvancedDownloaderListener(new AdvancedDownloaderListener() {
@@ -1124,12 +1127,14 @@ public class InvoiceLayout extends VerticalLayout implements View {
 					Company company = companyBll.selectAll().get(0);
 					if (company != null) {
 						parameters.put(Commons.PARAM_COMPANY, company.getName());
-						parameters.put(Commons.PARAM_NIT, company.getNit()!= null ? company.getNit(): "" );
-						parameters.put(Commons.PARAM_RESOLUTION, company.getInvoiceResolution()!=null ? company.getInvoiceResolution(): "");
-						parameters.put(Commons.PARAM_REGIMEN, company.getRegimeType()!= null ? company.getRegimeType(): "");
-						parameters.put(Commons.PARAM_ADDRESS, company.getAddress()!= null ? company.getAddress(): "");
-						parameters.put(Commons.PARAM_PHONE, company.getPhone()!= null ? company.getPhone(): "");
-						
+						parameters.put(Commons.PARAM_NIT, company.getNit() != null ? company.getNit() : "");
+						parameters.put(Commons.PARAM_RESOLUTION,
+								company.getInvoiceResolution() != null ? company.getInvoiceResolution() : "");
+						parameters.put(Commons.PARAM_REGIMEN,
+								company.getRegimeType() != null ? company.getRegimeType() : "");
+						parameters.put(Commons.PARAM_ADDRESS, company.getAddress() != null ? company.getAddress() : "");
+						parameters.put(Commons.PARAM_PHONE, company.getPhone() != null ? company.getPhone() : "");
+
 						parameters.put(Commons.PARAM_LOGO, "/opt/tomcat/resources/logoKisam.png");
 					}
 					if (document != null) {
@@ -1137,11 +1142,12 @@ public class InvoiceLayout extends VerticalLayout implements View {
 						parameters.put(Commons.PARAM_INVOICE_DATE, DateUtil.dateToString(document.getDocumentDate()));
 						parameters.put(Commons.PARAM_INVOICE_TYPE, document.getDocumentType().getName());
 						parameters.put(Commons.PARAM_SALESMAN,
-								document.getSalesman().getName() +" " + document.getSalesman().getLastName());
-						parameters.put(Commons.PARAM_CUSTOMER,
-								document.getPerson().getDocumentNumber() + " - " + document.getPerson().getName()+" " + document.getSalesman().getLastName());
+								document.getSalesman().getName() + " " + document.getSalesman().getLastName());
+						parameters.put(Commons.PARAM_CUSTOMER, document.getPerson().getDocumentNumber() + " - "
+								+ document.getPerson().getName() + " " + document.getSalesman().getLastName());
 						parameters.put(Commons.PARAM_INVOICE_TYPE, document.getDocumentType().getName());
-						parameters.put(Commons.PARAM_PAYMENT_METHOD, document.getPaymentMethod()!= null ? document.getPaymentMethod(): "");
+						parameters.put(Commons.PARAM_PAYMENT_METHOD,
+								document.getPaymentMethod() != null ? document.getPaymentMethod() : "");
 					}
 
 					return parameters;
