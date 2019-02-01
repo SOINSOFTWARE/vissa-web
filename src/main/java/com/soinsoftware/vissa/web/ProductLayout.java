@@ -67,12 +67,15 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 	private ComboBox<ProductType> cbType;
 	private ComboBox<MeasurementUnit> cbMeasurementUnit;
 
+	private TextField txtBrand;
 	private TextField txtSalePrice;
 	private TextField txtPurchasePrice;
 	private TextField txtSaleTax;
 	private TextField txtPurchaseTax;
+	private TextField txtUtility;
 	private TextField txtStock;
 	private TextField txtStockDate;
+
 	private boolean listMode;
 	private TableSequence tableSequence;
 
@@ -159,7 +162,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		txtName = new TextField("Nombre del producto");
 		txtName.setWidth("50%");
 		txtName.focus();
-		txtName.setValue(product != null ? product.getName() : "");		
+		txtName.setValue(product != null ? product.getName() : "");
 
 		txtDescription = new TextField("Descripción");
 		txtDescription.setWidth("50%");
@@ -193,12 +196,17 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		cbMeasurementUnit.setItemCaptionGenerator(MeasurementUnit::getName);
 		cbMeasurementUnit.setValue(product != null ? product.getMeasurementUnit() : null);
 
+		txtBrand = new TextField("Marca");
+		txtBrand.setWidth("50%");
+		txtBrand.setValue(product != null && product.getBrand() != null ? product.getBrand() : "");
+
 		txtEan = new TextField("EAN");
 		txtEan.setWidth("50%");
 		txtEan.setValue(product != null && product.getEanCode() != null ? product.getEanCode() : "");
 
 		txtSalePrice = new TextField("Precio de venta");
 		txtSalePrice.setWidth("50%");
+		txtSalePrice.setReadOnly(true);
 		txtSalePrice.setValue(
 				product != null && product.getSalePrice() != null ? String.valueOf(product.getSalePrice()) : "");
 
@@ -218,6 +226,15 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		txtPurchaseTax.setValue(
 				product != null && product.getPurchaseTax() != null ? String.valueOf(product.getPurchaseTax()) : "");
 
+		txtUtility = new TextField("Utilidad");
+		txtUtility.setWidth("50%");
+		txtUtility
+				.setValue(product != null && product.getUtility() != null ? String.valueOf(product.getUtility()) : "");
+
+		txtUtility.addValueChangeListener(e -> {
+			updateSalePrice();
+		});
+
 		// Product Stock
 		txtStock = new TextField("Stock");
 		txtStock.setWidth("50%");
@@ -226,7 +243,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		txtStockDate = new TextField("Fecha actualización Stock");
 		txtStockDate.setWidth("50%");
 		txtStockDate.setEnabled(false);
-		
+
 		txtStock.addValueChangeListener(e -> {
 			updateStockDate(txtStock.getValue());
 		});
@@ -241,7 +258,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		form.addStyleName(ValoTheme.FORMLAYOUT_LIGHT);
 
 		form.addComponents(txtCode, txtName, txtDescription, cbCategory, cbType, cbMeasurementUnit, txtEan,
-				txtSalePrice, txtPurchasePrice, txtSaleTax, txtPurchaseTax, txtStock, txtStockDate);
+				txtPurchasePrice, txtPurchaseTax, txtUtility, txtSalePrice, txtSaleTax, txtStock, txtStockDate);
 
 		// ---Panel de lotes
 		LotLayout lotPanel = null;
@@ -265,6 +282,24 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		if (val != null && !val.isEmpty()) {
 			txtStockDate.setValue(DateUtil.dateToString(new Date()));
 		}
+	}
+
+	private void updateSalePrice() {
+		try {
+			log.info("updateSalePrice");
+			String utility = txtUtility.getValue();
+			String purchasePrice = txtPurchasePrice.getValue();
+
+			if ((utility != null ) && (purchasePrice != null )) {
+				Double ut = Double.parseDouble(utility);
+				Double purch = Double.parseDouble(purchasePrice);
+				txtSalePrice.setValue(String.valueOf(purch + ut));
+			}
+
+		} catch (Exception e) {
+			ViewHelper.showNotification("Error en los precios", Notification.Type.ERROR_MESSAGE);
+		}
+
 	}
 
 	protected Panel buildButtonPanelListMode() {
@@ -340,12 +375,12 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 
 	private Panel buildFilterPanel() {
 		HorizontalLayout layout = ViewHelper.buildHorizontalLayout(true, true);
-		
+
 		txFilterByCode = new TextField("Código");
 		txFilterByCode.focus();
 		txFilterByCode.addStyleName(ValoTheme.TEXTFIELD_TINY);
 		txFilterByCode.addValueChangeListener(e -> refreshGrid());
-		
+
 		txFilterByName = new TextField("Nombre");
 		txFilterByName.addStyleName(ValoTheme.TEXTFIELD_TINY);
 		txFilterByName.addValueChangeListener(e -> refreshGrid());
@@ -368,10 +403,10 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 	}
 
 	private void getProductSequence() {
-		BigInteger seq = null;		
-		TableSequence tableSeqObj = tableSequenceBll.select(Product.class.getSimpleName());		
+		BigInteger seq = null;
+		TableSequence tableSeqObj = tableSequenceBll.select(Product.class.getSimpleName());
 		if (tableSeqObj != null) {
-			seq = tableSeqObj.getSequence().add(BigInteger.valueOf(1L));			
+			seq = tableSeqObj.getSequence().add(BigInteger.valueOf(1L));
 			TableSequence.Builder builder = TableSequence.builder(tableSeqObj);
 			tableSequence = builder.sequence(seq).build();
 		} else {

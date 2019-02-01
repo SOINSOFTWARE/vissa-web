@@ -1,5 +1,6 @@
 package com.soinsoftware.vissa.web;
 
+import java.io.File;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -7,6 +8,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -17,6 +19,9 @@ import org.hibernate.HibernateException;
 import org.springframework.transaction.annotation.Transactional;
 import org.vaadin.dialogs.ConfirmDialog;
 
+import com.soinsoftware.report.dynamic.GeneratorException;
+import com.soinsoftware.report.dynamic.PdfGenerator;
+import com.soinsoftware.vissa.bll.CompanyBll;
 import com.soinsoftware.vissa.bll.DocumentBll;
 import com.soinsoftware.vissa.bll.DocumentDetailLotBll;
 import com.soinsoftware.vissa.bll.DocumentStatusBll;
@@ -28,6 +33,7 @@ import com.soinsoftware.vissa.bll.PaymentTypeBll;
 import com.soinsoftware.vissa.bll.ProductBll;
 import com.soinsoftware.vissa.common.CommonsUtil;
 import com.soinsoftware.vissa.exception.ModelValidationException;
+import com.soinsoftware.vissa.model.Company;
 import com.soinsoftware.vissa.model.Document;
 import com.soinsoftware.vissa.model.DocumentDetail;
 import com.soinsoftware.vissa.model.DocumentDetailLot;
@@ -42,6 +48,9 @@ import com.soinsoftware.vissa.model.PersonType;
 import com.soinsoftware.vissa.model.Product;
 import com.soinsoftware.vissa.model.TransactionType;
 import com.soinsoftware.vissa.model.User;
+import com.soinsoftware.vissa.util.AdvancedFileDownloader;
+import com.soinsoftware.vissa.util.AdvancedFileDownloader.AdvancedDownloaderListener;
+import com.soinsoftware.vissa.util.AdvancedFileDownloader.DownloaderEvent;
 import com.soinsoftware.vissa.util.Commons;
 import com.soinsoftware.vissa.util.DateUtil;
 import com.soinsoftware.vissa.util.PermissionUtil;
@@ -54,6 +63,7 @@ import com.vaadin.navigator.ViewChangeListener.ViewChangeEvent;
 import com.vaadin.server.FontAwesome;
 import com.vaadin.server.Page;
 import com.vaadin.server.SerializablePredicate;
+import com.vaadin.server.VaadinService;
 import com.vaadin.shared.ui.datefield.DateTimeResolution;
 import com.vaadin.ui.Alignment;
 import com.vaadin.ui.Button;
@@ -81,7 +91,6 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	protected static final Logger log = Logger.getLogger(InvoiceLayout.class);
 
 	// Bll
-
 	private final ProductBll productBll;
 	private final PaymentMethodBll payMethodBll;
 	private final PaymentTypeBll payTypeBll;
@@ -91,6 +100,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	private final DocumentStatusBll docStatusBll;
 	private final LotBll lotBll;
 	private final DocumentDetailLotBll detailLotBll;
+	private final CompanyBll companyBll;
 
 	// Components
 	private TextField txtDocNumFilter;
@@ -121,6 +131,8 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	private PersonLayout personLayout = null;
 	private DocumentType documentType;
 
+	private PdfGenerator pdfGenerator = null;
+
 	private HashMap<DocumentDetail, DocumentDetailLot> detailLotMap = new HashMap<DocumentDetail, DocumentDetailLot>();
 
 	private TransactionType transactionType;
@@ -137,6 +149,9 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 	private User user;
 
+	private Button printBtn;
+	protected static final String REPORT_NAME = "/WEB-INF/reports/invoicePOS.jrxml";
+
 	public InvoiceLayout() throws IOException {
 		super();
 
@@ -148,6 +163,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		documentTypeBll = DocumentTypeBll.getInstance();
 		docStatusBll = DocumentStatusBll.getInstance();
 		detailLotBll = DocumentDetailLotBll.getInstance();
+		companyBll = CompanyBll.getInstance();
 		lotBll = LotBll.getInstance();
 		document = new Document();
 		itemsList = new ArrayList<>();
@@ -165,13 +181,16 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		// setMargin(true);
 		String title = "";
 		if (transactionType.equals(TransactionType.ENTRADA)) {
-			title = "Pedido";
+			title = "Compra";
 		} else {
 			title = "Venta";
 		}
 		Label tittle = new Label(title);
 		tittle.addStyleName(ValoTheme.LABEL_H2);
 		addComponent(tittle);
+
+		pdfGenerator = new PdfGenerator(
+				new File(VaadinService.getCurrent().getBaseDirectory().getAbsolutePath() + REPORT_NAME), title);
 
 		VerticalLayout layout = ViewHelper.buildVerticalLayout(false, false);
 
@@ -218,6 +237,8 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			editBtn.addStyleName("mystyle-btn");
 			// editBtn.addClickListener(e -> saveButtonAction(null));
 			// layout.addComponents(editBtn);
+
+			layout.addComponents(saveBtn);
 		}
 
 		if (permissionUtil.canDelete(Commons.MENU_NAME)) {
@@ -226,6 +247,12 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			deleteBtn.addClickListener(e -> deleteButtonAction());
 			layout.addComponents(deleteBtn);
 		}
+
+		printBtn = new Button("Imprimir", FontAwesome.PRINT);
+		printBtn.addStyleName("mystyle-btn");
+		// printBtn.addClickListener(e -> printDocument());
+		printDocument();
+		layout.addComponents(printBtn);
 
 		addComponent(layout);
 		return ViewHelper.buildPanel(null, layout);
@@ -474,7 +501,12 @@ public class InvoiceLayout extends VerticalLayout implements View {
 							message = "Cantidad del lote menor a la cantidad solicitada";
 							throw new Exception(message);
 						} else {
-							Integer finalStock = detailLot.getInitialStockLot() - qty;
+							Integer finalStock = 0;
+							if (transactionType.equals(TransactionType.ENTRADA)) {
+								finalStock = detailLot.getInitialStockLot() + qty;
+							} else if (transactionType.equals(TransactionType.SALIDA)) {
+								finalStock = detailLot.getInitialStockLot() - qty;
+							}
 							DocumentDetailLot detailLotTmp = DocumentDetailLot.builder(detailLot).quantity(qty)
 									.finalStockLot(finalStock).build();
 							log.info("currentDetail again:" + currentDetail);
@@ -864,7 +896,12 @@ public class InvoiceLayout extends VerticalLayout implements View {
 						lot = lotList.get(0);
 						log.info("Lote más pronto a vencer:" + lot.getExpirationDate());
 
-						int newLotStock = lot.getQuantity() - quantity;
+						int newLotStock = 0;
+						if (transactionType.equals(TransactionType.ENTRADA)) {
+							newLotStock = lot.getQuantity() + quantity;
+						} else if (transactionType.equals(TransactionType.SALIDA)) {
+							newLotStock = lot.getQuantity() - quantity;
+						}
 						lot.setQuantity(newLotStock);
 					}
 
@@ -911,6 +948,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 				documentTypeBll.save(documentType, false);
 				log.info("documentType saved:" + documentType);
 				documentTypeBll.commit();
+				this.document = document;
 				ViewHelper.showNotification("Factura guardada con exito", Notification.Type.WARNING_MESSAGE);
 			} else {
 				documentBll.rollback();
@@ -1054,6 +1092,66 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		Document documentEntity = Document.builder(document).status(status).build();
 		saveButtonAction(documentEntity);
 		;
+
+	}
+
+	private void printDocument() {
+		
+		if (document != null) {
+			final AdvancedFileDownloader downloader = new AdvancedFileDownloader();
+			downloader.addAdvancedDownloaderListener(new AdvancedDownloaderListener() {
+
+				/**
+				 * This method will be invoked just before the download starts. Thus, a new file
+				 * path can be set.
+				 *
+				 * @param downloadEvent
+				 */
+				@Override
+				public void beforeDownload(DownloaderEvent downloadEvent) {
+					try {
+						String filePath = pdfGenerator.generate(createParameters(), document.getDetails());
+						downloader.setFilePath(filePath);
+						// System.out.println("Starting downlad by button " +
+						// filePath.substring(filePath.lastIndexOf("/")));
+					} catch (GeneratorException ex) {
+						ex.printStackTrace();
+					}
+				}
+
+				private Map<String, Object> createParameters() {
+					final Map<String, Object> parameters = new HashMap<>();
+					Company company = companyBll.selectAll().get(0);
+					if (company != null) {
+						parameters.put(Commons.PARAM_COMPANY, company.getName());
+						parameters.put(Commons.PARAM_NIT, company.getNit()!= null ? company.getNit(): "" );
+						parameters.put(Commons.PARAM_RESOLUTION, company.getInvoiceResolution()!=null ? company.getInvoiceResolution(): "");
+						parameters.put(Commons.PARAM_REGIMEN, company.getRegimeType()!= null ? company.getRegimeType(): "");
+						parameters.put(Commons.PARAM_ADDRESS, company.getAddress()!= null ? company.getAddress(): "");
+						parameters.put(Commons.PARAM_PHONE, company.getPhone()!= null ? company.getPhone(): "");
+						
+						parameters.put(Commons.PARAM_LOGO, "/opt/tomcat/resources/logoKisam.png");
+					}
+					if (document != null) {
+						parameters.put(Commons.PARAM_INVOICE_NUMBER, document.getCode());
+						parameters.put(Commons.PARAM_INVOICE_DATE, DateUtil.dateToString(document.getDocumentDate()));
+						parameters.put(Commons.PARAM_INVOICE_TYPE, document.getDocumentType().getName());
+						parameters.put(Commons.PARAM_SALESMAN,
+								document.getSalesman().getName() +" " + document.getSalesman().getLastName());
+						parameters.put(Commons.PARAM_CUSTOMER,
+								document.getPerson().getDocumentNumber() + " - " + document.getPerson().getName()+" " + document.getSalesman().getLastName());
+						parameters.put(Commons.PARAM_INVOICE_TYPE, document.getDocumentType().getName());
+						parameters.put(Commons.PARAM_PAYMENT_METHOD, document.getPaymentMethod()!= null ? document.getPaymentMethod(): "");
+					}
+
+					return parameters;
+				}
+			});
+			downloader.extend(printBtn);
+		} else {
+			ViewHelper.showNotification("Debe cargar una factura", Notification.Type.WARNING_MESSAGE);
+
+		}
 
 	}
 

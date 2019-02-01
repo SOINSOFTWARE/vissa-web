@@ -158,7 +158,7 @@ public class VissaUI extends UI {
 			if (permissionUtil.canView(KEY_PRODUCTS_REPORT)) {
 				treeData.addItem(KEY_REPORTS, KEY_PRODUCTS_REPORT);
 			}
-			treeData.addItem(KEY_REPORTS, "test");
+		//	treeData.addItem(KEY_REPORTS, "test");
 		}
 
 		if (permissionUtil.canView(KEY_ADMINISTRATION)) {

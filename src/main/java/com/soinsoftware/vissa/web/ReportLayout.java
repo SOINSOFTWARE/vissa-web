@@ -22,13 +22,14 @@ import com.vaadin.ui.VerticalLayout;
 public class ReportLayout extends VerticalLayout implements View {
 
 	private static final long serialVersionUID = -1662071302695761216L;
-	protected static final String REPORT_NAME = "/WEB-INF/reports/invoice.jrxml";
+	protected static final String REPORT_NAME = "/WEB-INF/reports/invoicePOS.jrxml";
 
-	public static final String PARAM_COMPANY = "Company";
-	public static final String PARAM_INVOICE_NUMBER = "InvoiceNumber";
-	public static final String PARAM_CUSTOMER = "Customer";
-	public static final String PARAM_INVOICE_DATE = "InvoiceDate";
-	public static final String PARAM_REPORT_NAME = "ReportName";
+	public static final String PARAM_COMPANY = "P_COMPANY";
+	public static final String PARAM_INVOICE_NUMBER = "P_INVOICE_NUMBER";
+	public static final String PARAM_CUSTOMER = "P_CUSTOMER";
+	public static final String PARAM_INVOICE_DATE = "P_INVOICE_DATE";
+	public static final String PARAM_REPORT_NAME = "P_INVOICE_TYPE";
+	public static final String PARAM_LOGO = "P_LOGO_PATH";
 	private final DocumentDetailBll detailBll;
 	private final PdfGenerator pdfGenerator;
 
@@ -56,7 +57,7 @@ public class ReportLayout extends VerticalLayout implements View {
 				try {
 					String filePath = pdfGenerator.generate(createParameters(), detailBll.selectAll());
 					downloader.setFilePath(filePath);
-					System.out.println("Starting downlad by button " + filePath.substring(filePath.lastIndexOf("/")));
+				//	System.out.println("Starting downlad by button " + filePath.substring(filePath.lastIndexOf("/")));
 				} catch (GeneratorException ex) {
 					ex.printStackTrace();
 				}
@@ -70,6 +71,7 @@ public class ReportLayout extends VerticalLayout implements View {
 						LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss")));
 				parameters.put(PARAM_REPORT_NAME, "reporte");
 				parameters.put(PARAM_CUSTOMER, "Cliente 1");
+				parameters.put(PARAM_LOGO, "C:/Users/carlosandres/Desktop/LINA/VISSA/logoKisam.png");
 
 				return parameters;
 			}
