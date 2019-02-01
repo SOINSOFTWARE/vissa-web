@@ -243,6 +243,8 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		txtStockDate = new TextField("Fecha actualización Stock");
 		txtStockDate.setWidth("50%");
 		txtStockDate.setEnabled(false);
+		txtStock.setValue(
+				product != null && product.getStockDate() != null ? DateUtil.dateToString(product.getStockDate()) : "");
 
 		txtStock.addValueChangeListener(e -> {
 			updateStockDate(txtStock.getValue());
@@ -290,7 +292,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 			String utility = txtUtility.getValue();
 			String purchasePrice = txtPurchasePrice.getValue();
 
-			if ((utility != null ) && (purchasePrice != null )) {
+			if ((utility != null) && (purchasePrice != null)) {
 				Double ut = Double.parseDouble(utility);
 				Double purch = Double.parseDouble(purchasePrice);
 				txtSalePrice.setValue(String.valueOf(purch + ut));
@@ -346,12 +348,16 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		Double purchaseTax = txtPurchaseTax.getValue() != null && !txtPurchaseTax.getValue().isEmpty()
 				? Double.parseDouble(txtPurchaseTax.getValue())
 				: null;
+		Double utility = txtUtility.getValue() != null && !txtUtility.getValue().isEmpty()
+				? Double.parseDouble(txtUtility.getValue())
+				: null;
 		Integer stock = txtStock.getValue() != null && !txtStock.isEmpty() ? Integer.parseInt(txtStock.getValue())
 				: null;
 		entity = productBuilder.code(txtCode.getValue()).name(txtName.getValue()).description(txtDescription.getValue())
 				.category(category).type(type).measurementUnit(measurementUnit).eanCode(txtEan.getValue())
 				.salePrice(salePrice).purchasePrice(purchasePrice).saleTax(saleTax).purchaseTax(purchaseTax)
-				.stock(stock).stockDate(DateUtil.stringToDate(txtStockDate.getValue())).archived(false).build();
+				.stock(stock).stockDate(DateUtil.stringToDate(txtStockDate.getValue())).archived(false)
+				.utility(utility).build();
 		save(productBll, entity, "Producto guardado");
 		tableSequenceBll.save(tableSequence);
 
