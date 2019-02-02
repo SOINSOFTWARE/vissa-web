@@ -85,6 +85,8 @@ public class VissaUI extends UI {
 	protected static final String KEY_ADMINISTRATION = "Administración";
 	protected static final String KEY_USERS = "Usuarios";
 	protected static final String KEY_ROLES = "Roles";
+	protected static final String KEY_CONCILIATION = "Conciliaciones";
+	protected static final String KEY_CASH_CONCILIATION = "Cuadre de caja";
 
 	private PermissionUtil permissionUtil;
 
@@ -96,7 +98,7 @@ public class VissaUI extends UI {
 
 	@Override
 	protected void init(VaadinRequest vaadinRequest) {
-		getPage().setTitle("Vissa ERP");
+		getPage().setTitle("Vissa");
 		addStyleName(ValoTheme.UI_WITH_MENU);
 		Responsive.makeResponsive(this);
 		buildUI(getUser());
@@ -158,7 +160,14 @@ public class VissaUI extends UI {
 			if (permissionUtil.canView(KEY_PRODUCTS_REPORT)) {
 				treeData.addItem(KEY_REPORTS, KEY_PRODUCTS_REPORT);
 			}
-		//	treeData.addItem(KEY_REPORTS, "test");
+			// treeData.addItem(KEY_REPORTS, "test");
+		}
+
+		if (permissionUtil.canView(KEY_CONCILIATION)) {
+			treeData.addItem(null, KEY_CONCILIATION);
+			if (permissionUtil.canView(KEY_CASH_CONCILIATION)) {
+				treeData.addItem(KEY_CONCILIATION, KEY_CASH_CONCILIATION);
+			}
 		}
 
 		if (permissionUtil.canView(KEY_ADMINISTRATION)) {
@@ -170,13 +179,13 @@ public class VissaUI extends UI {
 				treeData.addItem(KEY_ADMINISTRATION, KEY_ROLES);
 			}
 		}
+
 	}
 
 	private CssLayout buildMenu(ValoMenuLayout root) {
 		CssLayout menu = new CssLayout();
 
-		Component menuItemsLayout = buildMenuItemsLayout2(root);
-		// Tree menuItemsLayout = buildMenuItemsLayout2();
+		Component menuItemsLayout = buildMenuItemsLayout(root);
 		menu.addComponent(buildTopLayout());
 		menu.addComponent(buildShowMenuButton(menu));
 		menu.addComponent(buildMenuBar());
@@ -228,7 +237,7 @@ public class VissaUI extends UI {
 		return settings;
 	}
 
-	private Component buildMenuItemsLayout2(ValoMenuLayout root) {
+	private Component buildMenuItemsLayout(ValoMenuLayout root) {
 		VerticalLayout layout = ViewHelper.buildVerticalLayout(false, false);
 
 		tree = new Tree<>();
@@ -241,21 +250,15 @@ public class VissaUI extends UI {
 		tree.setDataProvider(dataProvider);
 		tree.setStyleName("valo-menuitems");
 		tree.setWidth("100%");
-		if (permissionUtil.canView(KEY_PURCHASES)) {
-			tree.expand(KEY_PURCHASES);
-		}
-		if (permissionUtil.canView(KEY_SALES)) {
-			tree.expand(KEY_SALES);
-		}
-		if (permissionUtil.canView(KEY_INVENTORY)) {
-			tree.expand(KEY_INVENTORY);
-		}
-		if (permissionUtil.canView(KEY_REPORTS)) {
-			tree.expand(KEY_REPORTS);
-		}
-		if (permissionUtil.canView(KEY_ADMINISTRATION)) {
-			tree.expand(KEY_ADMINISTRATION);
-		}
+		/*
+		 * if (permissionUtil.canView(KEY_PURCHASES)) { tree.expand(KEY_PURCHASES); } if
+		 * (permissionUtil.canView(KEY_SALES)) { tree.expand(KEY_SALES); } if
+		 * (permissionUtil.canView(KEY_INVENTORY)) { tree.expand(KEY_INVENTORY); } if
+		 * (permissionUtil.canView(KEY_REPORTS)) { tree.expand(KEY_REPORTS); } if
+		 * (permissionUtil.canView(KEY_ADMINISTRATION)) {
+		 * tree.expand(KEY_ADMINISTRATION); } if
+		 * (permissionUtil.canView(KEY_CONCILIATION)) { tree.expand(KEY_CONCILIATION); }
+		 */
 
 		tree.addItemClickListener(e -> selectItem(e));
 		layout.addComponent(tree);
@@ -308,6 +311,7 @@ public class VissaUI extends UI {
 		navigator.addView(KEY_USERS, PersonLayout.class);
 		navigator.addView("test", ReportLayout.class);
 		navigator.addView(KEY_ROLES, RoleLayout.class);
+		navigator.addView(KEY_CASH_CONCILIATION, ConciliationLayout.class);
 		navigator.setErrorView(DefaultView.class);
 		UI.getCurrent().setNavigator(navigator);
 

@@ -27,13 +27,13 @@ import com.vaadin.ui.themes.ValoTheme;
 public class InventoryLayout extends AbstractEditableLayout<Product> {
 
 	private final InventoryTransactionBll inventoryBll;
-	
+
 	InventoryTransaction invTransaction;
-	private Grid<InventoryTransaction> inventoryGrid; 
+	private Grid<InventoryTransaction> inventoryGrid;
 	private TextField txtFilterByProdCode;
 	private ConfigurableFilterDataProvider<InventoryTransaction, Void, SerializablePredicate<InventoryTransaction>> filterInvDataProvider;
-	
-	public InventoryLayout()  throws IOException {
+
+	public InventoryLayout() throws IOException {
 		super("Transacciones de inventario", KEY_INVENTORY);
 
 		inventoryBll = InventoryTransactionBll.getInstance();
@@ -50,7 +50,7 @@ public class InventoryLayout extends AbstractEditableLayout<Product> {
 		Panel buttonPanel = buildButtonPanelForLists();
 		Panel filterPanel = buildFilterPanel();
 		Panel dataPanel = buildGridPanel();
-		layout.addComponents( filterPanel, dataPanel);
+		layout.addComponents(filterPanel, dataPanel);
 		this.setSpacing(false);
 		this.setMargin(false);
 		return layout;
@@ -68,46 +68,46 @@ public class InventoryLayout extends AbstractEditableLayout<Product> {
 	@Override
 	protected Panel buildGridPanel() {
 		inventoryGrid = ViewHelper.buildGrid(SelectionMode.SINGLE);
-		//InventoryTransaction inventoryTransaction = new InventoryTransaction();
-		
+		// InventoryTransaction inventoryTransaction = new InventoryTransaction();
+
 		inventoryGrid.addColumn(invTransaction -> {
-			if(invTransaction.getProduct() != null) {
+			if (invTransaction.getProduct() != null) {
 				return invTransaction.getProduct().getCode();
 			} else {
-				return null;	
+				return null;
 			}
 		}).setCaption("Código producto");
-		
+
 		inventoryGrid.addColumn(invTransaction -> {
-			if(invTransaction.getProduct() != null) {
+			if (invTransaction.getProduct() != null) {
 				return invTransaction.getProduct().getName();
 			} else {
 				return null;
 			}
 		}).setCaption("Nombre producto");
-		
+
 		inventoryGrid.addColumn(InventoryTransaction::getTransactionType).setCaption("Tipo de transacción");
-		
+
 		inventoryGrid.addColumn(invTransaction -> {
-			if(invTransaction.getDocument() != null) {
+			if (invTransaction.getDocument() != null) {
 				return DateUtil.dateToString(invTransaction.getDocument().getDocumentDate());
 			} else {
 				return null;
 			}
 		}).setCaption("Fecha transacción");
-		
+
 		inventoryGrid.addColumn(invTransaction -> {
-			if(invTransaction.getDocument() != null) {
+			if (invTransaction.getDocument() != null) {
 				return invTransaction.getDocument().getCode();
 			} else {
 				return null;
 			}
 		}).setCaption("Número de factura");
-		
+
 		inventoryGrid.addColumn(InventoryTransaction::getInitialStock).setCaption("Cantidad inicial");
 		inventoryGrid.addColumn(InventoryTransaction::getQuantity).setCaption("Cantidad del movimiento");
 		inventoryGrid.addColumn(InventoryTransaction::getFinalStock).setCaption("Cantidad final");
-	
+
 		fillGridData();
 		return ViewHelper.buildPanel(null, inventoryGrid);
 	}
@@ -120,23 +120,16 @@ public class InventoryLayout extends AbstractEditableLayout<Product> {
 
 	@Override
 	protected void fillGridData() {
-		Product  prod = new Product();
-		Product.Builder builder =  Product.builder();
-		prod = builder.code("REF1232").name("prodcto2").build();
-		Document doc = new Document();
-		Document.Builder builder2 =  Document.builder();
-		doc = builder2.code("FV123").documentDate(new Date()).build();
-		//InventoryTransaction invTx = new InventoryTransaction(prod, "E", doc, 50, 10, 40);
 		ListDataProvider<InventoryTransaction> dataProvider = new ListDataProvider<>(inventoryBll.selectAll());
 		filterInvDataProvider = dataProvider.withConfigurableFilter();
 		inventoryGrid.setDataProvider(filterInvDataProvider);
-		
+
 	}
 
 	@Override
 	protected void saveButtonAction(Product entity) {
 		// TODO Auto-generated method stub
-		
+
 	}
 
 	@Override
@@ -148,7 +141,7 @@ public class InventoryLayout extends AbstractEditableLayout<Product> {
 	@Override
 	protected void delete(Product entity) {
 		// TODO Auto-generated method stub
-		
+
 	}
 
 	private Panel buildFilterPanel() {
@@ -159,16 +152,16 @@ public class InventoryLayout extends AbstractEditableLayout<Product> {
 		layout.addComponent(txtFilterByProdCode);
 		return ViewHelper.buildPanel("Filtrar por", layout);
 	}
-	
+
 	private void refreshGrid() {
 		filterInvDataProvider.setFilter(filterGrid());
 		inventoryGrid.getDataProvider().refreshAll();
 	}
-	
+
 	private SerializablePredicate<InventoryTransaction> filterGrid() {
 		SerializablePredicate<InventoryTransaction> columnPredicate = null;
-		columnPredicate = inventoryTransaction -> (inventoryTransaction.getProduct().getCode().toLowerCase().contains(txtFilterByProdCode.getValue().toLowerCase())
-				|| txtFilterByProdCode.getValue().trim().isEmpty());
+		columnPredicate = inventoryTransaction -> (inventoryTransaction.getProduct().getCode().toLowerCase().contains(
+				txtFilterByProdCode.getValue().toLowerCase()) || txtFilterByProdCode.getValue().trim().isEmpty());
 		return columnPredicate;
 	}
 

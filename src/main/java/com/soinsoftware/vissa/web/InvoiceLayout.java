@@ -61,6 +61,7 @@ import com.vaadin.data.provider.ListDataProvider;
 import com.vaadin.data.provider.Query;
 import com.vaadin.navigator.View;
 import com.vaadin.navigator.ViewChangeListener.ViewChangeEvent;
+import com.vaadin.server.FileResource;
 import com.vaadin.server.FontAwesome;
 import com.vaadin.server.Page;
 import com.vaadin.server.SerializablePredicate;
@@ -70,6 +71,7 @@ import com.vaadin.ui.Alignment;
 import com.vaadin.ui.Button;
 import com.vaadin.ui.ComboBox;
 import com.vaadin.ui.DateTimeField;
+import com.vaadin.ui.Embedded;
 import com.vaadin.ui.Grid;
 import com.vaadin.ui.Grid.Column;
 import com.vaadin.ui.HorizontalLayout;
@@ -253,8 +255,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 		printBtn = new Button("Imprimir", FontAwesome.PRINT);
 		printBtn.addStyleName("mystyle-btn");
-		// printBtn.addClickListener(e -> printDocument());
-		printDocument();
+		printBtn.addClickListener(e -> printInvoice());
 		layout.addComponents(printBtn);
 
 		addComponent(layout);
@@ -305,8 +306,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		cbDocumentType.setRequiredIndicatorVisible(true);
 
 		txtDocNumber = new TextField("Número de factura");
-		txtDocNumber.setEnabled(false);
-		// txtDocNumber.setWidth("40%");
+		txtDocNumber.setReadOnly(true);		
 		txtDocNumber.setStyleName(ValoTheme.TEXTFIELD_TINY);
 
 		txtResolution = new TextField("Resolución de factura");
@@ -336,7 +336,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		dtfDocumentDate = new DateTimeField("Fecha");
 		dtfDocumentDate.setResolution(DateTimeResolution.SECOND);
 		dtfDocumentDate.setValue(LocalDateTime.now());
-		dtfDocumentDate.setDateFormat(Commons.FORMAT_DATE);
+		dtfDocumentDate.setDateFormat(Commons.FORMAT_DATE_TIME);
 		dtfDocumentDate.setStyleName(ValoTheme.DATEFIELD_TINY);
 		dtfDocumentDate.setRequiredIndicatorVisible(true);
 		dtfDocumentDate.setWidth("184px");
@@ -355,7 +355,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 		dtfExpirationDate = new DateTimeField("Fecha de Vencimiento");
 		dtfExpirationDate.setReadOnly(false);
-		dtfExpirationDate.setDateFormat(Commons.FORMAT_DATE);
+		dtfExpirationDate.setDateFormat(Commons.FORMAT_DATE_TIME);
 		dtfExpirationDate.setStyleName(ValoTheme.DATEFIELD_TINY);
 		dtfExpirationDate.setWidth("184px");
 
@@ -464,7 +464,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 				.setEditorComponent(txtQuantity, DocumentDetail::setQuantity);
 
 		columnTotal = detailGrid.addColumn(documentDetail -> {
-			if (documentDetail.getSubtotal() != 0) {
+			if (documentDetail.getSubtotal() != null) {
 				return documentDetail.getSubtotal();
 			} else {
 				return "";
@@ -490,19 +490,21 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	}
 
 	private void changeQuantity(String quantity) {
+		String strLog = "[changeQuantity]";
 		dataProvider.refreshAll();
 		String message = "";
 		boolean correct = false;
 		Double qty;
+		DocumentDetail currentDetail = null;
 		try {
 			qty = Double.parseDouble(quantity);
 
 			if (qty > 0) {
+				currentDetail = CommonsUtil.currentDocumentDetail;
+				log.info(strLog + "currentDetail:" + currentDetail);
 				if (!withoutLot) {
-					DocumentDetail currentDetail = CommonsUtil.currentDocumentDetail;
-					log.info("currentDetail:" + currentDetail);
 					DocumentDetailLot detailLot = detailLotMap.get(currentDetail);
-					log.info("detailLot:" + detailLot);
+					log.info(strLog + "detailLot:" + detailLot);
 					if (detailLot != null) {
 						if (qty > detailLot.getInitialStockLot()) {
 							message = "Cantidad del lote menor a la cantidad solicitada";
@@ -516,10 +518,16 @@ public class InvoiceLayout extends VerticalLayout implements View {
 							}
 							DocumentDetailLot detailLotTmp = DocumentDetailLot.builder(detailLot).quantity(qty)
 									.finalStockLot(finalStock).build();
-							log.info("currentDetail again:" + currentDetail);
-							log.info("detailLotTmp:" + detailLotTmp);
+							log.info(strLog + "currentDetail again:" + currentDetail);
+							log.info(strLog + "detailLotTmp:" + detailLotTmp);
 							detailLotMap.put(currentDetail, detailLotTmp);
 						}
+					}
+
+				} else {
+					if (qty > currentDetail.getProduct().getStock()) {
+						ViewHelper.showNotification("Cantidad mayor al stock del producto",
+								Notification.Type.ERROR_MESSAGE);
 					}
 				}
 				correct = true;
@@ -546,12 +554,23 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	}
 
 	private String calculateTotal(ListDataProvider<DocumentDetail> detailDataProv) {
-		log.info("Calculando total");
-		String total = String
-				.valueOf(detailDataProv.fetch(new Query<>()).mapToDouble(DocumentDetail::getSubtotal).sum());
-		txtTotal.setValue(total);
-		return "<b>" + total + "</b>";
+		String strLog = "[calculateTotal]";
+		try {
+			log.info(strLog + "[parameters]" + detailDataProv);
+			String total = String.valueOf(detailDataProv.fetch(new Query<>()).mapToDouble(documentDetail -> {
+				if (documentDetail.getSubtotal() != null) {
+					return documentDetail.getSubtotal();
+				} else {
+					return 0.0;
+				}
+			}).sum());
+			txtTotal.setValue(total);
+			return "<b>" + total + "</b>";
+		} catch (Exception e) {
+			log.error(strLog + "[Exception]" + e.getMessage());
+		}
 
+		return null;
 	}
 
 	/**
@@ -610,7 +629,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			txtPerson.setValue(selectedPerson.getName() + " " + selectedPerson.getLastName());
 			personSubwindow.close();
 		} else {
-			ViewHelper.showNotification("Seleccione un proveedor", Notification.TYPE_WARNING_MESSAGE);
+			ViewHelper.showNotification("Seleccione una persona", Notification.Type.WARNING_MESSAGE);
 		}
 
 	}
@@ -717,8 +736,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 				} else {
 
 					try {
-						// Se agrega el producto al detail de la factura
-						addItemToDetail(docDetail);
+
 						// ---Panel de lotes
 						log.info("selectedLot:" + selectedLot + "withoutLot:" + withoutLot);
 						if (selectedLot == null && !withoutLot) {
@@ -741,9 +759,16 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	}
 
 	private void addItemToDetail(DocumentDetail docDetail) {
-		itemsList.add(docDetail);
-		fillDetailGridData(itemsList);
-		productSubwindow.close();
+		String strLog = "[addItemToDetail]";
+		try {
+			itemsList.add(docDetail);
+			fillDetailGridData(itemsList);
+			productSubwindow.close();
+		} catch (Exception e) {
+			log.error(strLog + e.getLocalizedMessage());
+			e.printStackTrace();
+			ViewHelper.showNotification("Se presentó un error al agregar el producto", Notification.Type.ERROR_MESSAGE);
+		}
 	}
 
 	private void addLotToDetail(DocumentDetail docDetail) {
@@ -799,32 +824,41 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	 * Metodo para escoger lotes para tomar los productos
 	 */
 	private void selectLot(DocumentDetail detail) {
+		String strLog = "[selectLot]";
+		try {
 
-		// Lote seleccionado en la grid
-		selectedLot = lotLayout.getSelected();
+			log.info(strLog + "[parameters]" + detail);
 
-		log.info("selectedLot:" + selectedLot);
+			// Lote seleccionado en la grid
+			selectedLot = lotLayout.getSelected();
 
-		if (selectedLot != null) {
+			log.info(strLog + "selectedLot:" + selectedLot);
 
-			if (selectedLot.getQuantity() <= 0) {
-				ViewHelper.showNotification("El lote no tiene un stock productos: " + selectedLot.getQuantity(),
-						Notification.Type.ERROR_MESSAGE);
+			// Se agrega el producto al detail de la factura
+			addItemToDetail(detail);
+
+			if (selectedLot != null) {
+				if (selectedLot.getQuantity() <= 0) {
+					ViewHelper.showNotification("El lote no tiene un stock productos: " + selectedLot.getQuantity(),
+							Notification.Type.ERROR_MESSAGE);
+				} else {
+					// Se asocia el lote al registro del detail
+					addLotToDetail(detail);
+					lotSubwindow.close();
+				}
 			} else {
-				// Se asocia el lote al registro del detail
-				addLotToDetail(detail);
-				lotSubwindow.close();
-			}
-		} else {
-			ConfirmDialog.show(Page.getCurrent().getUI(), "Confirmar", "No ha seleccionado un lote. Desea continuar",
-					"Si", "No", e -> {
-						if (e.isConfirmed()) {
-							selectedLot = null;
-							withoutLot = true;
-							closeWindow(lotSubwindow);
+				ConfirmDialog.show(Page.getCurrent().getUI(), "Confirmar",
+						"No ha seleccionado un lote. Desea continuar", "Si", "No", e -> {
+							if (e.isConfirmed()) {
+								selectedLot = null;
+								withoutLot = true;
+								closeWindow(lotSubwindow);
 
-						}
-					});
+							}
+						});
+			}
+		} catch (Exception e) {
+			log.error(strLog + "[Exception]" + e.getMessage());
 		}
 
 	}
@@ -835,21 +869,24 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	 * @param detailList
 	 */
 	private void fillDetailGridData(List<DocumentDetail> detailList) {
+		try {
+			dataProvider = new ListDataProvider<>(detailList);
+			filterDataProv = dataProvider.withConfigurableFilter();
+			detailGrid.setDataProvider(filterDataProv);
 
-		dataProvider = new ListDataProvider<>(detailList);
-		filterDataProv = dataProvider.withConfigurableFilter();
-		detailGrid.setDataProvider(filterDataProv);
-
-		dataProvider
-				.addDataProviderListener(event -> footer.getCell(columnTotal).setHtml(calculateTotal(dataProvider)));
-		dataProvider.refreshAll();
+			dataProvider.addDataProviderListener(
+					event -> footer.getCell(columnTotal).setHtml(calculateTotal(dataProvider)));
+			dataProvider.refreshAll();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 	}
 
 	@Transactional(rollbackFor = Exception.class)
 	private void saveButtonAction(Document documentEntity) {
 
 		String message = validateRequiredFields();
-		if (message.isEmpty()) {
+		if (!message.isEmpty()) {
 			ViewHelper.showNotification(message, Notification.Type.ERROR_MESSAGE);
 		} else {
 			ConfirmDialog.show(Page.getCurrent().getUI(), "Confirmar", "Está seguro de guardar la factura", "Si", "No",
@@ -878,14 +915,14 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			if (!message.isEmpty()) {
 				message = message.concat(character);
 			}
-			message = message.concat("La fecha obligatorio");
+			message = message.concat("La fecha obligatoria");
 		}
 
 		if (!cbPaymentType.getSelectedItem().isPresent()) {
 			if (!message.isEmpty()) {
 				message = message.concat(character);
 			}
-			message = message.concat("La forma de pago es");
+			message = message.concat("La forma de pago es obligatoria");
 		}
 
 		return message;
@@ -1017,59 +1054,64 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	}
 
 	private Document saveInvoiceHeader(Document documentEntity) {
-		Document.Builder docBuilder = null;
-		DocumentStatus documentStatus = null;
-		if (documentEntity == null) {
-			docBuilder = Document.builder();
-			documentStatus = docStatusBll.select("Registrada").get(0);
-		} else {
-			documentStatus = documentEntity.getStatus();
-			docBuilder = Document.builder(documentEntity);
-		}
+		String strLog = "[saveInvoiceHeader]";
+		Document documentSaved = null;
 
-		Date docDate = DateUtil.localDateTimeToDate(dtfDocumentDate.getValue());
-		Date expirationDate = dtfExpirationDate.getValue() != null
-				? DateUtil.localDateTimeToDate(dtfExpirationDate.getValue())
-				: null;
-
-		Double total = txtTotal.getValue() != null ? Double.parseDouble(txtTotal.getValue()) : 0;
-
-		Set<DocumentDetail> details = detailGrid.getDataProvider().fetch(new Query<>()).collect(Collectors.toSet());
-
-		documentEntity = docBuilder.code(txtDocNumber.getValue())
-				.reference(txtReference.getValue() != null ? txtReference.getValue() : "")
-				.documentType(cbDocumentType.getValue()).resolution(txtResolution.getValue()).person(selectedPerson)
-				.documentDate(docDate).paymentMethod(cbPaymentMethod.getValue()).paymentType(cbPaymentType.getValue())
-				.paymentTerm(txtPaymentTerm.getValue()).expirationDate(expirationDate).totalValue(total)
-				.status(documentStatus).salesman(user.getPerson()).details(details).build();
-
-		// Guardar documento
 		try {
+			log.info(strLog + "[parameters] documentEntity: " + documentEntity);
+			Document.Builder docBuilder = null;
+			DocumentStatus documentStatus = null;
+			if (documentEntity == null) {
+				docBuilder = Document.builder();
+				documentStatus = docStatusBll.select("Registrada").get(0);
+			} else {
+				documentStatus = documentEntity.getStatus();
+				docBuilder = Document.builder(documentEntity);
+			}
 
+			Date docDate = DateUtil.localDateTimeToDate(dtfDocumentDate.getValue());
+			Date expirationDate = dtfExpirationDate.getValue() != null
+					? DateUtil.localDateTimeToDate(dtfExpirationDate.getValue())
+					: null;
+
+			Double total = txtTotal.getValue() != null ? Double.parseDouble(txtTotal.getValue()) : 0;
+
+			Set<DocumentDetail> details = detailGrid.getDataProvider().fetch(new Query<>()).collect(Collectors.toSet());
+
+			documentEntity = docBuilder.code(txtDocNumber.getValue())
+					.reference(txtReference.getValue() != null ? txtReference.getValue() : "")
+					.documentType(cbDocumentType.getValue()).resolution(txtResolution.getValue()).person(selectedPerson)
+					.documentDate(docDate).paymentMethod(cbPaymentMethod.getValue())
+					.paymentType(cbPaymentType.getValue()).paymentTerm(txtPaymentTerm.getValue())
+					.expirationDate(expirationDate).totalValue(total).status(documentStatus).salesman(user.getPerson())
+					.details(details).build();
+
+			// persistir documento
 			documentBll.save(documentEntity, false);
+			documentSaved = documentBll.select(documentEntity.getCode(), documentEntity.getDocumentType());
 
 			// afterSave("");
 		} catch (ModelValidationException ex) {
-			log.error(ex);
+			log.error(strLog + "[ModelValidationException]" + ex);
 			ViewHelper.showNotification(ex.getMessage(), Notification.Type.ERROR_MESSAGE);
 		} catch (HibernateException ex) {
-			log.error(ex);
+			log.error(strLog + "[HibernateException]" + ex);
 			documentBll.rollback();
 			ViewHelper.showNotification("Los datos no pudieron ser salvados, contacte al administrador (3007200405)",
 					Notification.Type.ERROR_MESSAGE);
 		} catch (PersistenceException ex) {
-			log.error(ex);
+			log.error(strLog + "[PersistenceException]" + ex);
 			documentBll.rollback();
 			ViewHelper.showNotification("Se presentó un error, por favor contacte al adminisrador (3007200405)",
 					Notification.Type.ERROR_MESSAGE);
 		} catch (Exception ex) {
-			log.error(ex);
+			log.error(strLog + "[Exception]" + ex.getLocalizedMessage());
+			ex.printStackTrace();
 			documentBll.rollback();
-			ViewHelper.showNotification("Se presentó un error, por favor contacte al adminisrador (3007200405)",
+			ViewHelper.showNotification(
+					"Se presentó un error al guardar la factura, por favor contacte al adminisrador (3007200405)",
 					Notification.Type.ERROR_MESSAGE);
 		}
-
-		Document documentSaved = documentBll.select(documentEntity.getCode(), documentEntity.getDocumentType());
 
 		return documentSaved;
 
@@ -1093,31 +1135,38 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	}
 
 	private void searchDocument(String documentNumber) {
-		log.info("searchDocument");
-		if (documentNumber != null && !documentNumber.isEmpty()) {
-			document = documentBll.select(documentNumber);
-			if (document != null) {
-				cbDocumentType.setValue(document.getDocumentType());
-				txtDocNumber.setValue(document.getCode());
-				txtReference.setValue(document.getReference() != null ? document.getReference() : "");
-				txtResolution.setValue(document.getResolution() != null ? document.getResolution() : "");
-				dtfDocumentDate.setValue(DateUtil.dateToLocalDateTime(document.getDocumentDate()));
-				cbPaymentType.setValue(document.getPaymentType());
-				cbPaymentMethod.setValue(document.getPaymentMethod());
-				txtPaymentTerm.setValue(document.getPaymentTerm() != null ? document.getPaymentTerm() : "");
-				selectedPerson = document.getPerson();
-				txtPerson.setValue(document.getPerson().getName() + " " + document.getPerson().getLastName());
-				dtfExpirationDate.setValue(DateUtil.dateToLocalDateTime(document.getExpirationDate()));
-				Set<DocumentDetail> detailSet = document.getDetails();
+		String strLog = "[deleteDocument]";
+		try {
+			log.info(strLog + "[parameters] documentNumber: " + documentNumber);
+			if (documentNumber != null && !documentNumber.isEmpty()) {
+				document = documentBll.select(documentNumber);
+				if (document != null) {
+					cbDocumentType.setValue(document.getDocumentType());
+					txtDocNumber.setValue(document.getCode());
+					txtReference.setValue(document.getReference() != null ? document.getReference() : "");
+					txtResolution.setValue(document.getResolution() != null ? document.getResolution() : "");
+					dtfDocumentDate.setValue(DateUtil.dateToLocalDateTime(document.getDocumentDate()));
+					cbPaymentType.setValue(document.getPaymentType());
+					cbPaymentMethod.setValue(document.getPaymentMethod());
+					txtPaymentTerm.setValue(document.getPaymentTerm() != null ? document.getPaymentTerm() : "");
+					selectedPerson = document.getPerson();
+					txtPerson.setValue(document.getPerson().getName() + " " + document.getPerson().getLastName());
+					dtfExpirationDate.setValue(DateUtil.dateToLocalDateTime(document.getExpirationDate()));
+					Set<DocumentDetail> detailSet = document.getDetails();
 
-				itemsList = new ArrayList<>();
-				for (Iterator<DocumentDetail> iterator = detailSet.iterator(); iterator.hasNext();) {
-					itemsList.add(iterator.next());
+					itemsList = new ArrayList<>();
+					for (Iterator<DocumentDetail> iterator = detailSet.iterator(); iterator.hasNext();) {
+						itemsList.add(iterator.next());
+					}
+					fillDetailGridData(itemsList);
 				}
-				fillDetailGridData(itemsList);
 			}
-		}
 
+		} catch (Exception e) {
+			log.error(strLog + "[Exception]" + e.getMessage());
+			ViewHelper.showNotification("Se presentó un error al consultar la factura",
+					Notification.Type.ERROR_MESSAGE);
+		}
 	}
 
 	private void closeWindow(Window w) {
@@ -1148,76 +1197,178 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	}
 
 	private void deleteDocument() {
+		String strLog = "[deleteDocument]";
+		try {
 
-		DocumentStatus status = docStatusBll.select("Cancelada").get(0);
-		Document documentEntity = Document.builder(document).status(status).build();
-		saveButtonAction(documentEntity);
-		;
+			DocumentStatus status = docStatusBll.select("Cancelada").get(0);
+			Document documentEntity = Document.builder(document).status(status).build();
+			saveButtonAction(documentEntity);
+		} catch (Exception e) {
+			log.error(strLog + "[Exception]" + e.getMessage());
+			ViewHelper.showNotification("Se presentó un error al eliminar el registro",
+					Notification.Type.ERROR_MESSAGE);
+		}
 
 	}
 
 	private void printDocument() {
-		log.info("printDocument. document " + document);
-		if (document != null) {
-			final AdvancedFileDownloader downloader = new AdvancedFileDownloader();
-			downloader.addAdvancedDownloaderListener(new AdvancedDownloaderListener() {
+		String strLog = "[printDocument]";
+		try {
+			log.info(strLog + " document: " + document);
+			if (document != null) {
+				final AdvancedFileDownloader downloader = new AdvancedFileDownloader();
+				downloader.addAdvancedDownloaderListener(new AdvancedDownloaderListener() {
 
-				/**
-				 * This method will be invoked just before the download starts. Thus, a new file
-				 * path can be set.
-				 *
-				 * @param downloadEvent
-				 */
-				@Override
-				public void beforeDownload(DownloaderEvent downloadEvent) {
-					try {
-						String filePath = pdfGenerator.generate(createParameters(), document.getDetails());
-						downloader.setFilePath(filePath);
-						// System.out.println("Starting downlad by button " +
-						// filePath.substring(filePath.lastIndexOf("/")));
-					} catch (GeneratorException ex) {
-						ex.printStackTrace();
-					}
-				}
+					/**
+					 * This method will be invoked just before the download starts. Thus, a new file
+					 * path can be set.
+					 *
+					 * @param downloadEvent
+					 */
+					@Override
+					public void beforeDownload(DownloaderEvent downloadEvent) {
+						String strLog = "[printDocument][beforeDownload]";
+						try {
+							log.info(strLog + " document: " + document);
+							String filePath = pdfGenerator.generate(createParameters(), document.getDetails());
+							downloader.setFilePath(filePath);
 
-				private Map<String, Object> createParameters() {
-					final Map<String, Object> parameters = new HashMap<>();
-
-					if (company != null) {
-						parameters.put(Commons.PARAM_COMPANY, company.getName());
-						parameters.put(Commons.PARAM_NIT, company.getNit() != null ? company.getNit() : "");
-						parameters.put(Commons.PARAM_RESOLUTION,
-								company.getInvoiceResolution() != null ? company.getInvoiceResolution() : "");
-						parameters.put(Commons.PARAM_REGIMEN,
-								company.getRegimeType() != null ? company.getRegimeType() : "");
-						parameters.put(Commons.PARAM_ADDRESS, company.getAddress() != null ? company.getAddress() : "");
-						parameters.put(Commons.PARAM_PHONE, company.getPhone() != null ? company.getPhone() : "");
-
-						// parameters.put(Commons.PARAM_LOGO, "/opt/tomcat/resources/logoKisam.png");
-						parameters.put(Commons.PARAM_LOGO, "C:/Users/carlosandres/Desktop/LINA/VISSA/logoKisam.png");
-					}
-					if (document != null) {
-						parameters.put(Commons.PARAM_INVOICE_NUMBER, document.getCode());
-						parameters.put(Commons.PARAM_INVOICE_DATE, DateUtil.dateToString(document.getDocumentDate()));
-						parameters.put(Commons.PARAM_INVOICE_TYPE, document.getDocumentType().getName());
-						parameters.put(Commons.PARAM_SALESMAN,
-								document.getSalesman().getName() + " " + document.getSalesman().getLastName());
-						parameters.put(Commons.PARAM_CUSTOMER, document.getPerson().getDocumentNumber() + " - "
-								+ document.getPerson().getName() + " " + document.getSalesman().getLastName());
-						parameters.put(Commons.PARAM_INVOICE_TYPE, document.getDocumentType().getName());
-						parameters.put(Commons.PARAM_PAYMENT_METHOD,
-								document.getPaymentMethod() != null ? document.getPaymentMethod() : "");
+						} catch (GeneratorException ex) {
+							log.error(strLog + "[GeneratorException]" + ex.getMessage());
+							ex.printStackTrace();
+							ViewHelper.showNotification("Se presentó un error al imprimir la factura",
+									Notification.Type.ERROR_MESSAGE);
+						}
 					}
 
-					return parameters;
-				}
-			});
-			downloader.extend(printBtn);
-		} else {
-			ViewHelper.showNotification("Debe cargar una factura", Notification.Type.WARNING_MESSAGE);
+					private Map<String, Object> createParameters() {
+						String strLog = "[printDocument][createParameters]";
 
+						final Map<String, Object> parameters = new HashMap<>();
+						try {
+							log.info(strLog + " company: " + company);
+
+							if (company != null) {
+								parameters.put(Commons.PARAM_COMPANY, company.getName());
+								parameters.put(Commons.PARAM_NIT, company.getNit() != null ? company.getNit() : "");
+								parameters.put(Commons.PARAM_RESOLUTION,
+										company.getInvoiceResolution() != null ? company.getInvoiceResolution() : "");
+								parameters.put(Commons.PARAM_REGIMEN,
+										company.getRegimeType() != null ? company.getRegimeType() : "");
+								parameters.put(Commons.PARAM_ADDRESS,
+										company.getAddress() != null ? company.getAddress() : "");
+								parameters.put(Commons.PARAM_PHONE,
+										company.getPhone() != null ? company.getPhone() : "");
+
+								// parameters.put(Commons.PARAM_LOGO, "/opt/tomcat/resources/logoKisam.png");
+								parameters.put(Commons.PARAM_LOGO,
+										"C:/Users/carlosandres/Desktop/LINA/VISSA/logoKisam.png");
+							}
+							if (document != null) {
+								parameters.put(Commons.PARAM_INVOICE_NUMBER, document.getCode());
+								parameters.put(Commons.PARAM_INVOICE_DATE,
+										DateUtil.dateToString(document.getDocumentDate()));
+								parameters.put(Commons.PARAM_INVOICE_TYPE, document.getDocumentType().getName());
+								parameters.put(Commons.PARAM_SALESMAN,
+										document.getSalesman().getName() + " " + document.getSalesman().getLastName());
+								parameters.put(Commons.PARAM_CUSTOMER, document.getPerson().getDocumentNumber() + " - "
+										+ document.getPerson().getName() + " " + document.getSalesman().getLastName());
+								parameters.put(Commons.PARAM_INVOICE_TYPE, document.getDocumentType().getName());
+								parameters.put(Commons.PARAM_PAYMENT_METHOD,
+										document.getPaymentMethod() != null ? document.getPaymentMethod() : "");
+							}
+
+						} catch (Exception e) {
+
+						}
+						return parameters;
+					}
+				});
+				downloader.extend(printBtn);
+			} else {
+				ViewHelper.showNotification("Debe cargar una factura", Notification.Type.WARNING_MESSAGE);
+
+			}
+
+		} catch (Exception e) {
+			log.error(strLog + "[Exception]" + e.getMessage());
+			ViewHelper.showNotification("Se presentó un error al imprimir la factura", Notification.Type.ERROR_MESSAGE);
 		}
 
+	}
+
+	private void printInvoice() {
+		String strLog = "[printDocument]";
+		try {
+			log.info(strLog + " document: " + document);
+			if (document != null) {
+				log.info(strLog + " document: " + document);
+				String filePath = pdfGenerator.generate(createReportParameters(), document.getDetails());
+
+				Embedded c = new Embedded();
+				c.setSource(new FileResource(new File(filePath)));
+				c.setType(Embedded.TYPE_BROWSER);
+				c.setWidth("960px");
+				c.setHeight("750px");
+				HorizontalLayout hr = new HorizontalLayout();
+				hr.setWidth("980px");
+				hr.setHeight("770px");
+				hr.addComponent(c);
+
+				Window pdfWindow = ViewHelper.buildSubwindow("75%");
+				pdfWindow.setContent(hr);
+				getUI().addWindow(pdfWindow);
+
+			} else {
+				ViewHelper.showNotification("Debe cargar una factura", Notification.Type.WARNING_MESSAGE);
+			}
+
+		} catch (GeneratorException ex) {
+			log.error(strLog + "[GeneratorException]" + ex.getMessage());
+			ex.printStackTrace();
+			ViewHelper.showNotification("Se presentó un error al imprimir la factura", Notification.Type.ERROR_MESSAGE);
+		} catch (Exception e) {
+			log.error(strLog + "[Exception]" + e.getMessage());
+			ViewHelper.showNotification("Se presentó un error al imprimir la factura", Notification.Type.ERROR_MESSAGE);
+		}
+	}
+
+	private Map<String, Object> createReportParameters() {
+		String strLog = "[createParameters]";
+
+		final Map<String, Object> parameters = new HashMap<>();
+		try {
+			log.info(strLog + " company: " + company);
+
+			if (company != null) {
+				parameters.put(Commons.PARAM_COMPANY, company.getName());
+				parameters.put(Commons.PARAM_NIT, company.getNit() != null ? company.getNit() : "");
+				parameters.put(Commons.PARAM_RESOLUTION,
+						company.getInvoiceResolution() != null ? company.getInvoiceResolution() : "");
+				parameters.put(Commons.PARAM_REGIMEN, company.getRegimeType() != null ? company.getRegimeType() : "");
+				parameters.put(Commons.PARAM_ADDRESS, company.getAddress() != null ? company.getAddress() : "");
+				parameters.put(Commons.PARAM_PHONE, company.getPhone() != null ? company.getPhone() : "");
+
+				 parameters.put(Commons.PARAM_LOGO, "/opt/tomcat/resources/logoKisam.png");
+				//parameters.put(Commons.PARAM_LOGO, "C:/Users/carlosandres/Desktop/LINA/VISSA/logoKisam.png");
+			}
+			if (document != null) {
+				parameters.put(Commons.PARAM_INVOICE_NUMBER, document.getCode());
+				parameters.put(Commons.PARAM_INVOICE_DATE, DateUtil.dateToString(document.getDocumentDate()));
+				parameters.put(Commons.PARAM_INVOICE_TYPE, document.getDocumentType().getName());
+				parameters.put(Commons.PARAM_SALESMAN,
+						document.getSalesman().getName() + " " + document.getSalesman().getLastName());
+				parameters.put(Commons.PARAM_CUSTOMER, document.getPerson().getDocumentNumber() + " - "
+						+ document.getPerson().getName() + " " + document.getSalesman().getLastName());
+				parameters.put(Commons.PARAM_INVOICE_TYPE, document.getDocumentType().getName());
+				parameters.put(Commons.PARAM_PAYMENT_METHOD,
+						document.getPaymentMethod() != null ? document.getPaymentMethod() : "");
+			}
+
+		} catch (Exception e) {
+
+		}
+		return parameters;
 	}
 
 }

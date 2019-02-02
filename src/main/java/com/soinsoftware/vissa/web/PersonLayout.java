@@ -126,6 +126,11 @@ public class PersonLayout extends AbstractEditableLayout<Person> {
 			personType = PersonType.CUSTOMER;
 			this.pageTitle = "Clientes";
 		}
+		
+		if (Commons.PERSON_TYPE.equals(PersonType.USER.getName())) {
+			personType = PersonType.USER;
+			this.pageTitle = "Usuarios";
+		}
 
 		listMode = list;
 		supplierBll = SupplierBll.getInstance();

@@ -218,7 +218,7 @@ public class ProductReportLayout extends AbstractEditableLayout<DocumentDetail> 
 		dtfFilterIniDate = new DateTimeField("Fecha inicial");
 		dtfFilterIniDate.setResolution(DateTimeResolution.SECOND);
 		dtfFilterIniDate.setValue(DateUtil.getDefaultIniDate());
-		dtfFilterIniDate.setDateFormat(Commons.FORMAT_DATE);
+		dtfFilterIniDate.setDateFormat(Commons.FORMAT_DATE_TIME);
 		dtfFilterIniDate.setStyleName(ValoTheme.DATEFIELD_TINY);
 		dtfFilterIniDate.setRequiredIndicatorVisible(true);
 		dtfFilterIniDate.addValueChangeListener(e -> refreshGrid());
@@ -226,7 +226,7 @@ public class ProductReportLayout extends AbstractEditableLayout<DocumentDetail> 
 		dtfFilterEndDate = new DateTimeField("Fecha final");
 		dtfFilterEndDate.setResolution(DateTimeResolution.SECOND); //
 		dtfFilterEndDate.setValue(DateUtil.getDefaultEndDate());
-		dtfFilterEndDate.setDateFormat(Commons.FORMAT_DATE);
+		dtfFilterEndDate.setDateFormat(Commons.FORMAT_DATE_TIME);
 		dtfFilterEndDate.setStyleName(ValoTheme.DATEFIELD_TINY);
 		dtfFilterEndDate.setRequiredIndicatorVisible(true);
 		dtfFilterEndDate.addValueChangeListener(e -> refreshGrid());
