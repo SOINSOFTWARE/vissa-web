@@ -18,6 +18,7 @@ import org.apache.log4j.Logger;
 import org.hibernate.HibernateException;
 import org.springframework.transaction.annotation.Transactional;
 import org.vaadin.dialogs.ConfirmDialog;
+import org.vaadin.ui.NumberField;
 
 import com.soinsoftware.report.dynamic.GeneratorException;
 import com.soinsoftware.report.dynamic.PdfGenerator;
@@ -148,6 +149,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	private PermissionUtil permissionUtil;
 
 	private User user;
+	private Company company;
 
 	private Button printBtn;
 	protected static final String REPORT_NAME = "/WEB-INF/reports/invoicePOS.jrxml";
@@ -168,6 +170,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		document = new Document();
 		itemsList = new ArrayList<>();
 		transactionType = TransactionType.valueOf(Commons.TRANSACTION_TYPE);
+		company = companyBll.selectAll().get(0);
 
 	}
 
@@ -299,6 +302,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		cbDocumentType.setEmptySelectionAllowed(false);
 		cbDocumentType.setEmptySelectionCaption("Seleccione");
 		cbDocumentType.setStyleName(ValoTheme.COMBOBOX_TINY);
+		cbDocumentType.setRequiredIndicatorVisible(true);
 
 		txtDocNumber = new TextField("Número de factura");
 		txtDocNumber.setEnabled(false);
@@ -307,6 +311,8 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 		txtResolution = new TextField("Resolución de factura");
 		txtResolution.setStyleName(ValoTheme.TEXTFIELD_TINY);
+		txtResolution.setReadOnly(true);
+		txtResolution.setValue(company.getInvoiceResolution());
 
 		txtReference = new TextField("Referencia");
 		txtReference.setStyleName(ValoTheme.TEXTFIELD_TINY);
@@ -332,22 +338,23 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		dtfDocumentDate.setValue(LocalDateTime.now());
 		dtfDocumentDate.setDateFormat(Commons.FORMAT_DATE);
 		dtfDocumentDate.setStyleName(ValoTheme.DATEFIELD_TINY);
+		dtfDocumentDate.setRequiredIndicatorVisible(true);
 		dtfDocumentDate.setWidth("184px");
 
 		cbPaymentType = new ComboBox<PaymentType>("Forma de pago");
-
 		cbPaymentType.setEmptySelectionAllowed(false);
 		cbPaymentType.setEmptySelectionCaption("Seleccione");
 		ListDataProvider<PaymentType> payTypeDataProv = new ListDataProvider<>(payTypeBll.selectAll());
 		cbPaymentType.setDataProvider(payTypeDataProv);
 		cbPaymentType.setItemCaptionGenerator(PaymentType::getName);
 		cbPaymentType.setStyleName(ValoTheme.COMBOBOX_TINY);
+		cbPaymentType.setRequiredIndicatorVisible(true);
 
 		txtPaymentTerm = new TextField("Plazo");
 		txtPaymentTerm.setStyleName(ValoTheme.TEXTFIELD_TINY);
 
 		dtfExpirationDate = new DateTimeField("Fecha de Vencimiento");
-		dtfExpirationDate.setEnabled(false);
+		dtfExpirationDate.setReadOnly(false);
 		dtfExpirationDate.setDateFormat(Commons.FORMAT_DATE);
 		dtfExpirationDate.setStyleName(ValoTheme.DATEFIELD_TINY);
 		dtfExpirationDate.setWidth("184px");
@@ -452,7 +459,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		}).setCaption("Precio");
 
 		// Columna cantidad editable
-		TextField txtQuantity = new TextField();
+		NumberField txtQuantity = new NumberField();
 		columnQuantity = detailGrid.addColumn(DocumentDetail::getQuantity).setCaption("Cantidad")
 				.setEditorComponent(txtQuantity, DocumentDetail::setQuantity);
 
@@ -709,22 +716,16 @@ public class InvoiceLayout extends VerticalLayout implements View {
 							Notification.Type.WARNING_MESSAGE);
 				} else {
 
-					// ---Panel de lotes
 					try {
-						log.info("withoutLot:" + withoutLot);
+						// Se agrega el producto al detail de la factura
+						addItemToDetail(docDetail);
+						// ---Panel de lotes
+						log.info("selectedLot:" + selectedLot + "withoutLot:" + withoutLot);
 						if (selectedLot == null && !withoutLot) {
-							buildLotWindow(selectedProduct);
-						} else if (selectedLot != null || withoutLot) {
-							itemsList.add(docDetail);
-							fillDetailGridData(itemsList);
-							// Si hay lote, se asocia al registro de detail
-							if (selectedLot != null) {
-								DocumentDetailLot detailLot = DocumentDetailLot.builder().documentDetail(docDetail)
-										.lot(selectedLot).initialStockLot(selectedLot.getQuantity()).build();
-								detailLotMap.put(docDetail, detailLot);
-							}
-							productSubwindow.close();
-						}
+							buildLotWindow(docDetail);
+						} /*
+							 * else if (selectedLot != null || withoutLot) { addItemToDetail(docDetail); }
+							 */
 					} catch (Exception e) {
 						log.error("Error al cargar lotes del producto. Exception: " + e);
 					}
@@ -739,12 +740,28 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 	}
 
+	private void addItemToDetail(DocumentDetail docDetail) {
+		itemsList.add(docDetail);
+		fillDetailGridData(itemsList);
+		productSubwindow.close();
+	}
+
+	private void addLotToDetail(DocumentDetail docDetail) {
+		// Si hay lote, se asocia al registro de detail
+		if (selectedLot != null) {
+			DocumentDetailLot detailLot = DocumentDetailLot.builder().documentDetail(docDetail).lot(selectedLot)
+					.initialStockLot(selectedLot.getQuantity()).build();
+			detailLotMap.put(docDetail, detailLot);
+		}
+	}
+
 	/**
 	 * Metodo que construye la venta para buscar productos
 	 */
-	private void buildLotWindow(Product product) {
+	private void buildLotWindow(DocumentDetail detail) {
 		withoutLot = false;
 
+		Product product = detail.getProduct();
 		lotSubwindow = ViewHelper.buildSubwindow("70%");
 		lotSubwindow.setCaption("Lotes del producto " + product.getName());
 
@@ -753,11 +770,11 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		// Panel de botones
 		Button backBtn = new Button("Cancelar", FontAwesome.BACKWARD);
 		backBtn.addStyleName("mystyle-btn");
-		backBtn.addClickListener(e -> selectLot());
+		backBtn.addClickListener(e -> selectLot(detail));
 
 		Button selectBtn = new Button("Seleccionar", FontAwesome.CHECK);
 		selectBtn.addStyleName("mystyle-btn");
-		selectBtn.addClickListener(e -> selectLot());
+		selectBtn.addClickListener(e -> selectLot(detail));
 
 		HorizontalLayout buttonLayout = ViewHelper.buildHorizontalLayout(true, true);
 		buttonLayout.addComponents(backBtn, selectBtn);
@@ -781,8 +798,9 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	/**
 	 * Metodo para escoger lotes para tomar los productos
 	 */
-	private void selectLot() {
+	private void selectLot(DocumentDetail detail) {
 
+		// Lote seleccionado en la grid
 		selectedLot = lotLayout.getSelected();
 
 		log.info("selectedLot:" + selectedLot);
@@ -793,6 +811,8 @@ public class InvoiceLayout extends VerticalLayout implements View {
 				ViewHelper.showNotification("El lote no tiene un stock productos: " + selectedLot.getQuantity(),
 						Notification.Type.ERROR_MESSAGE);
 			} else {
+				// Se asocia el lote al registro del detail
+				addLotToDetail(detail);
 				lotSubwindow.close();
 			}
 		} else {
@@ -827,12 +847,49 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 	@Transactional(rollbackFor = Exception.class)
 	private void saveButtonAction(Document documentEntity) {
-		ConfirmDialog.show(Page.getCurrent().getUI(), "Confirmar", "Está seguro de guardar la factura", "Si", "No",
-				e -> {
-					if (e.isConfirmed()) {
-						saveInvoice(documentEntity);
-					}
-				});
+
+		String message = validateRequiredFields();
+		if (message.isEmpty()) {
+			ViewHelper.showNotification(message, Notification.Type.ERROR_MESSAGE);
+		} else {
+			ConfirmDialog.show(Page.getCurrent().getUI(), "Confirmar", "Está seguro de guardar la factura", "Si", "No",
+					e -> {
+						if (e.isConfirmed()) {
+							saveInvoice(documentEntity);
+						}
+					});
+		}
+	}
+
+	private String validateRequiredFields() {
+		String message = "";
+		String character = "|";
+
+		if (!cbDocumentType.getSelectedItem().isPresent()) {
+			message = "El tipo de factura es obligatorio";
+		}
+		if (txtPerson.getValue() == null || txtPerson.getValue().isEmpty()) {
+			if (!message.isEmpty()) {
+				message = message.concat(character);
+			}
+			message = message.concat("El tercero obligatorio");
+		}
+		if (dtfDocumentDate.getValue() == null) {
+			if (!message.isEmpty()) {
+				message = message.concat(character);
+			}
+			message = message.concat("La fecha obligatorio");
+		}
+
+		if (!cbPaymentType.getSelectedItem().isPresent()) {
+			if (!message.isEmpty()) {
+				message = message.concat(character);
+			}
+			message = message.concat("La forma de pago es");
+		}
+
+		return message;
+
 	}
 
 	private void saveInvoice(Document document) {
@@ -981,8 +1038,8 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 		documentEntity = docBuilder.code(txtDocNumber.getValue())
 				.reference(txtReference.getValue() != null ? txtReference.getValue() : "")
-				.documentType(cbDocumentType.getValue()).person(selectedPerson).documentDate(docDate)
-				.paymentMethod(cbPaymentMethod.getValue()).paymentType(cbPaymentType.getValue())
+				.documentType(cbDocumentType.getValue()).resolution(txtResolution.getValue()).person(selectedPerson)
+				.documentDate(docDate).paymentMethod(cbPaymentMethod.getValue()).paymentType(cbPaymentType.getValue())
 				.paymentTerm(txtPaymentTerm.getValue()).expirationDate(expirationDate).totalValue(total)
 				.status(documentStatus).salesman(user.getPerson()).details(details).build();
 
@@ -1028,7 +1085,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		// cbDocumentType.clear();
 		cbPaymentMethod.clear();
 		cbPaymentType.clear();
-		cbDocumentStatus.clear();
+		cbDocumentStatus.setSelectedItem(docStatusBll.select("Nueva").get(0));
 		itemsList.clear();
 		detailGrid.getDataProvider().refreshAll();
 		txtDocNumFilter.clear();
@@ -1043,6 +1100,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 				cbDocumentType.setValue(document.getDocumentType());
 				txtDocNumber.setValue(document.getCode());
 				txtReference.setValue(document.getReference() != null ? document.getReference() : "");
+				txtResolution.setValue(document.getResolution() != null ? document.getResolution() : "");
 				dtfDocumentDate.setValue(DateUtil.dateToLocalDateTime(document.getDocumentDate()));
 				cbPaymentType.setValue(document.getPaymentType());
 				cbPaymentMethod.setValue(document.getPaymentMethod());
@@ -1099,7 +1157,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	}
 
 	private void printDocument() {
-
+		log.info("printDocument. document " + document);
 		if (document != null) {
 			final AdvancedFileDownloader downloader = new AdvancedFileDownloader();
 			downloader.addAdvancedDownloaderListener(new AdvancedDownloaderListener() {
@@ -1124,7 +1182,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 				private Map<String, Object> createParameters() {
 					final Map<String, Object> parameters = new HashMap<>();
-					Company company = companyBll.selectAll().get(0);
+
 					if (company != null) {
 						parameters.put(Commons.PARAM_COMPANY, company.getName());
 						parameters.put(Commons.PARAM_NIT, company.getNit() != null ? company.getNit() : "");
@@ -1135,7 +1193,8 @@ public class InvoiceLayout extends VerticalLayout implements View {
 						parameters.put(Commons.PARAM_ADDRESS, company.getAddress() != null ? company.getAddress() : "");
 						parameters.put(Commons.PARAM_PHONE, company.getPhone() != null ? company.getPhone() : "");
 
-						parameters.put(Commons.PARAM_LOGO, "/opt/tomcat/resources/logoKisam.png");
+						// parameters.put(Commons.PARAM_LOGO, "/opt/tomcat/resources/logoKisam.png");
+						parameters.put(Commons.PARAM_LOGO, "C:/Users/carlosandres/Desktop/LINA/VISSA/logoKisam.png");
 					}
 					if (document != null) {
 						parameters.put(Commons.PARAM_INVOICE_NUMBER, document.getCode());

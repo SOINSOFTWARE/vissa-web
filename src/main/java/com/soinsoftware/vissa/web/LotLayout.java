@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.util.Set;
 
 import org.apache.log4j.Logger;
+import org.vaadin.ui.NumberField;
 
 import com.soinsoftware.vissa.bll.LotBll;
 import com.soinsoftware.vissa.bll.WarehouseBll;
@@ -26,6 +27,7 @@ import com.vaadin.ui.FormLayout;
 import com.vaadin.ui.Grid;
 import com.vaadin.ui.Grid.SelectionMode;
 import com.vaadin.ui.HorizontalLayout;
+import com.vaadin.ui.Notification;
 import com.vaadin.ui.Panel;
 import com.vaadin.ui.TextField;
 import com.vaadin.ui.VerticalLayout;
@@ -49,7 +51,7 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 	private TextField txtName;
 	private DateTimeField dtfFabricationDate;
 	private DateTimeField dtfExpirationDate;
-	private TextField txtQuantity;
+	private NumberField txtQuantity;
 	private ComboBox<Warehouse> cbWarehouse;
 
 	private Product product;
@@ -152,10 +154,12 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 		txtCode.setStyleName(ValoTheme.TEXTAREA_TINY);
 		txtCode.focus();
 		txtCode.setValue(entity != null ? entity.getCode() : "");
+		txtCode.setRequiredIndicatorVisible(true);
 
 		txtName = new TextField("Nombre");
 		txtName.setStyleName(ValoTheme.TEXTAREA_TINY);
 		txtName.setValue(entity != null ? entity.getName() : "");
+		txtName.setRequiredIndicatorVisible(true);
 
 		dtfFabricationDate = new DateTimeField("Fecha de fabricación");
 		dtfFabricationDate.setStyleName(ValoTheme.DATEFIELD_TINY);
@@ -165,13 +169,15 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 		dtfExpirationDate.setStyleName(ValoTheme.DATEFIELD_TINY);
 		dtfExpirationDate.setValue(entity != null ? DateUtil.dateToLocalDateTime(entity.getExpirationDate()) : null);
 
-		txtQuantity = new TextField("Cantidad");
+		txtQuantity = new NumberField("Cantidad");
 		txtQuantity.setStyleName(ValoTheme.TEXTAREA_TINY);
+		txtQuantity.setRequiredIndicatorVisible(true);
 		txtQuantity.setValue(entity != null ? String.valueOf(entity.getQuantity()) : "");
 
 		cbWarehouse = new ComboBox<>("Bodega");
 		cbWarehouse.setEmptySelectionCaption("Seleccione");
 		cbWarehouse.setStyleName(ValoTheme.COMBOBOX_TINY);
+		cbWarehouse.setRequiredIndicatorVisible(true);
 		ListDataProvider<Warehouse> countryDataProv = new ListDataProvider<>(warehouseBll.selectAll());
 		cbWarehouse.setDataProvider(countryDataProv);
 		cbWarehouse.setItemCaptionGenerator(Warehouse::getName);
@@ -213,19 +219,55 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 
 	@Override
 	protected void saveButtonAction(Lot entity) {
-		Lot.Builder lotBuilder = null;
-		if (entity == null) {
-			lotBuilder = Lot.builder();
-		} else {
-			lotBuilder = Lot.builder(entity);
+		try {
+			String message = validateRequiredFields();
+			if (!message.isEmpty()) {
+				throw new Exception(message);
+			}
+
+			Lot.Builder lotBuilder = null;
+			if (entity == null) {
+				lotBuilder = Lot.builder();
+			} else {
+				lotBuilder = Lot.builder(entity);
+			}
+
+			Warehouse warehouse = cbWarehouse.getSelectedItem().isPresent() ? cbWarehouse.getSelectedItem().get()
+					: null;
+			entity = lotBuilder.code(txtCode.getValue()).name(txtName.getValue())
+					.lotDate(DateUtil.localDateTimeToDate(dtfFabricationDate.getValue()))
+					.expirationDate(DateUtil.localDateTimeToDate(dtfExpirationDate.getValue())).archived(false)
+					.quantity(Integer.parseInt(txtQuantity.getValue())).product(product).warehouse(warehouse).build();
+			save(lotBll, entity, "Lote guardado");
+		} catch (Exception e) {
+			ViewHelper.showNotification("Error al guardar el lote", Notification.Type.ERROR_MESSAGE);
+
 		}
 
-		Warehouse warehouse = cbWarehouse.getSelectedItem().isPresent() ? cbWarehouse.getSelectedItem().get() : null;
-		entity = lotBuilder.code(txtCode.getValue()).name(txtName.getValue())
-				.lotDate(DateUtil.localDateTimeToDate(dtfFabricationDate.getValue()))
-				.expirationDate(DateUtil.localDateTimeToDate(dtfExpirationDate.getValue())).archived(false)
-				.quantity(Integer.parseInt(txtQuantity.getValue())).product(product).warehouse(warehouse).build();
-		save(lotBll, entity, "Lote guardado");
+	}
+
+	private String validateRequiredFields() {
+
+		String message = "";
+		String character = "|";
+
+		if (!cbWarehouse.getSelectedItem().isPresent()) {
+			message = "La bodega es obligatoria";
+		}
+		if (txtQuantity.getValue() == null || txtQuantity.getValue().isEmpty()) {
+			if (!message.isEmpty()) {
+				message = message.concat(character);
+			}
+			message = message.concat("La cantidad es obligatoria");
+		}
+		if (txtName.getValue() == null || txtName.getValue().isEmpty()) {
+			if (!message.isEmpty()) {
+				message = message.concat(character);
+			}
+			message = message.concat("El nombre es obligatorio");
+		}
+
+		return message;
 
 	}
 

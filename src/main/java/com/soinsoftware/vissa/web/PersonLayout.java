@@ -741,7 +741,7 @@ public class PersonLayout extends AbstractEditableLayout<Person> {
 	private String validateRequiredFields() {
 		String message = "";
 		String character = "|";
-		log.info("validateRequiredFields" + cbDocumentType.getSelectedItem().isPresent());
+
 		if (!cbDocumentType.getSelectedItem().isPresent()) {
 			message = "El tipo de documento es obligatorio";
 		}
