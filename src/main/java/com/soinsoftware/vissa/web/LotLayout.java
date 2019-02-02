@@ -237,7 +237,7 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 			entity = lotBuilder.code(txtCode.getValue()).name(txtName.getValue())
 					.lotDate(DateUtil.localDateTimeToDate(dtfFabricationDate.getValue()))
 					.expirationDate(DateUtil.localDateTimeToDate(dtfExpirationDate.getValue())).archived(false)
-					.quantity(Integer.parseInt(txtQuantity.getValue())).product(product).warehouse(warehouse).build();
+					.quantity(Double.parseDouble(txtQuantity.getValue())).product(product).warehouse(warehouse).build();
 			save(lotBll, entity, "Lote guardado");
 		} catch (Exception e) {
 			ViewHelper.showNotification("Error al guardar el lote", Notification.Type.ERROR_MESSAGE);

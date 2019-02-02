@@ -493,9 +493,9 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		dataProvider.refreshAll();
 		String message = "";
 		boolean correct = false;
-		Integer qty;
+		Double qty;
 		try {
-			qty = Integer.parseInt(quantity);
+			qty = Double.parseDouble(quantity);
 
 			if (qty > 0) {
 				if (!withoutLot) {
@@ -508,7 +508,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 							message = "Cantidad del lote menor a la cantidad solicitada";
 							throw new Exception(message);
 						} else {
-							Integer finalStock = 0;
+							Double finalStock = 0.0;
 							if (transactionType.equals(TransactionType.ENTRADA)) {
 								finalStock = detailLot.getInitialStockLot() + qty;
 							} else if (transactionType.equals(TransactionType.SALIDA)) {
@@ -927,11 +927,11 @@ public class InvoiceLayout extends VerticalLayout implements View {
 					InventoryTransaction.Builder invBuilder = InventoryTransaction.builder();
 
 					// Se actualiza stock en el movimiento de inventario
-					Integer stock = detail.getProduct().getStock();
-					int initialStock = stock != null ? stock : 0;
+					Double stock = detail.getProduct().getStock();
+					Double initialStock = stock != null ? stock : 0;
 					log.info("initialStock:" + initialStock);
-					int finalStock = 0;
-					int quantity = Integer.parseInt(detail.getQuantity());
+					Double finalStock = 0.0;
+					Double quantity = Double.parseDouble(detail.getQuantity());
 					log.info("quantity:" + quantity);
 
 					if (transactionType.equals(TransactionType.ENTRADA)) {
@@ -956,7 +956,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 						lot = lotList.get(0);
 						log.info("Lote más pronto a vencer:" + lot.getExpirationDate());
 
-						int newLotStock = 0;
+						Double newLotStock = 0.0;
 						if (transactionType.equals(TransactionType.ENTRADA)) {
 							newLotStock = lot.getQuantity() + quantity;
 						} else if (transactionType.equals(TransactionType.SALIDA)) {

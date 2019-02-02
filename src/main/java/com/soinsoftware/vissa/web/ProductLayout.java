@@ -351,13 +351,13 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		Double utility = txtUtility.getValue() != null && !txtUtility.getValue().isEmpty()
 				? Double.parseDouble(txtUtility.getValue())
 				: null;
-		Integer stock = txtStock.getValue() != null && !txtStock.isEmpty() ? Integer.parseInt(txtStock.getValue())
+		Double stock = txtStock.getValue() != null && !txtStock.isEmpty() ? Double.parseDouble(txtStock.getValue())
 				: null;
 		entity = productBuilder.code(txtCode.getValue()).name(txtName.getValue()).description(txtDescription.getValue())
 				.category(category).type(type).measurementUnit(measurementUnit).eanCode(txtEan.getValue())
 				.salePrice(salePrice).purchasePrice(purchasePrice).saleTax(saleTax).purchaseTax(purchaseTax)
-				.stock(stock).stockDate(DateUtil.stringToDate(txtStockDate.getValue())).archived(false)
-				.utility(utility).build();
+				.stock(stock).stockDate(DateUtil.stringToDate(txtStockDate.getValue())).archived(false).utility(utility)
+				.build();
 		save(productBll, entity, "Producto guardado");
 		tableSequenceBll.save(tableSequence);
 
