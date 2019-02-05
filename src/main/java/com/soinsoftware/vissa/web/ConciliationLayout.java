@@ -15,10 +15,13 @@ import org.vaadin.ui.NumberField;
 import com.soinsoftware.vissa.bll.CashRegisterConciliationBll;
 import com.soinsoftware.vissa.bll.DocumentBll;
 import com.soinsoftware.vissa.bll.DocumentTypeBll;
-import com.soinsoftware.vissa.model.CashRegisterConciliation;
+import com.soinsoftware.vissa.bll.PaymentTypeBll;
+import com.soinsoftware.vissa.model.CashConciliation;
 import com.soinsoftware.vissa.model.Document;
 import com.soinsoftware.vissa.model.DocumentType;
+import com.soinsoftware.vissa.model.EPaymemtType;
 import com.soinsoftware.vissa.model.ERole;
+import com.soinsoftware.vissa.model.PaymentType;
 import com.soinsoftware.vissa.model.Person;
 import com.soinsoftware.vissa.model.PersonType;
 import com.soinsoftware.vissa.model.TransactionType;
@@ -50,7 +53,7 @@ import com.vaadin.ui.Window;
 import com.vaadin.ui.themes.ValoTheme;
 
 @SuppressWarnings("unchecked")
-public class ConciliationLayout extends AbstractEditableLayout<CashRegisterConciliation> {
+public class ConciliationLayout extends AbstractEditableLayout<CashConciliation> {
 
 	/**
 	 * 
@@ -62,8 +65,9 @@ public class ConciliationLayout extends AbstractEditableLayout<CashRegisterConci
 	private final CashRegisterConciliationBll conciliationBll;
 	private final DocumentBll documentBll;
 	private final DocumentTypeBll documentTypeBll;
+	private final PaymentTypeBll paymentTypeBll;
 
-	private Grid<CashRegisterConciliation> concilicationGrid;
+	private Grid<CashConciliation> concilicationGrid;
 
 	private TextField txFilterByName;
 	private TextField txFilterByCode;
@@ -90,13 +94,14 @@ public class ConciliationLayout extends AbstractEditableLayout<CashRegisterConci
 	private String role;
 
 	private ListDataProvider<Document> documentDataProvider;
-	private ConfigurableFilterDataProvider<CashRegisterConciliation, Void, SerializablePredicate<CashRegisterConciliation>> filterProductDataProvider;
+	private ConfigurableFilterDataProvider<CashConciliation, Void, SerializablePredicate<CashConciliation>> filterProductDataProvider;
 
 	public ConciliationLayout() throws IOException {
 		super("Cuadre de caja", KEY_CASH_CONCILIATION);
 		conciliationBll = CashRegisterConciliationBll.getInstance();
 		documentBll = DocumentBll.getInstance();
 		documentTypeBll = DocumentTypeBll.getInstance();
+		paymentTypeBll = PaymentTypeBll.getInstance();
 
 	}
 
@@ -117,7 +122,7 @@ public class ConciliationLayout extends AbstractEditableLayout<CashRegisterConci
 	}
 
 	@Override
-	protected AbstractOrderedLayout buildEditionView(CashRegisterConciliation entity) {
+	protected AbstractOrderedLayout buildEditionView(CashConciliation entity) {
 		VerticalLayout layout = ViewHelper.buildVerticalLayout(false, false);
 		Panel buttonPanel = buildButtonPanelForEdition(entity);
 		Component dataPanel = buildEditionComponent(entity);
@@ -129,7 +134,7 @@ public class ConciliationLayout extends AbstractEditableLayout<CashRegisterConci
 	protected Panel buildGridPanel() {
 		VerticalLayout layout = ViewHelper.buildVerticalLayout(true, true);
 		concilicationGrid = ViewHelper.buildGrid(SelectionMode.SINGLE);
-		concilicationGrid.addColumn(CashRegisterConciliation::getConciliationDate).setCaption("Fecha");
+		concilicationGrid.addColumn(CashConciliation::getConciliationDate).setCaption("Fecha");
 		if (role.equals(ERole.SUDO.getName()) || role.equals(ERole.MANAGER.getName())) {
 			concilicationGrid.addColumn(cashRegisterConciliation -> {
 				if (cashRegisterConciliation.getPerson() != null) {
@@ -141,10 +146,10 @@ public class ConciliationLayout extends AbstractEditableLayout<CashRegisterConci
 			}).setCaption("Empleado");
 
 		}
-		concilicationGrid.addColumn(CashRegisterConciliation::getTotalSale).setCaption("Total ventas");
-		concilicationGrid.addColumn(CashRegisterConciliation::getTotalEgress).setCaption("Total egresos");
-		concilicationGrid.addColumn(CashRegisterConciliation::getTotalCredit).setCaption("Créditos");
-		concilicationGrid.addColumn(CashRegisterConciliation::getTotalCash).setCaption("Efectivo neto");
+		concilicationGrid.addColumn(CashConciliation::getTotalSale).setCaption("Total ventas");
+		concilicationGrid.addColumn(CashConciliation::getTotalEgress).setCaption("Total egresos");
+		concilicationGrid.addColumn(CashConciliation::getTotalCredit).setCaption("Créditos");
+		concilicationGrid.addColumn(CashConciliation::getTotalCash).setCaption("Efectivo neto");
 
 		layout.addComponent(ViewHelper.buildPanel(null, concilicationGrid));
 		fillGridData();
@@ -153,7 +158,7 @@ public class ConciliationLayout extends AbstractEditableLayout<CashRegisterConci
 
 	@SuppressWarnings("deprecation")
 	@Override
-	protected Component buildEditionComponent(CashRegisterConciliation concilitation) {
+	protected Component buildEditionComponent(CashConciliation concilitation) {
 
 		VerticalLayout layout = ViewHelper.buildVerticalLayout(false, false);
 		FormLayout basicForm = ViewHelper.buildForm("", false, false);
@@ -209,11 +214,11 @@ public class ConciliationLayout extends AbstractEditableLayout<CashRegisterConci
 		txtSales.setStyleName(ValoTheme.TEXTFIELD_TINY);
 		txtSales.setReadOnly(true);
 		txtSales.setWidth("50%");
-		txtSales.setValue(getDailySales());
+		txtSales.setValue(getSumDailySales());
 		txtSales.setDecimalAllowed(true);
 		txtSales.setDecimalPrecision(2);
 		txtSales.setNegativeAllowed(false);
-		
+
 		txtSales.setDecimalSeparator(',');
 
 		txtCreditCollection = new NumberField("Recaudo créditos");
@@ -230,7 +235,6 @@ public class ConciliationLayout extends AbstractEditableLayout<CashRegisterConci
 		txtTotalSale.setStyleName(ValoTheme.TEXTFIELD_TINY);
 		txtTotalSale.setWidth("50%");
 		txtTotalSale.setReadOnly(true);
-		
 
 		FormLayout saleForm = ViewHelper.buildForm("", false, false);
 		saleForm.addComponents(txtSales, txtCreditCollection, txtRemnantSale, txtTotalSale);
@@ -266,6 +270,7 @@ public class ConciliationLayout extends AbstractEditableLayout<CashRegisterConci
 		txtTotalCredit = new NumberField("Créditos");
 		txtTotalCredit.setStyleName(ValoTheme.TEXTFIELD_TINY);
 		txtTotalCredit.setWidth("50%");
+		txtTotalCredit.setValue(getSumDailyCreditSales());
 
 		txtTotalCash = new NumberField("Efectivo neto");
 		txtTotalCash.setStyleName(ValoTheme.TEXTFIELD_TINY);
@@ -283,7 +288,7 @@ public class ConciliationLayout extends AbstractEditableLayout<CashRegisterConci
 		return layout;
 	}
 
-	private void setFieldValues(CashRegisterConciliation concil) {
+	private void setFieldValues(CashConciliation concil) {
 
 		if (concil != null) {
 			selectedPerson = concil.getPerson();
@@ -354,20 +359,20 @@ public class ConciliationLayout extends AbstractEditableLayout<CashRegisterConci
 
 	@Override
 	protected void fillGridData() {
-		List<CashRegisterConciliation> concilitationList = null;
+		List<CashConciliation> concilitationList = null;
 		if (role.equals(ERole.SUDO.getName()) || role.equals(ERole.MANAGER.getName())) {
 			concilitationList = conciliationBll.selectAll();
 		} else {
 			concilitationList = conciliationBll.select(user.getPerson());
 		}
-		ListDataProvider<CashRegisterConciliation> dataProvider = new ListDataProvider<>(concilitationList);
+		ListDataProvider<CashConciliation> dataProvider = new ListDataProvider<>(concilitationList);
 		filterProductDataProvider = dataProvider.withConfigurableFilter();
 		concilicationGrid.setDataProvider(filterProductDataProvider);
 
 	}
 
 	@Override
-	protected void saveButtonAction(CashRegisterConciliation entity) {
+	protected void saveButtonAction(CashConciliation entity) {
 		String message = validateRequiredFields();
 		if (!message.isEmpty()) {
 			ViewHelper.showNotification(message, Notification.Type.ERROR_MESSAGE);
@@ -377,14 +382,14 @@ public class ConciliationLayout extends AbstractEditableLayout<CashRegisterConci
 
 	}
 
-	private void voidSaveConciliation(CashRegisterConciliation entity) {
+	private void voidSaveConciliation(CashConciliation entity) {
 		String strLog = "[saveButtonAction]";
 		try {
-			CashRegisterConciliation.Builder conciliationBuilder = null;
+			CashConciliation.Builder conciliationBuilder = null;
 			if (entity == null) {
-				conciliationBuilder = CashRegisterConciliation.builder();
+				conciliationBuilder = CashConciliation.builder();
 			} else {
-				conciliationBuilder = CashRegisterConciliation.builder(entity);
+				conciliationBuilder = CashConciliation.builder(entity);
 			}
 
 			Date concilitationDate = DateUtil.localDateToDate(dfConciliationDate.getValue());
@@ -432,17 +437,17 @@ public class ConciliationLayout extends AbstractEditableLayout<CashRegisterConci
 	}
 
 	@Override
-	public CashRegisterConciliation getSelected() {
-		CashRegisterConciliation conciliationObj = null;
-		Set<CashRegisterConciliation> conciliationSet = concilicationGrid.getSelectedItems();
+	public CashConciliation getSelected() {
+		CashConciliation conciliationObj = null;
+		Set<CashConciliation> conciliationSet = concilicationGrid.getSelectedItems();
 		if (conciliationSet != null && !conciliationSet.isEmpty()) {
-			conciliationObj = (CashRegisterConciliation) conciliationSet.toArray()[0];
+			conciliationObj = (CashConciliation) conciliationSet.toArray()[0];
 		}
 		return conciliationObj;
 	}
 
 	@Override
-	protected void delete(CashRegisterConciliation entity) {
+	protected void delete(CashConciliation entity) {
 
 	}
 
@@ -461,8 +466,8 @@ public class ConciliationLayout extends AbstractEditableLayout<CashRegisterConci
 		concilicationGrid.getDataProvider().refreshAll();
 	}
 
-	private SerializablePredicate<CashRegisterConciliation> filterGrid() {
-		SerializablePredicate<CashRegisterConciliation> columnPredicate = null;
+	private SerializablePredicate<CashConciliation> filterGrid() {
+		SerializablePredicate<CashConciliation> columnPredicate = null;
 		String codeFilter = txFilterByCode.getValue().trim();
 		String nameFilter = txFilterByName.getValue().trim();
 		/*
@@ -532,10 +537,11 @@ public class ConciliationLayout extends AbstractEditableLayout<CashRegisterConci
 		}
 	}
 
-	private Double getDailySales() {
+	private Double getSumDailySales() {
+		String strLog = "[getTotalDailySales]";
 		Double totalSale = null;
 		try {
-			getSalesByDay();
+			getDailySalesData();
 			totalSale = documentDataProvider.fetch(new Query<>()).mapToDouble(document -> {
 				if (document.getTotalValue() != null) {
 					return document.getTotalValue();
@@ -544,40 +550,76 @@ public class ConciliationLayout extends AbstractEditableLayout<CashRegisterConci
 				}
 			}).sum();
 		} catch (Exception e) {
-			log.error(e.getMessage());
+			log.error(strLog + "[Exception]" + e.getMessage());
 		}
 
-		log.info("dailySale: " + totalSale);
+		log.info(strLog + " totalSale by day: " + totalSale);
 		return totalSale;
 	}
 
-	private void getSalesByDay() {
+	private void getDailySalesData() {
+		String strLog = "[getDailySalesData]";
 		try {
 			List<DocumentType> types = documentTypeBll.select(TransactionType.SALIDA);
 			documentDataProvider = new ListDataProvider<>(documentBll.select(types));
-			documentDataProvider.setFilter(document -> filterDocumentByDate(document));
-			log.info("docs filtrados cant ->" + documentDataProvider.getItems().size());
+			documentDataProvider.setFilter(document -> filterDocumentByDate(document, null));
+			log.info(strLog + " docs filtrados cant ->" + documentDataProvider.getItems().size());
 		} catch (Exception e) {
-			log.error(e.getMessage());
+			log.error(strLog + "[Exception]" + e.getMessage());
 		}
 	}
 
-	private boolean filterDocumentByDate(Document document) {
+	private Double getSumDailyCreditSales() {
+		String strLog = "[getSumDailyCreditSales]";
+		Double totalCreditSale = null;
+		try {
+			getDailyCreditSalesData();
+			totalCreditSale = documentDataProvider.fetch(new Query<>()).mapToDouble(document -> {
+				if (document.getTotalValue() != null) {
+					return document.getTotalValue();
+				} else {
+					return 0.0;
+				}
+			}).sum();
+		} catch (Exception e) {
+			log.error(strLog + "[Exception]" + e.getMessage());
+		}
+
+		log.info(strLog + " totalCreditSale by day: " + totalCreditSale);
+		return totalCreditSale;
+	}
+
+	private void getDailyCreditSalesData() {
+		String strLog = "[getDailyCreditSalesData]";
+		try {
+			PaymentType paymentType = paymentTypeBll.select(EPaymemtType.CREDIT.getName());
+			documentDataProvider.setFilter(document -> filterDocumentByDate(document, paymentType));
+			log.info(strLog + " docs filtrados cant ->" + documentDataProvider.getItems().size());
+		} catch (Exception e) {
+			log.error(strLog + "[Exception]" + e.getMessage());
+		}
+	}
+
+	private boolean filterDocumentByDate(Document document, PaymentType paymentType) {
+		String strLog = "[filterDocumentByDate]";
 		boolean result = false;
 		try {
-
 			Date iniDateFilter = DateUtil.localDateTimeToDate(DateUtil.getDefaultIniDate());
 			Date endDateFilter = DateUtil.localDateTimeToDate(DateUtil.getDefaultEndDate());
 
-			log.info("iniDateFilter: " + iniDateFilter + ", endDateFilter:" + endDateFilter);
+			log.info(strLog + " iniDateFilter: " + iniDateFilter + ", endDateFilter:" + endDateFilter);
 
 			result = document.getDocumentDate().before(endDateFilter)
 					&& document.getDocumentDate().after(iniDateFilter);
+
+			if (paymentType != null) {
+				result = result && document.getPaymentType().equals(paymentType);
+			}
 		} catch (Exception e) {
-			log.error(e.getMessage());
+			log.error(strLog + e.getMessage());
 		}
 
-		log.info("result filterDocumentByDate: " + result);
+		log.info(strLog + " result filterDocumentByDate: " + result);
 		return result;
 	}
 

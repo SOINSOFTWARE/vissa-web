@@ -87,6 +87,7 @@ public class VissaUI extends UI {
 	protected static final String KEY_ROLES = "Roles";
 	protected static final String KEY_CONCILIATION = "Conciliaciones";
 	protected static final String KEY_CASH_CONCILIATION = "Cuadre de caja";
+	protected static final String KEY_COLLECTION = "Recaudos";
 
 	private PermissionUtil permissionUtil;
 
@@ -178,6 +179,11 @@ public class VissaUI extends UI {
 			if (permissionUtil.canView(KEY_ROLES)) {
 				treeData.addItem(KEY_ADMINISTRATION, KEY_ROLES);
 			}
+		}
+
+		if (permissionUtil.canView(KEY_COLLECTION)) {
+			treeData.addItem(null, KEY_COLLECTION);
+
 		}
 
 	}
@@ -312,6 +318,7 @@ public class VissaUI extends UI {
 		navigator.addView("test", ReportLayout.class);
 		navigator.addView(KEY_ROLES, RoleLayout.class);
 		navigator.addView(KEY_CASH_CONCILIATION, ConciliationLayout.class);
+		navigator.addView(KEY_COLLECTION, CollectionLayout.class);
 		navigator.setErrorView(DefaultView.class);
 		UI.getCurrent().setNavigator(navigator);
 

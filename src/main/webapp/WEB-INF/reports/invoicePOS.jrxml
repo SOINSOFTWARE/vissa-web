@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Created with Jaspersoft Studio version 6.2.2.final using JasperReports Library version 6.2.2  -->
-<!-- 2019-02-01T22:03:09 -->
+<!-- 2019-02-04T20:52:48 -->
 <jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="ordenVenta" pageWidth="226" pageHeight="425" columnWidth="216" leftMargin="5" rightMargin="5" topMargin="20" bottomMargin="20" uuid="c416d1c5-e979-4b62-bb6b-b23441d7438d">
 	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="One Empty Record"/>
 	<property name="com.jaspersoft.studio.unit." value="mm"/>
@@ -51,42 +51,42 @@
 	<title>
 		<band height="78">
 			<textField>
-				<reportElement x="30" y="0" width="120" height="20" uuid="b6dde5e9-a515-4b4f-8a77-b148c4d511b4"/>
+				<reportElement x="2" y="0" width="147" height="20" uuid="b6dde5e9-a515-4b4f-8a77-b148c4d511b4"/>
 				<textElement textAlignment="Center">
 					<font fontName="DejaVu Sans" size="10" isBold="true"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$P{P_COMPANY}]]></textFieldExpression>
 			</textField>
 			<textField>
-				<reportElement x="3" y="40" width="72" height="10" uuid="5afa5724-b239-490f-88d2-dbec32878de9"/>
+				<reportElement x="2" y="40" width="147" height="10" uuid="5afa5724-b239-490f-88d2-dbec32878de9"/>
 				<textElement textAlignment="Center" verticalAlignment="Top">
 					<font fontName="DejaVu Sans" size="8" isBold="true"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$P{P_ADDRESS}.trim()]]></textFieldExpression>
 			</textField>
 			<textField>
-				<reportElement x="55" y="30" width="96" height="10" uuid="63c9911f-94fd-481e-b122-eac2f434089c"/>
+				<reportElement x="55" y="30" width="94" height="10" uuid="63c9911f-94fd-481e-b122-eac2f434089c"/>
 				<textElement textAlignment="Center">
 					<font fontName="DejaVu Sans" size="8" isBold="true"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$P{P_RESOLUTION}]]></textFieldExpression>
 			</textField>
 			<textField>
-				<reportElement x="79" y="40" width="72" height="11" uuid="b1c75b16-8c39-43f4-97ef-e96fb8caf69b"/>
+				<reportElement x="2" y="50" width="147" height="11" uuid="b1c75b16-8c39-43f4-97ef-e96fb8caf69b"/>
 				<textElement textAlignment="Center" verticalAlignment="Top">
 					<font fontName="DejaVu Sans" size="8" isBold="true"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$P{P_PHONE}]]></textFieldExpression>
 			</textField>
 			<textField>
-				<reportElement x="30" y="20" width="120" height="10" uuid="f8e2481e-30e3-46f6-9951-c3d11d02aaf5"/>
+				<reportElement x="2" y="20" width="147" height="10" uuid="f8e2481e-30e3-46f6-9951-c3d11d02aaf5"/>
 				<textElement textAlignment="Center">
 					<font fontName="DejaVu Sans" size="8" isBold="true"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$P{P_NIT}]]></textFieldExpression>
 			</textField>
 			<textField>
-				<reportElement x="3" y="30" width="40" height="10" uuid="defa443b-0f1b-43cb-893e-8220e2a2d33c"/>
+				<reportElement x="2" y="30" width="52" height="10" uuid="defa443b-0f1b-43cb-893e-8220e2a2d33c"/>
 				<textElement textAlignment="Center">
 					<font fontName="DejaVu Sans" size="8" isBold="true"/>
 				</textElement>
@@ -97,7 +97,7 @@
 				<imageExpression><![CDATA[$P{P_LOGO_PATH}]]></imageExpression>
 			</image>
 			<textField pattern="EEEEE dd MMMMM yyyy">
-				<reportElement mode="Opaque" x="3" y="64" width="87" height="14" uuid="0b7079b7-a865-49a6-9866-9cb97a3e9733"/>
+				<reportElement mode="Opaque" x="2" y="64" width="87" height="14" uuid="0b7079b7-a865-49a6-9866-9cb97a3e9733"/>
 				<textElement textAlignment="Left" verticalAlignment="Middle">
 					<font fontName="DejaVu Sans" size="8" isBold="true"/>
 				</textElement>
@@ -157,7 +157,7 @@
 				<text><![CDATA[Fecha]]></text>
 			</staticText>
 			<textField pattern="###0;-###0">
-				<reportElement x="85" y="42" width="120" height="14" uuid="16f50a9f-4c07-4426-979f-bfd3cafcee3e"/>
+				<reportElement x="85" y="42" width="126" height="14" uuid="16f50a9f-4c07-4426-979f-bfd3cafcee3e"/>
 				<textElement>
 					<font fontName="DejaVu Sans" size="8" isBold="true"/>
 				</textElement>
@@ -181,7 +181,7 @@
 				</reportElement>
 			</rectangle>
 			<staticText>
-				<reportElement mode="Opaque" x="5" y="4" width="50" height="11" uuid="06371c4f-1343-49b3-9ee2-03619dcb300b"/>
+				<reportElement mode="Opaque" x="5" y="4" width="50" height="10" uuid="06371c4f-1343-49b3-9ee2-03619dcb300b"/>
 				<textElement textAlignment="Center">
 					<font fontName="DejaVu Sans" size="8" isBold="true"/>
 				</textElement>

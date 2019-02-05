@@ -306,7 +306,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		cbDocumentType.setRequiredIndicatorVisible(true);
 
 		txtDocNumber = new TextField("Número de factura");
-		txtDocNumber.setReadOnly(true);		
+		txtDocNumber.setReadOnly(true);
 		txtDocNumber.setStyleName(ValoTheme.TEXTFIELD_TINY);
 
 		txtResolution = new TextField("Resolución de factura");
@@ -1260,7 +1260,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 								parameters.put(Commons.PARAM_PHONE,
 										company.getPhone() != null ? company.getPhone() : "");
 
-								// parameters.put(Commons.PARAM_LOGO, "/opt/tomcat/resources/logoKisam.png");
+								//parameters.put(Commons.PARAM_LOGO, "/opt/tomcat/resources/logoKisam.png");
 								parameters.put(Commons.PARAM_LOGO,
 										"C:/Users/carlosandres/Desktop/LINA/VISSA/logoKisam.png");
 							}
@@ -1275,7 +1275,8 @@ public class InvoiceLayout extends VerticalLayout implements View {
 										+ document.getPerson().getName() + " " + document.getSalesman().getLastName());
 								parameters.put(Commons.PARAM_INVOICE_TYPE, document.getDocumentType().getName());
 								parameters.put(Commons.PARAM_PAYMENT_METHOD,
-										document.getPaymentMethod() != null ? document.getPaymentMethod() : "");
+										document.getPaymentMethod() != null ? document.getPaymentMethod().getName()
+												: "");
 							}
 
 						} catch (Exception e) {
@@ -1349,8 +1350,9 @@ public class InvoiceLayout extends VerticalLayout implements View {
 				parameters.put(Commons.PARAM_ADDRESS, company.getAddress() != null ? company.getAddress() : "");
 				parameters.put(Commons.PARAM_PHONE, company.getPhone() != null ? company.getPhone() : "");
 
-				 parameters.put(Commons.PARAM_LOGO, "/opt/tomcat/resources/logoKisam.png");
-				//parameters.put(Commons.PARAM_LOGO, "C:/Users/carlosandres/Desktop/LINA/VISSA/logoKisam.png");
+				parameters.put(Commons.PARAM_LOGO, "/opt/tomcat/resources/logoKisam.png");
+				// parameters.put(Commons.PARAM_LOGO,
+				// "C:/Users/carlosandres/Desktop/LINA/VISSA/logoKisam.png");
 			}
 			if (document != null) {
 				parameters.put(Commons.PARAM_INVOICE_NUMBER, document.getCode());
