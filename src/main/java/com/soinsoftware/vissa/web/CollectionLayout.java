@@ -217,7 +217,7 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 
 		FormLayout saleForm = ViewHelper.buildForm("", false, false);
 		saleForm.addComponents(txtInitialBalance, txtFee, txtFinalBalance);
-		Panel salePanel = ViewHelper.buildPanel("VENTAS", saleForm);
+		Panel salePanel = ViewHelper.buildPanel("Recaudo", saleForm);
 		layout.addComponents(salePanel);
 
 		// -------------------------------------------------------------------------
