@@ -21,7 +21,10 @@ public class Commons {
 	public static final String PARAM_NIT= "P_NIT";
 	public static final String PARAM_ADDRESS= "P_ADDRESS";
 	public static final String PARAM_PHONE= "P_PHONE";
-	public static final String PARAM_PAYMENT_METHOD= "P_PAYMENT_METHOD";
+	public static final String PARAM_MOBILE= "P_MOBILE";
+	public static final String PARAM_CUSTOMER_ID= "P_CUSTOMER_ID";
+	public static final String PARAM_CUSTOMER_ADDRESS= "P_CUSTOMER_ADDRESS";
+	public static final String PARAM_CUSTOMER_PHONE= "P_CUSTOMER_PHONE";
 	
 
 

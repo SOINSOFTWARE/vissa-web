@@ -49,9 +49,6 @@ import com.soinsoftware.vissa.model.PersonType;
 import com.soinsoftware.vissa.model.Product;
 import com.soinsoftware.vissa.model.TransactionType;
 import com.soinsoftware.vissa.model.User;
-import com.soinsoftware.vissa.util.AdvancedFileDownloader;
-import com.soinsoftware.vissa.util.AdvancedFileDownloader.AdvancedDownloaderListener;
-import com.soinsoftware.vissa.util.AdvancedFileDownloader.DownloaderEvent;
 import com.soinsoftware.vissa.util.Commons;
 import com.soinsoftware.vissa.util.DateUtil;
 import com.soinsoftware.vissa.util.PermissionUtil;
@@ -1211,93 +1208,6 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 	}
 
-	private void printDocument() {
-		String strLog = "[printDocument]";
-		try {
-			log.info(strLog + " document: " + document);
-			if (document != null) {
-				final AdvancedFileDownloader downloader = new AdvancedFileDownloader();
-				downloader.addAdvancedDownloaderListener(new AdvancedDownloaderListener() {
-
-					/**
-					 * This method will be invoked just before the download starts. Thus, a new file
-					 * path can be set.
-					 *
-					 * @param downloadEvent
-					 */
-					@Override
-					public void beforeDownload(DownloaderEvent downloadEvent) {
-						String strLog = "[printDocument][beforeDownload]";
-						try {
-							log.info(strLog + " document: " + document);
-							String filePath = pdfGenerator.generate(createParameters(), document.getDetails());
-							downloader.setFilePath(filePath);
-
-						} catch (GeneratorException ex) {
-							log.error(strLog + "[GeneratorException]" + ex.getMessage());
-							ex.printStackTrace();
-							ViewHelper.showNotification("Se presentó un error al imprimir la factura",
-									Notification.Type.ERROR_MESSAGE);
-						}
-					}
-
-					private Map<String, Object> createParameters() {
-						String strLog = "[printDocument][createParameters]";
-
-						final Map<String, Object> parameters = new HashMap<>();
-						try {
-							log.info(strLog + " company: " + company);
-
-							if (company != null) {
-								parameters.put(Commons.PARAM_COMPANY, company.getName());
-								parameters.put(Commons.PARAM_NIT, company.getNit() != null ? company.getNit() : "");
-								parameters.put(Commons.PARAM_RESOLUTION,
-										company.getInvoiceResolution() != null ? company.getInvoiceResolution() : "");
-								parameters.put(Commons.PARAM_REGIMEN,
-										company.getRegimeType() != null ? company.getRegimeType() : "");
-								parameters.put(Commons.PARAM_ADDRESS,
-										company.getAddress() != null ? company.getAddress() : "");
-								parameters.put(Commons.PARAM_PHONE,
-										company.getPhone() != null ? company.getPhone() : "");
-
-								//parameters.put(Commons.PARAM_LOGO, "/opt/tomcat/resources/logoKisam.png");
-								parameters.put(Commons.PARAM_LOGO,
-										"C:/Users/carlosandres/Desktop/LINA/VISSA/logoKisam.png");
-							}
-							if (document != null) {
-								parameters.put(Commons.PARAM_INVOICE_NUMBER, document.getCode());
-								parameters.put(Commons.PARAM_INVOICE_DATE,
-										DateUtil.dateToString(document.getDocumentDate()));
-								parameters.put(Commons.PARAM_INVOICE_TYPE, document.getDocumentType().getName());
-								parameters.put(Commons.PARAM_SALESMAN,
-										document.getSalesman().getName() + " " + document.getSalesman().getLastName());
-								parameters.put(Commons.PARAM_CUSTOMER, document.getPerson().getDocumentNumber() + " - "
-										+ document.getPerson().getName() + " " + document.getSalesman().getLastName());
-								parameters.put(Commons.PARAM_INVOICE_TYPE, document.getDocumentType().getName());
-								parameters.put(Commons.PARAM_PAYMENT_METHOD,
-										document.getPaymentMethod() != null ? document.getPaymentMethod().getName()
-												: "");
-							}
-
-						} catch (Exception e) {
-
-						}
-						return parameters;
-					}
-				});
-				downloader.extend(printBtn);
-			} else {
-				ViewHelper.showNotification("Debe cargar una factura", Notification.Type.WARNING_MESSAGE);
-
-			}
-
-		} catch (Exception e) {
-			log.error(strLog + "[Exception]" + e.getMessage());
-			ViewHelper.showNotification("Se presentó un error al imprimir la factura", Notification.Type.ERROR_MESSAGE);
-		}
-
-	}
-
 	private void printInvoice() {
 		String strLog = "[printDocument]";
 		try {
@@ -1349,10 +1259,10 @@ public class InvoiceLayout extends VerticalLayout implements View {
 				parameters.put(Commons.PARAM_REGIMEN, company.getRegimeType() != null ? company.getRegimeType() : "");
 				parameters.put(Commons.PARAM_ADDRESS, company.getAddress() != null ? company.getAddress() : "");
 				parameters.put(Commons.PARAM_PHONE, company.getPhone() != null ? company.getPhone() : "");
+				parameters.put(Commons.PARAM_MOBILE, company.getMobile() != null ? company.getMobile() : "");
 
-				parameters.put(Commons.PARAM_LOGO, "/opt/tomcat/resources/logoKisam.png");
-				// parameters.put(Commons.PARAM_LOGO,
-				// "C:/Users/carlosandres/Desktop/LINA/VISSA/logoKisam.png");
+				// parameters.put(Commons.PARAM_LOGO, "/opt/tomcat/resources/logoKisam.png");
+				parameters.put(Commons.PARAM_LOGO, "C:/Users/carlosandres/Desktop/LINA/VISSA/logoKisam.png");
 			}
 			if (document != null) {
 				parameters.put(Commons.PARAM_INVOICE_NUMBER, document.getCode());
@@ -1360,13 +1270,17 @@ public class InvoiceLayout extends VerticalLayout implements View {
 				parameters.put(Commons.PARAM_INVOICE_TYPE, document.getDocumentType().getName());
 				parameters.put(Commons.PARAM_SALESMAN,
 						document.getSalesman().getName() + " " + document.getSalesman().getLastName());
-				parameters.put(Commons.PARAM_CUSTOMER, document.getPerson().getDocumentNumber() + " - "
-						+ document.getPerson().getName() + " " + document.getSalesman().getLastName());
+				parameters.put(Commons.PARAM_CUSTOMER,
+						document.getPerson().getName() + " " + document.getSalesman().getLastName());
 				parameters.put(Commons.PARAM_INVOICE_TYPE, document.getDocumentType().getName());
-				parameters.put(Commons.PARAM_PAYMENT_METHOD,
-						document.getPaymentMethod() != null ? document.getPaymentMethod() : "");
+				parameters.put(Commons.PARAM_CUSTOMER_ID,
+						document.getPerson().getDocumentNumber() != null ? document.getPerson().getDocumentNumber()
+								: "");
+				parameters.put(Commons.PARAM_CUSTOMER_ADDRESS,
+						document.getPerson().getAddress() != null ? document.getPerson().getAddress() : "");
+				parameters.put(Commons.PARAM_CUSTOMER_PHONE,
+						document.getPerson().getMobile() != null ? document.getPerson().getMobile() : "");
 			}
-
 		} catch (Exception e) {
 
 		}
