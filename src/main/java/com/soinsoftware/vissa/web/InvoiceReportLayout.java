@@ -97,18 +97,35 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 			Commons.PERSON_TYPE = PersonType.CUSTOMER.getName();
 			documentType = documentTypeBll.select("VE");
 		}
+	}
 
+	public InvoiceReportLayout(boolean listMode) throws IOException {
+		super("", KEY_INVOICES);
+
+		this.listMode = listMode;
+		documentBll = DocumentBll.getInstance();
+		documentTypeBll = DocumentTypeBll.getInstance();
+		transactionType = TransactionType.valueOf(Commons.TRANSACTION_TYPE);
+
+		if (transactionType.equals(TransactionType.ENTRADA)) {
+			Commons.PERSON_TYPE = PersonType.SUPPLIER.getName();
+			documentType = documentTypeBll.select("CO");
+		}
+		if (transactionType.equals(TransactionType.SALIDA)) {
+			Commons.PERSON_TYPE = PersonType.CUSTOMER.getName();
+			documentType = documentTypeBll.select("VE");
+		}
+		addListTab();
 	}
 
 	@Override
 	protected AbstractOrderedLayout buildListView() {
 		VerticalLayout layout = ViewHelper.buildVerticalLayout(false, false);
-		Panel buttonPanel = null;
-		if (listMode) {
-			buttonPanel = buildButtonPanelListMode();
-		} else {
-			buttonPanel = buildButtonPanelForLists();
-		}
+		/*
+		 * Panel buttonPanel = null; if (listMode) { buttonPanel =
+		 * buildButtonPanelListMode(); } else { buttonPanel =
+		 * buildButtonPanelForLists(); }
+		 */
 		Panel filterPanel = buildFilterPanel();
 		Panel totalPanel = builTotalPanel();
 		Panel dataPanel = buildGridPanel();
@@ -159,7 +176,9 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 
 		layout.addComponent(ViewHelper.buildPanel(null, grid));
 		fillGridData();
-		refreshGrid();
+		if (!listMode) {
+			refreshGrid();
+		}
 
 		return ViewHelper.buildPanel(null, layout);
 	}
@@ -291,54 +310,11 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 	}
 
 	private void refreshGrid() {
-
-		// filterDataProvider.setFilter(filterGrid());
-//		List<Document> documentList = filterDataProvider.fetch(new Query<>()).collect(Collectors.toList());
-		// txtQuantity.setValue(String.valueOf(documentList.size()));
-
-		// filterDataProvider.refreshAll();
-		dataProvider.setFilter(document -> filterGrid2(document));
-		;
-
+		dataProvider.setFilter(document -> filterGrid(document));
 	}
 
-	private SerializablePredicate<Document> filterGrid() {
-		SerializablePredicate<Document> columnPredicate = null;
+	private boolean filterGrid(Document document) {
 
-		try {
-
-			String codeFilter = txtFilterByCode.getValue().trim();
-
-			String docTypeFilter = cbFilterByType.getSelectedItem().isPresent()
-					? cbFilterByType.getSelectedItem().get().getName()
-					: "";
-			Date iniDateFilter = dtfFilterIniDate.getValue() != null
-					? DateUtil.localDateTimeToDate(dtfFilterIniDate.getValue())
-					: DateUtil.stringToDate("01-01-2000 00:00:00");
-
-			Date endDateFilter = dtfFilterEndDate.getValue() != null
-					? DateUtil.localDateTimeToDate(dtfFilterEndDate.getValue())
-					: new Date();
-
-			if (endDateFilter.before(iniDateFilter)) {
-				throw new Exception("La fecha final debe ser mayor que la inicial");
-			} else {
-
-			}
-			Person personFilter = !txtFilterByPerson.isEmpty() ? personSelected : null;
-
-			columnPredicate = document -> (personFilter != null ? document.getPerson().equals(personFilter)
-					: true && document.getDocumentDate().before(endDateFilter)
-							&& document.getDocumentDate().after(iniDateFilter));
-		} catch (Exception e) {
-			ViewHelper.showNotification(e.getMessage(), Notification.Type.ERROR_MESSAGE);
-		}
-		return columnPredicate;
-
-	}
-
-	private boolean filterGrid2(Document document) {
-		SerializablePredicate<Document> columnPredicate = null;
 		boolean result = false;
 		try {
 
@@ -365,6 +341,29 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 			result = personFilter != null ? document.getPerson().equals(personFilter)
 					: true && document.getDocumentDate().before(endDateFilter)
 							&& document.getDocumentDate().after(iniDateFilter);
+		} catch (Exception e) {
+			ViewHelper.showNotification(e.getMessage(), Notification.Type.ERROR_MESSAGE);
+		}
+		return result;
+
+	}
+
+	private boolean filterGrid(Document document, Person personFilter, Date iniDateFilter, Date endDateFilter) {
+		boolean result = false;
+		try {
+
+			if (personFilter != null) {
+				result = document.getPerson().equals(personFilter);
+			}
+			if (iniDateFilter != null && endDateFilter != null) {
+				if (endDateFilter.before(iniDateFilter)) {
+					throw new Exception("La fecha final debe ser mayor que la inicial");
+				} else {
+				}
+
+				result = result && document.getDocumentDate().before(endDateFilter)
+						&& document.getDocumentDate().after(iniDateFilter);
+			}
 		} catch (Exception e) {
 			ViewHelper.showNotification(e.getMessage(), Notification.Type.ERROR_MESSAGE);
 		}

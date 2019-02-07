@@ -3,6 +3,7 @@ package com.soinsoftware.vissa.web;
 import static com.soinsoftware.vissa.web.VissaUI.KEY_CASH_CONCILIATION;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.List;
@@ -20,7 +21,6 @@ import com.soinsoftware.vissa.model.Document;
 import com.soinsoftware.vissa.model.DocumentType;
 import com.soinsoftware.vissa.model.EPaymemtType;
 import com.soinsoftware.vissa.model.PaymentType;
-import com.soinsoftware.vissa.model.PersonType;
 import com.soinsoftware.vissa.model.TransactionType;
 import com.soinsoftware.vissa.model.User;
 import com.soinsoftware.vissa.util.Commons;
@@ -33,6 +33,7 @@ import com.vaadin.data.provider.Query;
 import com.vaadin.server.FontAwesome;
 import com.vaadin.server.SerializablePredicate;
 import com.vaadin.ui.AbstractOrderedLayout;
+import com.vaadin.ui.Alignment;
 import com.vaadin.ui.Button;
 import com.vaadin.ui.Component;
 import com.vaadin.ui.DateTimeField;
@@ -40,6 +41,7 @@ import com.vaadin.ui.FormLayout;
 import com.vaadin.ui.Grid;
 import com.vaadin.ui.Grid.SelectionMode;
 import com.vaadin.ui.HorizontalLayout;
+import com.vaadin.ui.Label;
 import com.vaadin.ui.Notification;
 import com.vaadin.ui.Panel;
 import com.vaadin.ui.TextField;
@@ -76,8 +78,8 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 	private NumberField txtFee;
 	private NumberField txtFinalBalance;
 
-	private Window personSubwindow;
-	private PersonLayout personLayout = null;
+	private Window invoiceWindow;
+	private InvoiceReportLayout invoicListLayout = null;
 	private Document selectedDocument = null;
 
 	private User user;
@@ -124,7 +126,14 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 	protected Panel buildGridPanel() {
 		VerticalLayout layout = ViewHelper.buildVerticalLayout(true, true);
 		collectionGrid = ViewHelper.buildGrid(SelectionMode.SINGLE);
-		collectionGrid.addColumn(Collection::getCollectionDate).setCaption("Fecha");
+
+		collectionGrid.addColumn(collection -> {
+			if (collection.getCollectionDate() != null) {
+				return DateUtil.dateToString(collection.getCollectionDate());
+			} else {
+				return "";
+			}
+		}).setCaption("Fecha");
 
 		collectionGrid.addColumn(collection -> {
 			if (collection.getDocument() != null && collection.getDocument().getPerson() != null) {
@@ -178,12 +187,24 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 		txtDocumentNumber.setStyleName(ValoTheme.TEXTFIELD_TINY);
 		txtDocumentNumber.setWidth("50%");
 
+		Button searchInvoiceBtn = new Button("Buscar factura", FontAwesome.SEARCH);
+		searchInvoiceBtn.addClickListener(e -> builInvoiceWindow(txtDocumentNumber.getValue()));
+		searchInvoiceBtn.setStyleName(ValoTheme.BUTTON_TINY);
+		FormLayout numIvoiceLayout = ViewHelper.buildForm("", false, false);
+		numIvoiceLayout.addComponents(txtDocumentNumber);
+		HorizontalLayout invoiceLayout = ViewHelper.buildHorizontalLayout(false, false);
+		invoiceLayout.addComponents(new Label("Factura"), numIvoiceLayout, searchInvoiceBtn);
+		invoiceLayout.setComponentAlignment(searchInvoiceBtn, Alignment.BOTTOM_CENTER);
+		// txtDocumentNumber.addContextClickListener(e ->
+		// builInvoiceWindow(txtDocumentNumber.getValue()));
+
 		txtDocumentDate = new TextField("Fecha de factura");
 		txtDocumentDate.setStyleName(ValoTheme.TEXTFIELD_TINY);
 		txtDocumentDate.setWidth("50%");
 
 		txtPerson = new TextField("Cliente");
 		txtPerson.setStyleName(ValoTheme.TEXTFIELD_TINY);
+		txtPerson.setReadOnly(true);
 		txtPerson.setWidth("50%");
 
 		txtDocumentValue = new NumberField("Valor factura");
@@ -191,7 +212,8 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 		txtDocumentValue.setReadOnly(true);
 		txtDocumentValue.setWidth("50%");
 
-		basicForm.addComponents(dtfCollectionDate, txtDocumentNumber, txtDocumentDate, txtPerson, txtDocumentValue);
+		basicForm.addComponents(dtfCollectionDate, searchInvoiceBtn, txtDocumentNumber, txtDocumentDate, txtPerson,
+				txtDocumentValue);
 
 		Panel basicPanel = ViewHelper.buildPanel("", basicForm);
 		layout.addComponents(basicPanel);
@@ -201,19 +223,21 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 		txtInitialBalance = new NumberField("Saldo inicial");
 		txtInitialBalance.setStyleName(ValoTheme.TEXTFIELD_TINY);
 		txtInitialBalance.setWidth("50%");
-		txtInitialBalance.setReadOnly(true);
+		txtInitialBalance.setRequiredIndicatorVisible(true);
+		// txtInitialBalance.setReadOnly(true);
 		// txtInitialBalance.addValueChangeListener(e -> setTotalSale());
 
 		txtFee = new NumberField("Abono");
 		txtFee.setStyleName(ValoTheme.TEXTFIELD_TINY);
-		txtFee.setReadOnly(true);
 		txtFee.setWidth("50%");
+		txtFee.setRequiredIndicatorVisible(true);
+		txtFee.addValueChangeListener(e -> setFinalBalance());
 
 		txtFinalBalance = new NumberField("Saldo final");
 		txtFinalBalance.setStyleName(ValoTheme.TEXTFIELD_TINY);
-		txtFinalBalance.setWidth("50%");
 		txtFinalBalance.setReadOnly(true);
-		// txtFinalBalance.addValueChangeListener(e -> setTotalSale());
+		txtFinalBalance.setWidth("50%");
+		txtFinalBalance.setRequiredIndicatorVisible(true);
 
 		FormLayout saleForm = ViewHelper.buildForm("", false, false);
 		saleForm.addComponents(txtInitialBalance, txtFee, txtFinalBalance);
@@ -238,10 +262,29 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 			txtDocumentDate.setValue(DateUtil.dateToString(collection.getDocument().getDocumentDate()));
 			txtPerson.setValue(collection.getDocument().getPerson().getName() + " "
 					+ collection.getDocument().getPerson().getLastName());
+			txtDocumentValue.setValue(String.valueOf(collection.getDocument().getTotalValue()));
 
 			txtInitialBalance.setValue(String.valueOf(collection.getInitialBalance()));
 			txtFee.setValue(String.valueOf(collection.getFee()));
 			txtFinalBalance.setValue(String.valueOf(collection.getFinalBalance()));
+		}
+
+	}
+
+	private void setFinalBalance() {
+		String strLog = "[]setFinalBalance";
+		try {
+			String fee = txtFee.getValue();
+			String initialBalance = txtInitialBalance.getValue();
+			if (fee != null && !fee.isEmpty() && initialBalance != null && !initialBalance.isEmpty()) {
+				BigDecimal finalBalance = NumericUtil.stringToBigDecimal(initialBalance)
+						.subtract(NumericUtil.stringToBigDecimal(fee));
+				txtFinalBalance.setValue(String.valueOf(finalBalance));
+			}
+		} catch (Exception e) {
+			log.error(strLog + "[Exception]" + e.getMessage());
+			ViewHelper.showNotification("Se presentó un error al calcular el saldo de la deuda",
+					Notification.Type.ERROR_MESSAGE);
 		}
 
 	}
@@ -366,43 +409,43 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 	}
 
 	/**
-	 * Metodo para construir la venta modal de personas
+	 * Metodo para construir la venta modal con la lista de facturas
 	 * 
-	 * @param personFiltter
+	 * @param invoiceFilter
 	 */
 	@SuppressWarnings("deprecation")
-	private void buildPersonWindow(String personFiltter) {
+	private void builInvoiceWindow(String invoiceFilter) {
 
-		personSubwindow = ViewHelper.buildSubwindow("75%");
-		personSubwindow.setCaption("Personas");
+		invoiceWindow = ViewHelper.buildSubwindow("75%");
+		invoiceWindow.setCaption("Facturas");
 
 		VerticalLayout subContent = ViewHelper.buildVerticalLayout(true, true);
 
 		// Panel de botones
 		Button backBtn = new Button("Cancelar", FontAwesome.BACKWARD);
 		backBtn.addStyleName("mystyle-btn");
-		backBtn.addClickListener(e -> closeWindow(personSubwindow));
+		backBtn.addClickListener(e -> closeWindow(invoiceWindow));
 
 		Button selectBtn = new Button("Seleccionar", FontAwesome.CHECK);
 		selectBtn.addStyleName("mystyle-btn");
-		// selectBtn.addClickListener(e -> selectPerson());
+		selectBtn.addClickListener(e -> selectDocument());
 
 		HorizontalLayout buttonLayout = ViewHelper.buildHorizontalLayout(true, true);
 		buttonLayout.addComponents(backBtn, selectBtn);
 		Panel buttonPanel = ViewHelper.buildPanel(null, buttonLayout);
 
 		try {
-			Commons.PERSON_TYPE = PersonType.USER.getName();
-			personLayout = new PersonLayout(true);
+			Commons.TRANSACTION_TYPE = TransactionType.SALIDA.getName();
+			invoicListLayout = new InvoiceReportLayout(true);
 
 		} catch (IOException e) {
-			log.error("Error al cargar lista de personas. Exception:" + e);
+			log.error("Error al cargar lista de facturas. Exception:" + e);
 		}
-		Panel personPanel = ViewHelper.buildPanel(null, personLayout);
-		subContent.addComponents(buttonPanel, personPanel);
+		Panel invoicePanel = ViewHelper.buildPanel(null, invoicListLayout);
+		subContent.addComponents(buttonPanel, invoicePanel);
 
-		personSubwindow.setContent(subContent);
-		getUI().addWindow(personSubwindow);
+		invoiceWindow.setContent(subContent);
+		getUI().addWindow(invoiceWindow);
 
 	}
 
@@ -496,6 +539,19 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 
 		log.info(strLog + " result filterDocumentByDate: " + result);
 		return result;
+	}
+
+	private void selectDocument() {
+		selectedDocument = invoicListLayout.getSelected();
+		if (selectedDocument != null) {
+			txtDocumentNumber.setValue(selectedDocument.getCode());
+			txtDocumentDate.setValue(DateUtil.dateToString(selectedDocument.getDocumentDate()));
+			txtDocumentValue.setValue(selectedDocument.getTotalValue());
+			txtPerson.setValue(selectedDocument.getPerson().getDocumentNumber() + " -  "
+					+ selectedDocument.getPerson().getName() + " " + selectedDocument.getPerson().getLastName());
+
+		}
+		invoiceWindow.close();
 	}
 
 }
