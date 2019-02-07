@@ -317,7 +317,7 @@ public class VissaUI extends UI {
 		navigator.addView(KEY_USERS, PersonLayout.class);
 		navigator.addView("test", ReportLayout.class);
 		navigator.addView(KEY_ROLES, RoleLayout.class);
-		navigator.addView(KEY_CASH_CONCILIATION, ConciliationLayout.class);
+		navigator.addView(KEY_CASH_CONCILIATION, ConciliationAdministratorLayout.class);
 		navigator.addView(KEY_COLLECTION, CollectionLayout.class);
 		navigator.setErrorView(DefaultView.class);
 		UI.getCurrent().setNavigator(navigator);

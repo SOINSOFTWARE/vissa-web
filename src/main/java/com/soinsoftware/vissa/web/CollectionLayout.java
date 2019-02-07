@@ -83,7 +83,6 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 	private Document selectedDocument = null;
 
 	private User user;
-	private String role;
 
 	private ListDataProvider<Document> documentDataProvider;
 	private ConfigurableFilterDataProvider<Collection, Void, SerializablePredicate<Collection>> filterProductDataProvider;
@@ -101,7 +100,6 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 	protected AbstractOrderedLayout buildListView() {
 
 		this.user = getSession().getAttribute(User.class);
-		this.role = user.getRole().getName();
 
 		VerticalLayout layout = ViewHelper.buildVerticalLayout(false, false);
 		Panel buttonPanel = buildButtonPanelForLists();
@@ -398,8 +396,8 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 
 	private SerializablePredicate<Collection> filterGrid() {
 		SerializablePredicate<Collection> columnPredicate = null;
-		String codeFilter = txFilterByCode.getValue().trim();
-		String nameFilter = txFilterByName.getValue().trim();
+		// String codeFilter = txFilterByCode.getValue().trim();
+		// String nameFilter = txFilterByName.getValue().trim();
 		/*
 		 * columnPredicate = warehouse ->
 		 * (warehouse.getName().toLowerCase().contains(nameFilter.toLowerCase()) &&
