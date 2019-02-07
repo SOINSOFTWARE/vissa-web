@@ -1,6 +1,6 @@
 package com.soinsoftware.vissa.web;
 
-import static com.soinsoftware.vissa.web.VissaUI.KEY_CASH_CONCILIATION;
+import static com.soinsoftware.vissa.web.VissaUI.KEY_COLLECTION;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -88,7 +88,7 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 	private ConfigurableFilterDataProvider<Collection, Void, SerializablePredicate<Collection>> filterProductDataProvider;
 
 	public CollectionLayout() throws IOException {
-		super("Recaudo", KEY_CASH_CONCILIATION);
+		super("Recaudo", KEY_COLLECTION);
 		collectionBll = CollectionBll.getInstance();
 		documentBll = DocumentBll.getInstance();
 		documentTypeBll = DocumentTypeBll.getInstance();
@@ -253,7 +253,6 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 	private void setFieldValues(Collection collection) {
 
 		if (collection != null) {
-
 			selectedDocument = collection.getDocument();
 
 			txtDocumentNumber.setValue(collection.getDocument().getCode());

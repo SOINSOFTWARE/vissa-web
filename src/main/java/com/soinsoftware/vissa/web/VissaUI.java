@@ -8,8 +8,10 @@ import java.security.spec.InvalidKeySpecException;
 import javax.servlet.annotation.WebServlet;
 
 import org.apache.log4j.Logger;
+import org.hibernate.jpa.criteria.expression.EntityTypeExpression;
 
 import com.soinsoftware.vissa.bll.UserBll;
+import com.soinsoftware.vissa.model.ERole;
 import com.soinsoftware.vissa.model.Person;
 import com.soinsoftware.vissa.model.PersonType;
 import com.soinsoftware.vissa.model.TransactionType;
@@ -86,8 +88,10 @@ public class VissaUI extends UI {
 	protected static final String KEY_USERS = "Usuarios";
 	protected static final String KEY_ROLES = "Roles";
 	protected static final String KEY_CONCILIATION = "Conciliaciones";
-	protected static final String KEY_CASH_CONCILIATION = "Cuadre de caja";
+	protected static final String KEY_SALESMAN_CONCILIATION = "Cuadre vendedor";
+	protected static final String KEY_ADMIN_CONCILIATION = "Cuadre administrador";
 	protected static final String KEY_COLLECTION = "Recaudos";
+	protected static final String KEY_EGRESS = "Egresos";
 
 	private PermissionUtil permissionUtil;
 
@@ -166,9 +170,20 @@ public class VissaUI extends UI {
 
 		if (permissionUtil.canView(KEY_CONCILIATION)) {
 			treeData.addItem(null, KEY_CONCILIATION);
-			if (permissionUtil.canView(KEY_CASH_CONCILIATION)) {
-				treeData.addItem(KEY_CONCILIATION, KEY_CASH_CONCILIATION);
+			if (permissionUtil.canView(KEY_SALESMAN_CONCILIATION)) {
+				treeData.addItem(KEY_CONCILIATION, KEY_SALESMAN_CONCILIATION);
 			}
+			if (permissionUtil.canView(KEY_ADMIN_CONCILIATION)) {
+				treeData.addItem(KEY_CONCILIATION, KEY_ADMIN_CONCILIATION);
+			}
+		}
+
+		if (permissionUtil.canView(KEY_COLLECTION)) {
+			treeData.addItem(null, KEY_COLLECTION);
+		}
+
+		if (permissionUtil.canView(KEY_EGRESS)) {
+			treeData.addItem(null, KEY_EGRESS);
 		}
 
 		if (permissionUtil.canView(KEY_ADMINISTRATION)) {
@@ -179,11 +194,6 @@ public class VissaUI extends UI {
 			if (permissionUtil.canView(KEY_ROLES)) {
 				treeData.addItem(KEY_ADMINISTRATION, KEY_ROLES);
 			}
-		}
-
-		if (permissionUtil.canView(KEY_COLLECTION)) {
-			treeData.addItem(null, KEY_COLLECTION);
-
 		}
 
 	}
@@ -295,6 +305,14 @@ public class VissaUI extends UI {
 		if (item.equals(KEY_USERS)) {
 			Commons.PERSON_TYPE = PersonType.USER.getName();
 		}
+		if (item.equals(KEY_SALESMAN_CONCILIATION)) {
+			Commons.ROLE = ERole.SALESMAN.getName();
+		}
+
+		if (item.equals(KEY_ADMIN_CONCILIATION)) {
+			Commons.ROLE = ERole.ADMINISTRATOR.getName();
+		}
+
 		Commons.MENU_NAME = item;
 		UI.getCurrent().getNavigator().navigateTo(item);
 	}
@@ -317,8 +335,10 @@ public class VissaUI extends UI {
 		navigator.addView(KEY_USERS, PersonLayout.class);
 		navigator.addView("test", ReportLayout.class);
 		navigator.addView(KEY_ROLES, RoleLayout.class);
-		navigator.addView(KEY_CASH_CONCILIATION, ConciliationAdministratorLayout.class);
+		navigator.addView(KEY_SALESMAN_CONCILIATION, ConciliationAdministratorLayout.class);
+		navigator.addView(KEY_ADMIN_CONCILIATION, ConciliationAdministratorLayout.class);
 		navigator.addView(KEY_COLLECTION, CollectionLayout.class);
+		navigator.addView(KEY_EGRESS, EgressLayout.class);
 		navigator.setErrorView(DefaultView.class);
 		UI.getCurrent().setNavigator(navigator);
 

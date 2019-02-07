@@ -285,26 +285,30 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	private Panel buildHeaderPanel() {
 		VerticalLayout verticalLayout = ViewHelper.buildVerticalLayout(true, true);
 
-		cbDocumentType = new ComboBox<DocumentType>("Tipo de pedido");
+		cbDocumentType = new ComboBox<DocumentType>("Tipo de factura");
 		cbDocumentType.focus();
-		// cbDocumentType.setWidth("40%");
-
-		ListDataProvider<DocumentType> docTypeDataProv = new ListDataProvider<>(
-				documentTypeBll.select(transactionType));
-
-		cbDocumentType.setDataProvider(docTypeDataProv);
-		cbDocumentType.setItemCaptionGenerator(DocumentType::getName);
-		cbDocumentType.addValueChangeListener(e -> {
-			getNextDocumentNumber(cbDocumentType.getValue());
-		});
 		cbDocumentType.setEmptySelectionAllowed(false);
 		cbDocumentType.setEmptySelectionCaption("Seleccione");
 		cbDocumentType.setStyleName(ValoTheme.COMBOBOX_TINY);
 		cbDocumentType.setRequiredIndicatorVisible(true);
 
+		ListDataProvider<DocumentType> docTypeDataProv = new ListDataProvider<>(
+				documentTypeBll.select(transactionType));
+		cbDocumentType.setDataProvider(docTypeDataProv);
+		cbDocumentType.setItemCaptionGenerator(DocumentType::getName);
+		cbDocumentType.addValueChangeListener(e -> {
+			getNextDocumentNumber(cbDocumentType.getValue());
+		});
+
 		txtDocNumber = new TextField("Número de factura");
 		txtDocNumber.setReadOnly(true);
 		txtDocNumber.setStyleName(ValoTheme.TEXTFIELD_TINY);
+
+		if (transactionType.equals(TransactionType.SALIDA)) {
+			DocumentType docType = docTypeDataProv.getItems().iterator().next();
+			cbDocumentType.setValue(docType);
+			getNextDocumentNumber(docType);
+		}
 
 		txtResolution = new TextField("Resolución de factura");
 		txtResolution.setStyleName(ValoTheme.TEXTFIELD_TINY);
@@ -385,8 +389,12 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 		HorizontalLayout headerLayout1 = ViewHelper.buildHorizontalLayout(false, false);
 
-		headerLayout1.addComponents(cbDocumentType, txtDocNumber, txtResolution, txtReference, txtPerson,
-				searchSupplierButton);
+		headerLayout1.addComponents(cbDocumentType, txtDocNumber);
+		if (transactionType.equals(TransactionType.SALIDA)) {
+			headerLayout1.addComponents(txtResolution);
+		}
+
+		headerLayout1.addComponents(txtReference, txtPerson, searchSupplierButton);
 
 		HorizontalLayout headerLayout2 = ViewHelper.buildHorizontalLayout(false, false);
 		headerLayout2.addComponents(dtfDocumentDate, cbPaymentType, txtPaymentTerm, dtfExpirationDate, cbPaymentMethod);
@@ -927,8 +935,9 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	}
 
 	private void saveInvoice(Document document) {
+		String strLog = "[saveInvoice] ";
 		Document documentEntity = saveInvoiceHeader(document);
-		log.info("Document saved:" + documentEntity);
+		log.info(strLog + "Document saved:" + documentEntity);
 
 		if (documentEntity != null) {
 			boolean hasErrors = false;
@@ -963,17 +972,17 @@ public class InvoiceLayout extends VerticalLayout implements View {
 					// Se actualiza stock en el movimiento de inventario
 					Double stock = detail.getProduct().getStock();
 					Double initialStock = stock != null ? stock : 0;
-					log.info("initialStock:" + initialStock);
+					log.info(strLog + "initialStock:" + initialStock);
 					Double finalStock = 0.0;
 					Double quantity = Double.parseDouble(detail.getQuantity());
-					log.info("quantity:" + quantity);
+					log.info(strLog + "quantity:" + quantity);
 
 					if (transactionType.equals(TransactionType.ENTRADA)) {
 						finalStock = initialStock != 0 ? initialStock + quantity : quantity;
 					} else if (transactionType.equals(TransactionType.SALIDA)) {
 						finalStock = initialStock != 0 ? initialStock - quantity : quantity;
 					}
-					log.info("finalStock:" + finalStock);
+					log.info(strLog + "finalStock:" + finalStock);
 					InventoryTransaction inventoryTransaction = invBuilder.product(detail.getProduct())
 							.transactionType(transactionType).initialStock(initialStock).quantity(quantity)
 							.finalStock(finalStock).document(documentEntity).build();
@@ -988,7 +997,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 					Lot lot = null;
 					if (lotList.size() > 0) {
 						lot = lotList.get(0);
-						log.info("Lote más pronto a vencer:" + lot.getExpirationDate());
+						log.info(strLog + "Lote más pronto a vencer:" + lot.getExpirationDate());
 
 						Double newLotStock = 0.0;
 						if (transactionType.equals(TransactionType.ENTRADA)) {
@@ -1004,11 +1013,11 @@ public class InvoiceLayout extends VerticalLayout implements View {
 						if (detailLot != null) {
 							detailLotBll.save(detailLot, false);
 						}
-						log.info("detailLot saved:" + detailLot);
+						log.info(strLog + "detailLot saved:" + detailLot);
 
 						// Guardar movimiento de inventario
 						inventoryBll.save(inventoryTransaction, false);
-						log.info("inventoryTransaction saved:" + inventoryTransaction);
+						log.info(strLog + "inventoryTransaction saved:" + inventoryTransaction);
 
 						// Actualizar stock producto
 						productBll.save(product, false);
@@ -1018,16 +1027,16 @@ public class InvoiceLayout extends VerticalLayout implements View {
 						if (lot != null) {
 							lotBll.save(lot, false);
 						}
-						log.info("lot saved:" + product);
+						log.info(strLog + "lot saved:" + product);
 
 						// afterSave(caption);
 					} catch (ModelValidationException ex) {
 						hasErrors = true;
-						log.error(ex);
+						log.error(strLog + ex);
 						ViewHelper.showNotification(ex.getMessage(), Notification.Type.ERROR_MESSAGE);
 					} catch (HibernateException ex) {
 						hasErrors = true;
-						log.error(ex);
+						log.error(strLog + ex);
 						ViewHelper.showNotification(
 								"Los datos no pudieron ser salvados, contacte al administrador (3007200405)",
 								Notification.Type.ERROR_MESSAGE);
@@ -1040,9 +1049,10 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			if (!hasErrors) {
 				// Actualizar consecutivo de tipo de factura
 				documentTypeBll.save(documentType, false);
-				log.info("documentType saved:" + documentType);
+				log.info(strLog + "documentType saved:" + documentType);
+				log.info(strLog + "document saved:" + documentEntity);
 				documentTypeBll.commit();
-				this.document = document;
+				this.document = documentEntity;
 				ViewHelper.showNotification("Factura guardada con exito", Notification.Type.WARNING_MESSAGE);
 			} else {
 				documentBll.rollback();
@@ -1171,13 +1181,29 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	}
 
 	private void deleteProductGrid() {
-		itemsList.remove(getSelectedDetail());
-		fillDetailGridData(itemsList);
+		String strLog = "[deleteProductGrid]";
+		try {
+			DocumentDetail detail = getSelectedDetail();
+			log.info(strLog + "detail:" + detail);
+			if (detail != null) {
+				itemsList.remove(detail);
+				fillDetailGridData(itemsList);
+			} else {
+				ViewHelper.showNotification("Seleccione un ítem", Notification.Type.WARNING_MESSAGE);
+			}
+		} catch (Exception e) {
+			log.error(strLog + "[Exception]" + e.getMessage());
+			ViewHelper.showNotification("Se presentó une error al eliminar el ítem", Notification.Type.ERROR_MESSAGE);
+		}
 	}
 
 	private DocumentDetail getSelectedDetail() {
+		DocumentDetail detail = null;
 		Set<DocumentDetail> detailSet = detailGrid.getSelectedItems();
-		return detailSet.iterator().next();
+		if (!detailSet.isEmpty()) {
+			detail = detailSet.iterator().next();
+		}
+		return detail;
 	}
 
 	private void deleteButtonAction() {
@@ -1209,11 +1235,11 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	}
 
 	private void printInvoice() {
-		String strLog = "[printDocument]";
+		String strLog = "[printInvoice]";
 		try {
 			log.info(strLog + " document: " + document);
 			if (document != null) {
-				log.info(strLog + " document: " + document);
+
 				String filePath = pdfGenerator.generate(createReportParameters(), document.getDetails());
 
 				Embedded c = new Embedded();
@@ -1261,8 +1287,12 @@ public class InvoiceLayout extends VerticalLayout implements View {
 				parameters.put(Commons.PARAM_PHONE, company.getPhone() != null ? company.getPhone() : "");
 				parameters.put(Commons.PARAM_MOBILE, company.getMobile() != null ? company.getMobile() : "");
 
+				// E:\Documents\GitHub\vissa-web\src\main\webapp\WEB-INF\
 				// parameters.put(Commons.PARAM_LOGO, "/opt/tomcat/resources/logoKisam.png");
 				parameters.put(Commons.PARAM_LOGO, "C:/Users/carlosandres/Desktop/LINA/VISSA/logoKisam.png");
+
+				String basepath = VaadinService.getCurrent().getBaseDirectory().getAbsolutePath();
+				parameters.put(Commons.PARAM_LOGO, basepath + "/WEB-INF/logoKisam.png");
 			}
 			if (document != null) {
 				parameters.put(Commons.PARAM_INVOICE_NUMBER, document.getCode());
