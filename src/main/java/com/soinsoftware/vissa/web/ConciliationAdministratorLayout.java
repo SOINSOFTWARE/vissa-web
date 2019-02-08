@@ -228,7 +228,7 @@ public class ConciliationAdministratorLayout extends AbstractEditableLayout<Cash
 			basicForm.addComponent(txtPerson);
 			txtPerson.setValue(user.getPerson().getName() + " " + user.getPerson().getLastName());
 			selectedPerson = user.getPerson();
-			employeeRole = loginRole;
+
 		}
 
 		txtPerson.setWidth("50%");
@@ -281,8 +281,6 @@ public class ConciliationAdministratorLayout extends AbstractEditableLayout<Cash
 		txtSales.setDecimalAllowed(true);
 		txtSales.setDecimalPrecision(2);
 		txtSales.setNegativeAllowed(false);
-
-		txtSales.setDecimalSeparator(',');
 
 		txtCreditCollection = new NumberField("Recaudo créditos");
 		txtCreditCollection.setStyleName(ValoTheme.TEXTFIELD_TINY);
@@ -750,7 +748,7 @@ public class ConciliationAdministratorLayout extends AbstractEditableLayout<Cash
 
 		if (selectedPerson != null) {
 			txtPerson.setValue(selectedPerson.getName() + " " + selectedPerson.getLastName());
-			employeeRole = userBll.select(selectedPerson).getRole().getName();
+			// employeeRole = userBll.select(selectedPerson).getRole().getName();
 
 			if (detailLayout != null) {
 				removeComponent(detailLayout);

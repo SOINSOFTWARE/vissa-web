@@ -40,6 +40,7 @@ import com.soinsoftware.vissa.model.DocumentDetail;
 import com.soinsoftware.vissa.model.DocumentDetailLot;
 import com.soinsoftware.vissa.model.DocumentStatus;
 import com.soinsoftware.vissa.model.DocumentType;
+import com.soinsoftware.vissa.model.EPaymemtType;
 import com.soinsoftware.vissa.model.InventoryTransaction;
 import com.soinsoftware.vissa.model.Lot;
 import com.soinsoftware.vissa.model.PaymentMethod;
@@ -1142,11 +1143,13 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	}
 
 	private void searchDocument(String documentNumber) {
-		String strLog = "[deleteDocument]";
+		String strLog = "[searchDocument]";
 		try {
+			cleanButtonAction();
 			log.info(strLog + "[parameters] documentNumber: " + documentNumber);
-			if (documentNumber != null && !documentNumber.isEmpty()) {
-				document = documentBll.select(documentNumber);
+			List<DocumentType> docTypeList = documentTypeBll.select(transactionType);
+			if (documentNumber != null && !documentNumber.isEmpty() && !docTypeList.isEmpty()) {
+				document = documentBll.select(documentNumber, docTypeList);
 				if (document != null) {
 					cbDocumentType.setValue(document.getDocumentType());
 					txtDocNumber.setValue(document.getCode());
@@ -1287,22 +1290,31 @@ public class InvoiceLayout extends VerticalLayout implements View {
 				parameters.put(Commons.PARAM_PHONE, company.getPhone() != null ? company.getPhone() : "");
 				parameters.put(Commons.PARAM_MOBILE, company.getMobile() != null ? company.getMobile() : "");
 
-				// E:\Documents\GitHub\vissa-web\src\main\webapp\WEB-INF\
-				// parameters.put(Commons.PARAM_LOGO, "/opt/tomcat/resources/logoKisam.png");
-				parameters.put(Commons.PARAM_LOGO, "C:/Users/carlosandres/Desktop/LINA/VISSA/logoKisam.png");
-
 				String basepath = VaadinService.getCurrent().getBaseDirectory().getAbsolutePath();
 				parameters.put(Commons.PARAM_LOGO, basepath + "/WEB-INF/logoKisam.png");
 			}
 			if (document != null) {
 				parameters.put(Commons.PARAM_INVOICE_NUMBER, document.getCode());
 				parameters.put(Commons.PARAM_INVOICE_DATE, DateUtil.dateToString(document.getDocumentDate()));
-				parameters.put(Commons.PARAM_INVOICE_TYPE, document.getDocumentType().getName());
+				String invoiceType;
+
+				if (document.getDocumentType().getTransactionType().equals(TransactionType.ENTRADA)) {
+					invoiceType = document.getDocumentType().getName();
+				} else {
+					PaymentType payType = document.getPaymentType();
+					if (payType.getCode().equals(EPaymemtType.CREDIT.getName())) {
+						invoiceType = "CREDITO";
+					} else {
+						invoiceType = "CONTADO";
+					}
+				}
+
+				parameters.put(Commons.PARAM_INVOICE_TYPE, invoiceType);
 				parameters.put(Commons.PARAM_SALESMAN,
 						document.getSalesman().getName() + " " + document.getSalesman().getLastName());
 				parameters.put(Commons.PARAM_CUSTOMER,
 						document.getPerson().getName() + " " + document.getSalesman().getLastName());
-				parameters.put(Commons.PARAM_INVOICE_TYPE, document.getDocumentType().getName());
+
 				parameters.put(Commons.PARAM_CUSTOMER_ID,
 						document.getPerson().getDocumentNumber() != null ? document.getPerson().getDocumentNumber()
 								: "");

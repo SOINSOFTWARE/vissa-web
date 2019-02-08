@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Created with Jaspersoft Studio version 6.2.2.final using JasperReports Library version 6.2.2  -->
-<!-- 2019-02-05T23:50:19 -->
+<!-- 2019-02-07T22:17:33 -->
 <jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="ordenVenta" pageWidth="226" pageHeight="425" columnWidth="216" leftMargin="5" rightMargin="5" topMargin="20" bottomMargin="20" uuid="c416d1c5-e979-4b62-bb6b-b23441d7438d">
 	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="One Empty Record"/>
 	<property name="com.jaspersoft.studio.unit." value="mm"/>
@@ -144,7 +144,7 @@
 				<text><![CDATA[FECHA EXP. DE 04/02/2019 AL 04/02/2021]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="2" y="139" width="104" height="11" uuid="5003e484-3b97-468f-90fb-9a6aaae990e1">
+				<reportElement x="116" y="139" width="44" height="11" uuid="5003e484-3b97-468f-90fb-9a6aaae990e1">
 					<property name="com.jaspersoft.studio.unit.height" value="mm"/>
 				</reportElement>
 				<textElement textAlignment="Right">
@@ -153,7 +153,7 @@
 				<text><![CDATA[Factura N.]]></text>
 			</staticText>
 			<textField pattern="">
-				<reportElement mode="Opaque" x="106" y="139" width="100" height="11" uuid="07bd058f-8de5-481d-a8b6-db852e198bec">
+				<reportElement mode="Opaque" x="160" y="139" width="47" height="11" uuid="07bd058f-8de5-481d-a8b6-db852e198bec">
 					<property name="com.jaspersoft.studio.unit.height" value="mm"/>
 				</reportElement>
 				<textElement verticalAlignment="Middle">
@@ -161,6 +161,15 @@
 				</textElement>
 				<textFieldExpression><![CDATA[$P{P_INVOICE_NUMBER}]]></textFieldExpression>
 			</textField>
+			<staticText>
+				<reportElement x="2" y="139" width="114" height="11" uuid="344a092e-da58-4929-9b31-143e94a0e672">
+					<property name="com.jaspersoft.studio.unit.height" value="mm"/>
+				</reportElement>
+				<textElement textAlignment="Left">
+					<font fontName="DejaVu Sans" size="8"/>
+				</textElement>
+				<text><![CDATA[Factura S-00001 al S-10000]]></text>
+			</staticText>
 		</band>
 	</title>
 	<pageHeader>
