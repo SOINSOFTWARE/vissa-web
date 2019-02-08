@@ -5,6 +5,7 @@ import static com.soinsoftware.vissa.web.VissaUI.KEY_SALESMAN_CONCILIATION;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Set;
@@ -277,7 +278,7 @@ public class ConciliationAdministratorLayout extends AbstractEditableLayout<Cash
 		txtSales.setStyleName(ValoTheme.TEXTFIELD_TINY);
 		txtSales.setReadOnly(true);
 		txtSales.setWidth("50%");
-		txtSales.setValue(getSumDailySales());
+		txtSales.setValue(getSumPaidDailySales());
 		txtSales.setDecimalAllowed(true);
 		txtSales.setDecimalPrecision(2);
 		txtSales.setNegativeAllowed(false);
@@ -788,6 +789,48 @@ public class ConciliationAdministratorLayout extends AbstractEditableLayout<Cash
 			documentDataProvider = new ListDataProvider<>(documentBll.select(types));
 			documentDataProvider.setFilter(document -> filterDocumentByDate(document, null));
 			log.info(strLog + " docs ventas filtrados cant ->" + documentDataProvider.getItems().size());
+		} catch (Exception e) {
+			log.error(strLog + "[Exception]" + e.getMessage());
+		}
+	}
+
+	private Double getSumPaidDailySales() {
+		String strLog = "[getSumPaidDailySales]";
+		Double totalSale = 0.0;
+		try {
+			getDailyPaidSalesData();
+			totalSale = documentDataProvider.fetch(new Query<>()).mapToDouble(document -> {
+				if (document.getTotalValue() != null) {
+					return document.getTotalValue();
+				} else {
+					return 0.0;
+				}
+			}).sum();
+		} catch (Exception e) {
+			log.error(strLog + "[Exception]" + e.getMessage());
+		}
+
+		log.info(strLog + " totalPaidSale by day: " + totalSale);
+		return totalSale;
+	}
+
+	private void getDailyPaidSalesData() {
+		String strLog = "[getDailyPaidSalesData]";
+		try {
+			List<DocumentType> types = documentTypeBll.select(TransactionType.SALIDA);
+			/*
+			 * List<PaymentType> payTypes = new ArrayList<>();
+			 * 
+			 * PaymentType payTypeObj = paymentTypeBll.select(EPaymemtType.PAID.getName());
+			 * 
+			 * payTypes.add(payTypeObj); payTypeObj =
+			 * PaymentType.builder().code(EPaymemtType.PREPAY.getName()).build();
+			 * payTypes.add(payTypeObj);
+			 */
+			PaymentType paymentType = paymentTypeBll.select(EPaymemtType.PAID.getName());
+			documentDataProvider = new ListDataProvider<>(documentBll.select(types));
+			documentDataProvider.setFilter(document -> filterDocumentByDate(document, paymentType));
+			log.info(strLog + " docs ventas pagadas filtrados cant ->" + documentDataProvider.getItems().size());
 		} catch (Exception e) {
 			log.error(strLog + "[Exception]" + e.getMessage());
 		}
