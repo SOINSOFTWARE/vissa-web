@@ -160,6 +160,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		txtCode = new TextField("Código del producto");
 		txtCode.setWidth("50%");
 		txtCode.setReadOnly(true);
+		txtCode.setValue(tableSequence != null ? String.valueOf(tableSequence.getSequence()) : "");
 
 		txtName = new TextField("Nombre del producto");
 		txtName.setWidth("50%");
