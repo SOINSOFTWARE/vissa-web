@@ -426,7 +426,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 		Button deleteProductBt = new Button("Eliminar producto", FontAwesome.ERASER);
 		deleteProductBt.addStyleName(ValoTheme.BUTTON_TINY);
-		deleteProductBt.addClickListener(e -> deleteProductGrid());
+		deleteProductBt.addClickListener(e -> deleteItemDetail());
 
 		buttonlayout.addComponents(addProductBt, deleteProductBt);
 
@@ -495,6 +495,10 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		return ViewHelper.buildPanel("Productos", layout);
 	}
 
+	/**
+	 * Metodo que valida la cantidad ingresada por cada item
+	 * @param quantity
+	 */
 	private void changeQuantity(String quantity) {
 		String strLog = "[changeQuantity]";
 		dataProvider.refreshAll();
@@ -559,6 +563,13 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 	}
 
+	/**
+	 * Metodo para calcular el total de la factura y establecer este valor en el
+	 * campo TotalValue
+	 * 
+	 * @param detailDataProv
+	 * @return
+	 */
 	private String calculateTotal(ListDataProvider<DocumentDetail> detailDataProv) {
 		String strLog = "[calculateTotal]";
 		try {
@@ -764,6 +775,11 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 	}
 
+	/**
+	 * Metodo para agregar un Item al detalle de una factura
+	 * 
+	 * @param docDetail
+	 */
 	private void addItemToDetail(DocumentDetail docDetail) {
 		String strLog = "[addItemToDetail]";
 		try {
@@ -777,6 +793,12 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		}
 	}
 
+	/**
+	 * Metodo para agregar un lote al item del detalle de una factura
+	 * 
+	 * @param docDetail
+	 */
+
 	private void addLotToDetail(DocumentDetail docDetail) {
 		// Si hay lote, se asocia al registro de detail
 		if (selectedLot != null) {
@@ -787,7 +809,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	}
 
 	/**
-	 * Metodo que construye la venta para buscar productos
+	 * Metodo que construye la ventana para buscar lores
 	 */
 	private void buildLotWindow(DocumentDetail detail) {
 		withoutLot = false;
@@ -888,6 +910,12 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		}
 	}
 
+	/**
+	 * Metodo con la acción del botón guardar factura
+	 * 
+	 * @param documentEntity
+	 */
+
 	@Transactional(rollbackFor = Exception.class)
 	private void saveButtonAction(Document documentEntity) {
 
@@ -898,12 +926,17 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			ConfirmDialog.show(Page.getCurrent().getUI(), "Confirmar", "Está seguro de guardar la factura", "Si", "No",
 					e -> {
 						if (e.isConfirmed()) {
-							saveInvoice(documentEntity);
+							saveInvoiceDetail(documentEntity);
 						}
 					});
 		}
 	}
 
+	/**
+	 * Metodo para validar los campos obligatorios para guardar una factura
+	 * 
+	 * @return
+	 */
 	private String validateRequiredFields() {
 		String message = "";
 		String character = "|";
@@ -932,11 +965,15 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		}
 
 		return message;
-
 	}
 
-	private void saveInvoice(Document document) {
-		String strLog = "[saveInvoice] ";
+	/**
+	 * Metodo para guardar el detalle de una factura
+	 * 
+	 * @param document
+	 */
+	private void saveInvoiceDetail(Document document) {
+		String strLog = "[saveInvoiceDetail] ";
 		Document documentEntity = saveInvoiceHeader(document);
 		log.info(strLog + "Document saved:" + documentEntity);
 
@@ -1033,13 +1070,15 @@ public class InvoiceLayout extends VerticalLayout implements View {
 						// afterSave(caption);
 					} catch (ModelValidationException ex) {
 						hasErrors = true;
+						documentEntity = null;
 						log.error(strLog + ex);
 						ViewHelper.showNotification(ex.getMessage(), Notification.Type.ERROR_MESSAGE);
 					} catch (HibernateException ex) {
 						hasErrors = true;
+						documentEntity = null;
 						log.error(strLog + ex);
 						ViewHelper.showNotification(
-								"Los datos no pudieron ser salvados, contacte al administrador (3007200405)",
+								"Los datos no pudieron ser salvados, contacte al administrador del sistema",
 								Notification.Type.ERROR_MESSAGE);
 					}
 
@@ -1061,6 +1100,12 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		}
 	}
 
+	/**
+	 * Metodo para guardar el encabezado de una factura
+	 * 
+	 * @param documentEntity
+	 * @return
+	 */
 	private Document saveInvoiceHeader(Document documentEntity) {
 		String strLog = "[saveInvoiceHeader]";
 		Document documentSaved = null;
@@ -1105,19 +1150,19 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		} catch (HibernateException ex) {
 			log.error(strLog + "[HibernateException]" + ex);
 			documentBll.rollback();
-			ViewHelper.showNotification("Los datos no pudieron ser salvados, contacte al administrador (3007200405)",
+			ViewHelper.showNotification("Los datos no pudieron ser salvados, contacte al administrador",
 					Notification.Type.ERROR_MESSAGE);
 		} catch (PersistenceException ex) {
 			log.error(strLog + "[PersistenceException]" + ex);
 			documentBll.rollback();
-			ViewHelper.showNotification("Se presentó un error, por favor contacte al adminisrador (3007200405)",
+			ViewHelper.showNotification("Se presentó un error, por favor contacte al adminisrador del sistema",
 					Notification.Type.ERROR_MESSAGE);
 		} catch (Exception ex) {
 			log.error(strLog + "[Exception]" + ex.getLocalizedMessage());
 			ex.printStackTrace();
 			documentBll.rollback();
 			ViewHelper.showNotification(
-					"Se presentó un error al guardar la factura, por favor contacte al adminisrador (3007200405)",
+					"Se presentó un error al guardar la factura, por favor contacte al adminisrador del sistema",
 					Notification.Type.ERROR_MESSAGE);
 		}
 
@@ -1125,27 +1170,44 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 	}
 
+	/**
+	 * Metodo para limpiar los campos de la pantalla
+	 */
 	private void cleanButtonAction() {
-		log.info("Nuevo");
-		txtDocNumber.clear();
-		txtDocNumFilter.clear();
-		txtReference.clear();
-		txtPerson.clear();
-		txtPaymentTerm.clear();
-		// cbDocumentType.clear();
-		cbPaymentMethod.clear();
-		cbPaymentType.clear();
-		cbDocumentStatus.setSelectedItem(docStatusBll.select("Nueva").get(0));
-		itemsList.clear();
-		detailGrid.getDataProvider().refreshAll();
-		txtDocNumFilter.clear();
+		String strLog = "[cleanButtonAction]";
+
+		try {
+			txtDocNumber.clear();
+			txtDocNumFilter.clear();
+			txtReference.clear();
+			txtPerson.clear();
+			txtPaymentTerm.clear();
+			// cbDocumentType.clear();
+			cbPaymentMethod.clear();
+			cbPaymentType.clear();
+			cbDocumentStatus.setSelectedItem(docStatusBll.select("Nueva").get(0));
+			itemsList.clear();
+			detailGrid.getDataProvider().refreshAll();
+			txtDocNumFilter.clear();
+			getNextDocumentNumber(cbDocumentType.getValue());
+		} catch (Exception e) {
+			log.error(strLog + "[Exception]" + e.getMessage());
+			ViewHelper.showNotification(
+					"Se presentó un error al limpiar los datos, por favor contacte al adminisrador del sistema",
+					Notification.Type.ERROR_MESSAGE);
+		}
 
 	}
 
+	/**
+	 * Metodo para buscar una factura ya registrada
+	 * 
+	 * @param documentNumber
+	 */
 	private void searchDocument(String documentNumber) {
 		String strLog = "[searchDocument]";
 		try {
-			cleanButtonAction();
+			// cleanButtonAction();
 			log.info(strLog + "[parameters] documentNumber: " + documentNumber);
 			List<DocumentType> docTypeList = documentTypeBll.select(transactionType);
 			if (documentNumber != null && !documentNumber.isEmpty() && !docTypeList.isEmpty()) {
@@ -1179,12 +1241,20 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		}
 	}
 
+	/**
+	 * Metodo para cerrar un componente Window
+	 * 
+	 * @param w
+	 */
 	private void closeWindow(Window w) {
 		w.close();
 	}
 
-	private void deleteProductGrid() {
-		String strLog = "[deleteProductGrid]";
+	/**
+	 * Metodo para eliminar un item del detalle de la factura
+	 */
+	private void deleteItemDetail() {
+		String strLog = "[deleteItemDetail]";
 		try {
 			DocumentDetail detail = getSelectedDetail();
 			log.info(strLog + "detail:" + detail);
@@ -1200,6 +1270,12 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		}
 	}
 
+	/**
+	 * Método para obtener el item seleccionado del detalle de la factura
+	 * 
+	 * @return
+	 */
+
 	private DocumentDetail getSelectedDetail() {
 		DocumentDetail detail = null;
 		Set<DocumentDetail> detailSet = detailGrid.getSelectedItems();
@@ -1209,6 +1285,9 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		return detail;
 	}
 
+	/**
+	 * Método de acción del botón para cancelar facturas
+	 */
 	private void deleteButtonAction() {
 		if (document != null) {
 			ConfirmDialog.show(Page.getCurrent().getUI(), "Confirmar",
@@ -1221,6 +1300,10 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			ViewHelper.showNotification("No hay factura cargada", Notification.Type.WARNING_MESSAGE);
 		}
 	}
+
+	/**
+	 * Metodo para cancelar una factura, pasa a estado CANCELADA
+	 */
 
 	private void deleteDocument() {
 		String strLog = "[deleteDocument]";
@@ -1241,7 +1324,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		String strLog = "[printInvoice]";
 		try {
 			log.info(strLog + " document: " + document);
-			if (document != null) {
+			if (document != null && document.getCode() != null) {
 
 				String filePath = pdfGenerator.generate(createReportParameters(), document.getDetails());
 
