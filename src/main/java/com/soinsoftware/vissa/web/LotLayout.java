@@ -104,6 +104,14 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 		lotGrid.setSizeFull();
 		lotGrid.addColumn(Lot::getCode).setCaption("Código");
 		lotGrid.addColumn(lot -> {
+			if (lot != null && lot.getWarehouse() != null) {
+				return lot.getWarehouse().getName();
+			} else {
+				return null;
+			}
+		}).setCaption("Bodega");
+		lotGrid.addColumn(Lot::getQuantity).setCaption("Cantidad de productos");
+		lotGrid.addColumn(lot -> {
 			if (lot != null && lot.getLotDate() != null) {
 				return DateUtil.dateToString(lot.getLotDate());
 			} else {
@@ -117,14 +125,6 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 				return null;
 			}
 		}).setCaption("Fecha de vencimiento");
-		lotGrid.addColumn(Lot::getQuantity).setCaption("Cantidad de productos");
-		lotGrid.addColumn(lot -> {
-			if (lot != null && lot.getWarehouse() != null) {
-				return lot.getWarehouse().getName();
-			} else {
-				return null;
-			}
-		}).setCaption("Bodega");
 
 		fillGridData();
 		return ViewHelper.buildPanel(null, lotGrid);
