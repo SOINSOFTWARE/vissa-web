@@ -155,7 +155,6 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	private Company company;
 
 	private Button printBtn;
-	protected static final String REPORT_NAME = "/WEB-INF/reports/invoicePOS.jrxml";
 
 	public InvoiceLayout() throws IOException {
 		super();
@@ -195,8 +194,17 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		tittle.addStyleName(ValoTheme.LABEL_H2);
 		addComponent(tittle);
 
-		pdfGenerator = new PdfGenerator(
-				new File(VaadinService.getCurrent().getBaseDirectory().getAbsolutePath() + REPORT_NAME), title);
+		//Crear el generador de facturas
+		String reportName = null;
+		if (transactionType.equals(ETransactionType.ENTRADA)) {
+			reportName = Commons.PURCHASE_REPORT_NAME;
+		} else if (transactionType.equals(ETransactionType.SALIDA)) {
+			reportName = Commons.SALE_REPORT_NAME;
+		}
+		if (reportName != null && !reportName.isEmpty()) {
+			pdfGenerator = new PdfGenerator(
+					new File(VaadinService.getCurrent().getBaseDirectory().getAbsolutePath() + reportName), title);
+		}
 
 		VerticalLayout layout = ViewHelper.buildVerticalLayout(false, false);
 
@@ -1398,22 +1406,25 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		try {
 			log.info(strLog + " document: " + document);
 			if (document != null && document.getCode() != null) {
+				if (pdfGenerator != null) {
+					String filePath = pdfGenerator.generate(createReportParameters(), document.getDetails());
 
-				String filePath = pdfGenerator.generate(createReportParameters(), document.getDetails());
+					Embedded c = new Embedded();
+					c.setSource(new FileResource(new File(filePath)));
+					c.setType(Embedded.TYPE_BROWSER);
+					c.setWidth("960px");
+					c.setHeight("750px");
+					HorizontalLayout hr = new HorizontalLayout();
+					hr.setWidth("980px");
+					hr.setHeight("770px");
+					hr.addComponent(c);
 
-				Embedded c = new Embedded();
-				c.setSource(new FileResource(new File(filePath)));
-				c.setType(Embedded.TYPE_BROWSER);
-				c.setWidth("960px");
-				c.setHeight("750px");
-				HorizontalLayout hr = new HorizontalLayout();
-				hr.setWidth("980px");
-				hr.setHeight("770px");
-				hr.addComponent(c);
-
-				Window pdfWindow = ViewHelper.buildSubwindow("75%");
-				pdfWindow.setContent(hr);
-				getUI().addWindow(pdfWindow);
+					Window pdfWindow = ViewHelper.buildSubwindow("75%");
+					pdfWindow.setContent(hr);
+					getUI().addWindow(pdfWindow);
+				} else {
+					ViewHelper.showNotification("Error al generar factura", Notification.Type.WARNING_MESSAGE);
+				}
 
 			} else {
 				ViewHelper.showNotification("Debe cargar una factura", Notification.Type.WARNING_MESSAGE);
