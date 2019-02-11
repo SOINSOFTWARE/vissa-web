@@ -8,13 +8,13 @@ import java.security.spec.InvalidKeySpecException;
 import javax.servlet.annotation.WebServlet;
 
 import org.apache.log4j.Logger;
-import org.hibernate.jpa.criteria.expression.EntityTypeExpression;
 
 import com.soinsoftware.vissa.bll.UserBll;
+import com.soinsoftware.vissa.common.CommonsUtil;
 import com.soinsoftware.vissa.model.ERole;
+import com.soinsoftware.vissa.model.ETransactionType;
 import com.soinsoftware.vissa.model.Person;
 import com.soinsoftware.vissa.model.PersonType;
-import com.soinsoftware.vissa.model.TransactionType;
 import com.soinsoftware.vissa.model.User;
 import com.soinsoftware.vissa.util.Commons;
 import com.soinsoftware.vissa.util.PermissionUtil;
@@ -291,10 +291,10 @@ public class VissaUI extends UI {
 	private void selectItem(Tree.ItemClick<String> event) {
 		String item = event.getItem();
 		if (item.equals(KEY_SALE_INVOICES) || item.equals(KEY_SALES_REPORT)) {
-			Commons.TRANSACTION_TYPE = TransactionType.SALIDA.getName();
+			CommonsUtil.TRANSACTION_TYPE = ETransactionType.SALIDA.getName();
 		}
 		if (item.equals(KEY_PURCHASE_INVOICES) || item.equals(KEY_PURCHASES_REPORT)) {
-			Commons.TRANSACTION_TYPE = TransactionType.ENTRADA.getName();
+			CommonsUtil.TRANSACTION_TYPE = ETransactionType.ENTRADA.getName();
 		}
 		if (item.equals(KEY_SUPPLIER)) {
 			Commons.PERSON_TYPE = PersonType.SUPPLIER.getName();

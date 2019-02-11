@@ -48,7 +48,7 @@ import com.soinsoftware.vissa.model.PaymentType;
 import com.soinsoftware.vissa.model.Person;
 import com.soinsoftware.vissa.model.PersonType;
 import com.soinsoftware.vissa.model.Product;
-import com.soinsoftware.vissa.model.TransactionType;
+import com.soinsoftware.vissa.model.ETransactionType;
 import com.soinsoftware.vissa.model.User;
 import com.soinsoftware.vissa.util.Commons;
 import com.soinsoftware.vissa.util.DateUtil;
@@ -115,6 +115,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	private TextField txtPaymentTerm;
 	private DateTimeField dtfExpirationDate;
 	private TextField txtTotal;
+	private TextField txtTotalTax;
 	private ComboBox<PaymentMethod> cbPaymentMethod;
 	private ComboBox<DocumentStatus> cbDocumentStatus;
 	private Grid<DocumentDetail> detailGrid;
@@ -136,12 +137,14 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 	private HashMap<DocumentDetail, DocumentDetailLot> detailLotMap = new HashMap<DocumentDetail, DocumentDetailLot>();
 
-	private TransactionType transactionType;
+	private ETransactionType transactionType;
 
 	private ListDataProvider<DocumentDetail> dataProvider;
 	private ConfigurableFilterDataProvider<DocumentDetail, Void, SerializablePredicate<DocumentDetail>> filterDataProv;
 	private Column<?, ?> columnQuantity;
-	private Column<?, ?> columnTotal;
+	private Column<?, ?> columnSubtotal;
+	private Column<?, ?> columnTax;
+	private Column<?, ?> columnPrice;
 	private FooterRow footer;
 
 	private boolean withoutLot;
@@ -169,7 +172,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		lotBll = LotBll.getInstance();
 		document = new Document();
 		itemsList = new ArrayList<>();
-		transactionType = TransactionType.valueOf(Commons.TRANSACTION_TYPE);
+		transactionType = ETransactionType.valueOf(CommonsUtil.TRANSACTION_TYPE);
 		company = companyBll.selectAll().get(0);
 
 	}
@@ -183,7 +186,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		this.permissionUtil = new PermissionUtil(user.getRole().getPermissions());
 		// setMargin(true);
 		String title = "";
-		if (transactionType.equals(TransactionType.ENTRADA)) {
+		if (transactionType.equals(ETransactionType.ENTRADA)) {
 			title = "Compra";
 		} else {
 			title = "Venta";
@@ -305,7 +308,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		txtDocNumber.setReadOnly(true);
 		txtDocNumber.setStyleName(ValoTheme.TEXTFIELD_TINY);
 
-		if (transactionType.equals(TransactionType.SALIDA)) {
+		if (transactionType.equals(ETransactionType.SALIDA)) {
 			DocumentType docType = docTypeDataProv.getItems().iterator().next();
 			cbDocumentType.setValue(docType);
 			getNextDocumentNumber(docType);
@@ -321,7 +324,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		// txtReference.setWidth("40%");
 
 		String title = "";
-		if (transactionType.equals(TransactionType.ENTRADA)) {
+		if (transactionType.equals(ETransactionType.ENTRADA)) {
 			title = "Proveedor";
 		} else {
 			title = "Cliente";
@@ -388,10 +391,14 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		txtTotal.setReadOnly(true);
 		txtTotal.setStyleName(ValoTheme.TEXTFIELD_TINY);
 
+		txtTotalTax = new TextField("Total IVA");
+		txtTotalTax.setReadOnly(true);
+		txtTotalTax.setStyleName(ValoTheme.TEXTFIELD_TINY);
+
 		HorizontalLayout headerLayout1 = ViewHelper.buildHorizontalLayout(false, false);
 
 		headerLayout1.addComponents(cbDocumentType, txtDocNumber);
-		if (transactionType.equals(TransactionType.SALIDA)) {
+		if (transactionType.equals(ETransactionType.SALIDA)) {
 			headerLayout1.addComponents(txtResolution);
 		}
 
@@ -403,7 +410,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		headerLayout1.setComponentAlignment(searchSupplierButton, Alignment.BOTTOM_CENTER);
 
 		HorizontalLayout headerLayout3 = ViewHelper.buildHorizontalLayout(false, false);
-		headerLayout3.addComponents(cbDocumentStatus, txtTotal);
+		headerLayout3.addComponents(cbDocumentStatus, txtTotal, txtTotalTax);
 
 		verticalLayout.addComponents(headerLayout1, headerLayout2, headerLayout3);
 		verticalLayout.setWidth("100%");
@@ -456,20 +463,44 @@ public class InvoiceLayout extends VerticalLayout implements View {
 				return null;
 			}
 		}).setCaption("Unidad de medida");
-		detailGrid.addColumn(documentDetail -> {
-			if (documentDetail.getProduct() != null && documentDetail.getProduct().getSalePrice() != null) {
-				return documentDetail.getProduct().getSalePrice();
+		columnPrice = detailGrid.addColumn(documentDetail -> {
+			if (documentDetail.getProduct() != null) {
+				if (transactionType.equals(ETransactionType.ENTRADA)
+						&& documentDetail.getProduct().getPurchasePrice() != null) {
+					return documentDetail.getProduct().getPurchasePrice();
+				} else if (transactionType.equals(ETransactionType.SALIDA)
+						&& documentDetail.getProduct().getSalePrice() != null) {
+					return documentDetail.getProduct().getSalePrice();
+				} else {
+					return null;
+				}
 			} else {
 				return null;
 			}
 		}).setCaption("Precio");
+
+		columnTax = detailGrid.addColumn(documentDetail -> {
+			if (documentDetail.getProduct() != null) {
+				if (transactionType.equals(ETransactionType.ENTRADA)
+						&& documentDetail.getProduct().getPurchaseTax() != null) {
+					return documentDetail.getProduct().getPurchaseTax();
+				} else if (transactionType.equals(ETransactionType.SALIDA)
+						&& documentDetail.getProduct().getSaleTax() != null) {
+					return documentDetail.getProduct().getSaleTax();
+				} else {
+					return "0.0";
+				}
+			} else {
+				return "0.0";
+			}
+		}).setCaption("IVA");
 
 		// Columna cantidad editable
 		NumberField txtQuantity = new NumberField();
 		columnQuantity = detailGrid.addColumn(DocumentDetail::getQuantity).setCaption("Cantidad")
 				.setEditorComponent(txtQuantity, DocumentDetail::setQuantity);
 
-		columnTotal = detailGrid.addColumn(documentDetail -> {
+		columnSubtotal = detailGrid.addColumn(documentDetail -> {
 			if (documentDetail.getSubtotal() != null) {
 				return documentDetail.getSubtotal();
 			} else {
@@ -482,6 +513,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 		txtQuantity.addBlurListener(e -> changeQuantity(txtQuantity.getValue()));
 		footer = detailGrid.prependFooterRow();
+		footer.getCell(columnPrice).setHtml("<b>Total IVA:</b>");
 		footer.getCell(columnQuantity).setHtml("<b>Total:</b>");
 
 		detailGrid.getEditor().setEnabled(true);
@@ -497,6 +529,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 	/**
 	 * Metodo que valida la cantidad ingresada por cada item
+	 * 
 	 * @param quantity
 	 */
 	private void changeQuantity(String quantity) {
@@ -510,7 +543,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			qty = Double.parseDouble(quantity);
 
 			if (qty > 0) {
-				currentDetail = CommonsUtil.currentDocumentDetail;
+				currentDetail = CommonsUtil.CURRENT_DOCUMENT_DETAIL;
 				log.info(strLog + "currentDetail:" + currentDetail);
 				if (!withoutLot) {
 					DocumentDetailLot detailLot = detailLotMap.get(currentDetail);
@@ -521,9 +554,9 @@ public class InvoiceLayout extends VerticalLayout implements View {
 							throw new Exception(message);
 						} else {
 							Double finalStock = 0.0;
-							if (transactionType.equals(TransactionType.ENTRADA)) {
+							if (transactionType.equals(ETransactionType.ENTRADA)) {
 								finalStock = detailLot.getInitialStockLot() + qty;
-							} else if (transactionType.equals(TransactionType.SALIDA)) {
+							} else if (transactionType.equals(ETransactionType.SALIDA)) {
 								finalStock = detailLot.getInitialStockLot() - qty;
 							}
 							DocumentDetailLot detailLotTmp = DocumentDetailLot.builder(detailLot).quantity(qty)
@@ -591,6 +624,42 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	}
 
 	/**
+	 * Metodo para calcular el total de IVA de la factura y establecer este valor en
+	 * el campo TotalTax
+	 * 
+	 * @param detailDataProv
+	 * @return
+	 */
+	private String calculateTotalIVA(ListDataProvider<DocumentDetail> detailDataProv) {
+		String strLog = "[calculateTotalIVA]";
+		try {
+			log.info(strLog + "[parameters]" + detailDataProv);
+			String totalIVA = String.valueOf(detailDataProv.fetch(new Query<>()).mapToDouble(documentDetail -> {
+				if (documentDetail.getProduct() != null) {
+					if (transactionType.equals(ETransactionType.ENTRADA)
+							&& documentDetail.getProduct().getPurchaseTaxValue() != null) {
+						return documentDetail.getProduct().getPurchaseTaxValue();
+					} else if (transactionType.equals(ETransactionType.SALIDA)
+							&& documentDetail.getProduct().getSaleTaxValue() != null) {
+						return documentDetail.getProduct().getSaleTaxValue();
+					} else {
+						return 0.0;
+					}
+				} else {
+					return 0.0;
+				}
+			}).sum());
+			txtTotalTax.setValue(totalIVA);
+			log.info("total iva:" + totalIVA);
+			return "<b>" + totalIVA + "</b>";
+		} catch (Exception e) {
+			log.error(strLog + "[Exception]" + e.getMessage());
+		}
+
+		return null;
+	}
+
+	/**
 	 * Metodo para construir la venta modal de personas
 	 * 
 	 * @param personFiltter
@@ -617,10 +686,10 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 		try {
 
-			if (transactionType.equals(TransactionType.ENTRADA)) {
+			if (transactionType.equals(ETransactionType.ENTRADA)) {
 				Commons.PERSON_TYPE = PersonType.SUPPLIER.getName();
 			}
-			if (transactionType.equals(TransactionType.SALIDA)) {
+			if (transactionType.equals(ETransactionType.SALIDA)) {
 				Commons.PERSON_TYPE = PersonType.CUSTOMER.getName();
 			}
 			personLayout = new PersonLayout(true);
@@ -903,7 +972,10 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			detailGrid.setDataProvider(filterDataProv);
 
 			dataProvider.addDataProviderListener(
-					event -> footer.getCell(columnTotal).setHtml(calculateTotal(dataProvider)));
+					event -> footer.getCell(columnSubtotal).setHtml(calculateTotal(dataProvider)));
+			dataProvider.addDataProviderListener(
+					event -> footer.getCell(columnTax).setHtml(calculateTotalIVA(dataProvider)));
+
 			dataProvider.refreshAll();
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -1015,9 +1087,9 @@ public class InvoiceLayout extends VerticalLayout implements View {
 					Double quantity = Double.parseDouble(detail.getQuantity());
 					log.info(strLog + "quantity:" + quantity);
 
-					if (transactionType.equals(TransactionType.ENTRADA)) {
+					if (transactionType.equals(ETransactionType.ENTRADA)) {
 						finalStock = initialStock != 0 ? initialStock + quantity : quantity;
-					} else if (transactionType.equals(TransactionType.SALIDA)) {
+					} else if (transactionType.equals(ETransactionType.SALIDA)) {
 						finalStock = initialStock != 0 ? initialStock - quantity : quantity;
 					}
 					log.info(strLog + "finalStock:" + finalStock);
@@ -1038,9 +1110,9 @@ public class InvoiceLayout extends VerticalLayout implements View {
 						log.info(strLog + "Lote más pronto a vencer:" + lot.getExpirationDate());
 
 						Double newLotStock = 0.0;
-						if (transactionType.equals(TransactionType.ENTRADA)) {
+						if (transactionType.equals(ETransactionType.ENTRADA)) {
 							newLotStock = lot.getQuantity() + quantity;
-						} else if (transactionType.equals(TransactionType.SALIDA)) {
+						} else if (transactionType.equals(ETransactionType.SALIDA)) {
 							newLotStock = lot.getQuantity() - quantity;
 						}
 						lot.setQuantity(newLotStock);
@@ -1128,6 +1200,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 					: null;
 
 			Double total = txtTotal.getValue() != null ? Double.parseDouble(txtTotal.getValue()) : 0;
+			Double totalIVA = txtTotalTax.getValue() != null ? Double.parseDouble(txtTotalTax.getValue()) : 0;
 
 			Set<DocumentDetail> details = detailGrid.getDataProvider().fetch(new Query<>()).collect(Collectors.toSet());
 
@@ -1136,8 +1209,8 @@ public class InvoiceLayout extends VerticalLayout implements View {
 					.documentType(cbDocumentType.getValue()).resolution(txtResolution.getValue()).person(selectedPerson)
 					.documentDate(docDate).paymentMethod(cbPaymentMethod.getValue())
 					.paymentType(cbPaymentType.getValue()).paymentTerm(txtPaymentTerm.getValue())
-					.expirationDate(expirationDate).totalValue(total).status(documentStatus).salesman(user.getPerson())
-					.details(details).build();
+					.expirationDate(expirationDate).totalValue(total).totalValueNoTax(totalIVA).status(documentStatus)
+					.salesman(user.getPerson()).details(details).build();
 
 			// persistir documento
 			documentBll.save(documentEntity, false);
@@ -1381,7 +1454,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 				parameters.put(Commons.PARAM_INVOICE_DATE, DateUtil.dateToString(document.getDocumentDate()));
 				String invoiceType;
 
-				if (document.getDocumentType().getTransactionType().equals(TransactionType.ENTRADA)) {
+				if (document.getDocumentType().getTransactionType().equals(ETransactionType.ENTRADA)) {
 					invoiceType = document.getDocumentType().getName();
 				} else {
 					PaymentType payType = document.getPaymentType();

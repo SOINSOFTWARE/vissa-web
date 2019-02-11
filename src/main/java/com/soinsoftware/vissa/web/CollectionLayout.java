@@ -16,12 +16,13 @@ import com.soinsoftware.vissa.bll.CollectionBll;
 import com.soinsoftware.vissa.bll.DocumentBll;
 import com.soinsoftware.vissa.bll.DocumentTypeBll;
 import com.soinsoftware.vissa.bll.PaymentTypeBll;
+import com.soinsoftware.vissa.common.CommonsUtil;
 import com.soinsoftware.vissa.model.Collection;
 import com.soinsoftware.vissa.model.Document;
 import com.soinsoftware.vissa.model.DocumentType;
 import com.soinsoftware.vissa.model.EPaymemtType;
+import com.soinsoftware.vissa.model.ETransactionType;
 import com.soinsoftware.vissa.model.PaymentType;
-import com.soinsoftware.vissa.model.TransactionType;
 import com.soinsoftware.vissa.model.User;
 import com.soinsoftware.vissa.util.Commons;
 import com.soinsoftware.vissa.util.DateUtil;
@@ -432,7 +433,7 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 		Panel buttonPanel = ViewHelper.buildPanel(null, buttonLayout);
 
 		try {
-			Commons.TRANSACTION_TYPE = TransactionType.SALIDA.getName();
+			CommonsUtil.TRANSACTION_TYPE = ETransactionType.SALIDA.getName();
 			invoicListLayout = new InvoiceReportLayout(true);
 
 		} catch (IOException e) {
@@ -473,7 +474,7 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 	private void getDailySalesData() {
 		String strLog = "[getDailySalesData]";
 		try {
-			List<DocumentType> types = documentTypeBll.select(TransactionType.SALIDA);
+			List<DocumentType> types = documentTypeBll.select(ETransactionType.SALIDA);
 			documentDataProvider = new ListDataProvider<>(documentBll.select(types));
 			documentDataProvider.setFilter(document -> filterDocumentByDate(document, null));
 			log.info(strLog + " docs filtrados cant ->" + documentDataProvider.getItems().size());

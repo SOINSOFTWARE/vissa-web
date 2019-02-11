@@ -33,7 +33,7 @@ import com.soinsoftware.vissa.model.EgressType;
 import com.soinsoftware.vissa.model.PaymentType;
 import com.soinsoftware.vissa.model.Person;
 import com.soinsoftware.vissa.model.PersonType;
-import com.soinsoftware.vissa.model.TransactionType;
+import com.soinsoftware.vissa.model.ETransactionType;
 import com.soinsoftware.vissa.model.User;
 import com.soinsoftware.vissa.util.Commons;
 import com.soinsoftware.vissa.util.DateUtil;
@@ -785,7 +785,7 @@ public class ConciliationAdministratorLayout extends AbstractEditableLayout<Cash
 	private void getDailySalesData() {
 		String strLog = "[getDailySalesData]";
 		try {
-			List<DocumentType> types = documentTypeBll.select(TransactionType.SALIDA);
+			List<DocumentType> types = documentTypeBll.select(ETransactionType.SALIDA);
 			documentDataProvider = new ListDataProvider<>(documentBll.select(types));
 			documentDataProvider.setFilter(document -> filterDocumentByDate(document, null));
 			log.info(strLog + " docs ventas filtrados cant ->" + documentDataProvider.getItems().size());
@@ -817,7 +817,7 @@ public class ConciliationAdministratorLayout extends AbstractEditableLayout<Cash
 	private void getDailyPaidSalesData() {
 		String strLog = "[getDailyPaidSalesData]";
 		try {
-			List<DocumentType> types = documentTypeBll.select(TransactionType.SALIDA);
+			List<DocumentType> types = documentTypeBll.select(ETransactionType.SALIDA);
 			/*
 			 * List<PaymentType> payTypes = new ArrayList<>();
 			 * 
@@ -859,7 +859,7 @@ public class ConciliationAdministratorLayout extends AbstractEditableLayout<Cash
 	private void getDailyPurchaseData() {
 		String strLog = "[getDailyPurchaseData]";
 		try {
-			List<DocumentType> types = documentTypeBll.select(TransactionType.ENTRADA);
+			List<DocumentType> types = documentTypeBll.select(ETransactionType.ENTRADA);
 			documentDataProvider = new ListDataProvider<>(documentBll.select(types));
 			documentDataProvider.setFilter(document -> filterDocumentByDate(document, null));
 			log.info(strLog + " docs compras filtrados cant ->" + documentDataProvider.getItems().size());

@@ -1,24 +1,23 @@
 package com.soinsoftware.vissa.web;
 
-import static com.soinsoftware.vissa.web.VissaUI.KEY_INVOICES;
+import static com.soinsoftware.vissa.web.VissaUI.KEY_REPORTS;
 
 import java.io.IOException;
 import java.util.Date;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import org.apache.log4j.Logger;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.soinsoftware.vissa.bll.DocumentBll;
 import com.soinsoftware.vissa.bll.DocumentTypeBll;
+import com.soinsoftware.vissa.common.CommonsUtil;
 import com.soinsoftware.vissa.model.Document;
-import com.soinsoftware.vissa.model.DocumentDetail;
 import com.soinsoftware.vissa.model.DocumentType;
+import com.soinsoftware.vissa.model.ETransactionType;
 import com.soinsoftware.vissa.model.Person;
 import com.soinsoftware.vissa.model.PersonType;
-import com.soinsoftware.vissa.model.TransactionType;
 import com.soinsoftware.vissa.util.Commons;
 import com.soinsoftware.vissa.util.DateUtil;
 import com.soinsoftware.vissa.util.ViewHelper;
@@ -37,13 +36,13 @@ import com.vaadin.ui.DateTimeField;
 import com.vaadin.ui.Grid;
 import com.vaadin.ui.Grid.Column;
 import com.vaadin.ui.Grid.SelectionMode;
-import com.vaadin.ui.components.grid.FooterRow;
 import com.vaadin.ui.HorizontalLayout;
 import com.vaadin.ui.Notification;
 import com.vaadin.ui.Panel;
 import com.vaadin.ui.TextField;
 import com.vaadin.ui.VerticalLayout;
 import com.vaadin.ui.Window;
+import com.vaadin.ui.components.grid.FooterRow;
 import com.vaadin.ui.themes.ValoTheme;
 
 @SuppressWarnings("deprecation")
@@ -69,7 +68,7 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 	private Grid<Document> grid;
 
 	private boolean listMode;
-	private TransactionType transactionType;
+	private ETransactionType transactionType;
 
 	private Window personSubwindow;
 	private PersonLayout personLayout = null;
@@ -83,35 +82,35 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 	private ListDataProvider<Document> dataProvider;
 
 	public InvoiceReportLayout() throws IOException {
-		super("", KEY_INVOICES);
+		super("", KEY_REPORTS);
 
 		documentBll = DocumentBll.getInstance();
 		documentTypeBll = DocumentTypeBll.getInstance();
-		transactionType = TransactionType.valueOf(Commons.TRANSACTION_TYPE);
+		transactionType = ETransactionType.valueOf(CommonsUtil.TRANSACTION_TYPE);
 
-		if (transactionType.equals(TransactionType.ENTRADA)) {
+		if (transactionType.equals(ETransactionType.ENTRADA)) {
 			Commons.PERSON_TYPE = PersonType.SUPPLIER.getName();
 			documentType = documentTypeBll.select("CO");
 		}
-		if (transactionType.equals(TransactionType.SALIDA)) {
+		if (transactionType.equals(ETransactionType.SALIDA)) {
 			Commons.PERSON_TYPE = PersonType.CUSTOMER.getName();
 			documentType = documentTypeBll.select("VE");
 		}
 	}
 
 	public InvoiceReportLayout(boolean listMode) throws IOException {
-		super("", KEY_INVOICES);
+		super("", KEY_REPORTS);
 
 		this.listMode = listMode;
 		documentBll = DocumentBll.getInstance();
 		documentTypeBll = DocumentTypeBll.getInstance();
-		transactionType = TransactionType.valueOf(Commons.TRANSACTION_TYPE);
+		transactionType = ETransactionType.valueOf(CommonsUtil.TRANSACTION_TYPE);
 
-		if (transactionType.equals(TransactionType.ENTRADA)) {
+		if (transactionType.equals(ETransactionType.ENTRADA)) {
 			Commons.PERSON_TYPE = PersonType.SUPPLIER.getName();
 			documentType = documentTypeBll.select("CO");
 		}
-		if (transactionType.equals(TransactionType.SALIDA)) {
+		if (transactionType.equals(ETransactionType.SALIDA)) {
 			Commons.PERSON_TYPE = PersonType.CUSTOMER.getName();
 			documentType = documentTypeBll.select("VE");
 		}
