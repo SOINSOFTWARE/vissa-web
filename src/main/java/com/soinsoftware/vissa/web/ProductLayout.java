@@ -8,6 +8,8 @@ import java.util.Date;
 import java.util.Set;
 
 import org.apache.log4j.Logger;
+import org.vaadin.dialogs.ConfirmDialog;
+import org.vaadin.ui.NumberField;
 
 import com.soinsoftware.vissa.bll.MeasurementUnitBll;
 import com.soinsoftware.vissa.bll.ProductBll;
@@ -23,6 +25,7 @@ import com.soinsoftware.vissa.util.DateUtil;
 import com.soinsoftware.vissa.util.ViewHelper;
 import com.vaadin.data.provider.ConfigurableFilterDataProvider;
 import com.vaadin.data.provider.ListDataProvider;
+import com.vaadin.server.Page;
 import com.vaadin.server.SerializablePredicate;
 import com.vaadin.ui.AbstractOrderedLayout;
 import com.vaadin.ui.Button;
@@ -68,12 +71,13 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 	private ComboBox<MeasurementUnit> cbMeasurementUnit;
 
 	private TextField txtBrand;
-	private TextField txtSalePrice;
-	private TextField txtPurchasePrice;
-	private TextField txtSaleTax;
-	private TextField txtPurchaseTax;
-	private TextField txtUtility;
-	private TextField txtStock;
+	private NumberField txtSalePrice;
+	private NumberField txtPurchasePrice;
+	private NumberField txtSaleTax;
+	private NumberField txtPurchaseTax;
+	private NumberField txtUtility;
+	private NumberField txtSalePriceWithTax;
+	private NumberField txtStock;
 	private TextField txtStockDate;
 
 	private boolean listMode;
@@ -155,18 +159,14 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		/// 1. Informacion producto
 		txtCode = new TextField("Código del producto");
 		txtCode.setWidth("50%");
-		txtCode.setEnabled(false);
-		txtCode.setValue(product != null ? product.getCode()
-				: tableSequence != null ? String.valueOf(tableSequence.getSequence()) : "");
+		txtCode.setReadOnly(true);
 
 		txtName = new TextField("Nombre del producto");
 		txtName.setWidth("50%");
 		txtName.focus();
-		txtName.setValue(product != null ? product.getName() : "");
 
 		txtDescription = new TextField("Descripción");
 		txtDescription.setWidth("50%");
-		txtDescription.setValue(product != null && product.getDescription() != null ? product.getDescription() : "");
 
 		cbCategory = new ComboBox<>("Categoría");
 		cbCategory.setEmptySelectionCaption("Seleccione");
@@ -175,7 +175,6 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		ListDataProvider<ProductCategory> categoryDataProv = new ListDataProvider<>(categoryBll.selectAll());
 		cbCategory.setDataProvider(categoryDataProv);
 		cbCategory.setItemCaptionGenerator(ProductCategory::getName);
-		cbCategory.setValue(product != null ? product.getCategory() : null);
 
 		cbType = new ComboBox<>("Tipo de producto");
 		cbType.setEmptySelectionCaption("Seleccione");
@@ -184,7 +183,6 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		ListDataProvider<ProductType> typeDataProv = new ListDataProvider<>(typeBll.selectAll());
 		cbType.setDataProvider(typeDataProv);
 		cbType.setItemCaptionGenerator(ProductType::getName);
-		cbType.setValue(product != null ? product.getType() : null);
 
 		cbMeasurementUnit = new ComboBox<>("Unidad de medida");
 		cbMeasurementUnit.setEmptySelectionCaption("Seleccione");
@@ -194,58 +192,61 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		ListDataProvider<MeasurementUnit> measurementDataProv = new ListDataProvider<>(measurementUnitBll.selectAll());
 		cbMeasurementUnit.setDataProvider(measurementDataProv);
 		cbMeasurementUnit.setItemCaptionGenerator(MeasurementUnit::getName);
-		cbMeasurementUnit.setValue(product != null ? product.getMeasurementUnit() : null);
 
 		txtBrand = new TextField("Marca");
 		txtBrand.setWidth("50%");
-		txtBrand.setValue(product != null && product.getBrand() != null ? product.getBrand() : "");
 
 		txtEan = new TextField("EAN");
 		txtEan.setWidth("50%");
-		txtEan.setValue(product != null && product.getEanCode() != null ? product.getEanCode() : "");
 
-		txtSalePrice = new TextField("Precio de venta");
+		txtSalePrice = new NumberField("Precio de venta");
 		txtSalePrice.setWidth("50%");
 		txtSalePrice.setReadOnly(true);
-		txtSalePrice.setValue(
-				product != null && product.getSalePrice() != null ? String.valueOf(product.getSalePrice()) : "");
 
-		txtPurchasePrice = new TextField("Precio de compra");
+		txtPurchasePrice = new NumberField("Precio de compra");
 		txtPurchasePrice.setWidth("50%");
-		txtPurchasePrice.setValue(
-				product != null && product.getPurchasePrice() != null ? String.valueOf(product.getPurchasePrice())
-						: "");
+		txtPurchasePrice.setRequiredIndicatorVisible(true);
 
-		txtSaleTax = new TextField("Impuesto de venta");
+		txtSaleTax = new NumberField("IVA");
 		txtSaleTax.setWidth("50%");
-		txtSaleTax
-				.setValue(product != null && product.getSaleTax() != null ? String.valueOf(product.getSaleTax()) : "");
+		txtSaleTax.setRequiredIndicatorVisible(true);
 
-		txtPurchaseTax = new TextField("Impuesto de compra");
+		txtPurchaseTax = new NumberField("Impuesto de compra");
 		txtPurchaseTax.setWidth("50%");
-		txtPurchaseTax.setValue(
-				product != null && product.getPurchaseTax() != null ? String.valueOf(product.getPurchaseTax()) : "");
 
-		txtUtility = new TextField("Utilidad");
+		txtUtility = new NumberField("Utilidad");
 		txtUtility.setWidth("50%");
-		txtUtility
-				.setValue(product != null && product.getUtility() != null ? String.valueOf(product.getUtility()) : "");
+		txtUtility.setRequiredIndicatorVisible(true);
+
+		txtSalePriceWithTax = new NumberField("Precio de venta con impuesto");
+		txtSalePriceWithTax.setWidth("50%");
+		txtSalePriceWithTax.setReadOnly(true);
+
+		// Product Stock
+		txtStock = new NumberField("Stock");
+		txtStock.setWidth("50%");
+
+		txtStockDate = new TextField("Fecha actualización Stock");
+		txtStockDate.setWidth("55%");
+		txtStockDate.setReadOnly(true);
+
+		setFieldValues(product);
+
+		txtPurchasePrice.addValueChangeListener(e -> {
+			updateSalePrice();
+		});
 
 		txtUtility.addValueChangeListener(e -> {
 			updateSalePrice();
 		});
 
-		// Product Stock
-		txtStock = new TextField("Stock");
-		txtStock.setWidth("50%");
-		txtStock.setValue(product != null && product.getStock() != null ? String.valueOf(product.getStock()) : "");
+		txtSalePriceWithTax.addValueChangeListener(e -> {
+			updateSalePriceWithTax();
+		});
 
-		txtStockDate = new TextField("Fecha actualización Stock");
-		txtStockDate.setWidth("50%");
-		txtStockDate.setEnabled(false);
-		txtStockDate.setValue(
-				product != null && product.getStockDate() != null ? DateUtil.dateToString(product.getStockDate()) : "");
-
+		txtSalePrice.addValueChangeListener(e -> {
+			updateSalePriceWithTax();
+		});
 		txtStock.addValueChangeListener(e -> {
 			updateStockDate(txtStock.getValue());
 		});
@@ -260,7 +261,8 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		form.addStyleName(ValoTheme.FORMLAYOUT_LIGHT);
 
 		form.addComponents(txtCode, txtName, txtDescription, cbCategory, cbType, cbMeasurementUnit, txtEan,
-				txtPurchasePrice, txtPurchaseTax, txtUtility, txtSalePrice, txtSaleTax, txtStock, txtStockDate);
+				txtPurchasePrice, txtPurchaseTax, txtUtility, txtSalePrice, txtSaleTax, txtSalePriceWithTax, txtStock,
+				txtStockDate);
 
 		// ---Panel de lotes
 		LotLayout lotPanel = null;
@@ -279,6 +281,53 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		return layout;
 	}
 
+	/**
+	 * Metodo para establecer valores a los campos del formulario de productos
+	 * 
+	 * @param product
+	 */
+
+	private void setFieldValues(Product product) {
+		if (product != null) {
+			txtCode.setValue(product.getCode() != null ? product.getCode()
+					: tableSequence != null ? String.valueOf(tableSequence.getSequence()) : "");
+
+			txtName.setValue(product.getName());
+			txtDescription.setValue(product.getDescription() != null ? product.getDescription() : "");
+			cbCategory.setValue(product.getCategory() != null ? product.getCategory() : null);
+			cbType.setValue(product.getType() != null ? product.getType() : null);
+			cbMeasurementUnit.setValue(product.getMeasurementUnit() != null ? product.getMeasurementUnit() : null);
+			txtBrand.setValue(product.getBrand() != null ? product.getBrand() : "");
+			txtEan.setValue(product.getEanCode() != null ? product.getEanCode() : "");
+			txtPurchasePrice
+					.setValue(product.getPurchasePrice() != null ? String.valueOf(product.getPurchasePrice()) : "");
+
+			txtSalePrice.setValue(product.getSalePrice() != null ? String.valueOf(product.getSalePrice()) : "");
+
+			txtSaleTax.setValue(product.getSaleTax() != null ? String.valueOf(product.getSaleTax()) : "0");
+
+			txtPurchaseTax.setValue(product.getPurchaseTax() != null ? String.valueOf(product.getPurchaseTax()) : "0");
+
+			txtUtility.setValue(product.getUtility() != null ? String.valueOf(product.getUtility()) : "0");
+			txtStock.setValue(product.getStock() != null ? String.valueOf(product.getStock()) : "");
+
+			txtStockDate.setValue(product.getStockDate() != null ? DateUtil.dateToString(product.getStockDate()) : "");
+			updateSalePriceWithTax();
+		} else {
+
+			txtPurchaseTax.setValue("0");
+			txtSaleTax.setValue("0");
+			txtUtility.setValue("0");
+			txtSalePrice.setValue("0");
+			txtSalePriceWithTax.setValue("0");
+		}
+	}
+
+	/**
+	 * Metodo para actualizar la fecha de actualización del stock
+	 * 
+	 * @param val
+	 */
 	private void updateStockDate(String val) {
 		log.info("updateStockDate" + val);
 		if (val != null && !val.isEmpty()) {
@@ -286,22 +335,54 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		}
 	}
 
+	/**
+	 * Actualizar el valor de venta de acuerdo a la utilidad
+	 */
 	private void updateSalePrice() {
+		String strLog = "[updateSalePrice] ";
 		try {
-			log.info("updateSalePrice");
+
 			String utility = txtUtility.getValue();
 			String purchasePrice = txtPurchasePrice.getValue();
 
 			if ((utility != null) && (purchasePrice != null)) {
-				Double ut = Double.parseDouble(utility);
-				Double purch = Double.parseDouble(purchasePrice);
-				txtSalePrice.setValue(String.valueOf(purch + ut));
+				Double utilityValue = Double.parseDouble(utility);
+				Double purchaseValue = Double.parseDouble(purchasePrice);
+				Double saleValue = purchaseValue + utilityValue;
+				txtSalePrice.setValue(String.valueOf(saleValue));
+				log.info(strLog + "salePrice: " + saleValue);
 			}
-
 		} catch (Exception e) {
-			ViewHelper.showNotification("Error en los precios", Notification.Type.ERROR_MESSAGE);
+			log.error(strLog + "[Exception]" + e.getMessage());
+			ViewHelper.showNotification("Error en los precios. Por favor verifique", Notification.Type.ERROR_MESSAGE);
 		}
+	}
 
+	/**
+	 * Actualizar el valor de venta con impuesto
+	 */
+	private void updateSalePriceWithTax() {
+		String strLog = "[updateSalePriceWithTax] ";
+
+		try {
+			Double saleWithTaxValue = 0.0;
+			String saleTaxStr = txtSaleTax.getValue();
+			String salePriceStr = txtSalePrice.getValue();
+
+			if ((saleTaxStr != null) && (salePriceStr != null)) {
+				Double saleTaxValue = Double.parseDouble(saleTaxStr) / 100;
+				Double salePriceValue = Double.parseDouble(salePriceStr);
+				saleWithTaxValue = salePriceValue;
+				if (!saleTaxValue.equals(0.0)) {
+					saleWithTaxValue = salePriceValue * saleTaxValue;
+				}
+				txtSalePriceWithTax.setValue(String.valueOf(saleWithTaxValue));
+				log.info(strLog + "saleWithTaxValue: " + saleWithTaxValue);
+			}
+		} catch (Exception e) {
+			log.error(strLog + "[Exception]" + e.getMessage());
+			ViewHelper.showNotification("Error en los precios. Por favor verifique", Notification.Type.ERROR_MESSAGE);
+		}
 	}
 
 	protected Panel buildButtonPanelListMode() {
@@ -313,6 +394,9 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		return ViewHelper.buildPanel(null, layout);
 	}
 
+	/**
+	 * Metodo para llenar la grid de productos
+	 */
 	@Override
 	protected void fillGridData() {
 		ListDataProvider<Product> dataProvider = new ListDataProvider<>(productBll.selectAll(false));
@@ -321,45 +405,109 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 
 	}
 
+	/**
+	 * Metodo con la acción de guardar producto
+	 */
 	@Override
 	protected void saveButtonAction(Product entity) {
-		Product.Builder productBuilder = null;
-		if (entity == null) {
-			productBuilder = Product.builder();
+		String message = validateRequiredFields();
+		if (!message.isEmpty()) {
+			ViewHelper.showNotification(message, Notification.Type.ERROR_MESSAGE);
 		} else {
-			productBuilder = Product.builder(entity);
+			ConfirmDialog.show(Page.getCurrent().getUI(), "Confirmar", "Está seguro de guardar el producto", "Si", "No",
+					e -> {
+						if (e.isConfirmed()) {
+							saveProduct(entity);
+						}
+					});
+		}
+	}
+
+	/**
+	 * Metodo para validar los campos obligatorios para guardar una factura
+	 * 
+	 * @return
+	 */
+	private String validateRequiredFields() {
+		String message = "";
+		String character = "|";
+
+		if (txtName.getValue() == null || txtName.getValue().isEmpty()) {
+			if (!message.isEmpty()) {
+				message = message.concat(character);
+			} else {
+				message = message.concat("El nombre obligatorio");
+			}
+		}
+		if (txtPurchasePrice.getValue() == null) {
+			if (!message.isEmpty()) {
+				message = message.concat(character);
+			} else {
+				message = message.concat("El precio de compra es obligatorio");
+			}
 		}
 
-		ProductCategory category = cbCategory.getSelectedItem().isPresent() ? cbCategory.getSelectedItem().get() : null;
-		MeasurementUnit measurementUnit = cbMeasurementUnit.getSelectedItem().isPresent()
-				? cbMeasurementUnit.getSelectedItem().get()
-				: null;
-		ProductType type = cbType.getSelectedItem().isPresent() ? cbType.getSelectedItem().get() : null;
+		if (txtUtility.getValue() == null) {
+			if (!message.isEmpty()) {
+				message = message.concat(character);
+			} else {
+				message = message.concat("La utilidad es obligatoria");
+			}
+		}
 
-		Double salePrice = txtSalePrice.getValue() != null && !txtSalePrice.getValue().isEmpty()
-				? Double.parseDouble(txtSalePrice.getValue())
-				: null;
-		Double purchasePrice = txtPurchasePrice.getValue() != null && !txtPurchasePrice.isEmpty()
-				? Double.parseDouble(txtPurchasePrice.getValue())
-				: null;
-		Double saleTax = txtSaleTax.getValue() != null && !txtSaleTax.getValue().isEmpty()
-				? Double.parseDouble(txtSaleTax.getValue())
-				: null;
-		Double purchaseTax = txtPurchaseTax.getValue() != null && !txtPurchaseTax.getValue().isEmpty()
-				? Double.parseDouble(txtPurchaseTax.getValue())
-				: null;
-		Double utility = txtUtility.getValue() != null && !txtUtility.getValue().isEmpty()
-				? Double.parseDouble(txtUtility.getValue())
-				: null;
-		Double stock = txtStock.getValue() != null && !txtStock.isEmpty() ? Double.parseDouble(txtStock.getValue())
-				: null;
-		entity = productBuilder.code(txtCode.getValue()).name(txtName.getValue()).description(txtDescription.getValue())
-				.category(category).type(type).measurementUnit(measurementUnit).eanCode(txtEan.getValue())
-				.salePrice(salePrice).purchasePrice(purchasePrice).saleTax(saleTax).purchaseTax(purchaseTax)
-				.stock(stock).stockDate(DateUtil.stringToDate(txtStockDate.getValue())).archived(false).utility(utility)
-				.build();
-		save(productBll, entity, "Producto guardado");
-		tableSequenceBll.save(tableSequence);
+		return message;
+	}
+
+	/**
+	 * Metodo para guardar un producto
+	 * 
+	 * @param entity
+	 */
+	private void saveProduct(Product entity) {
+		String strLog = "[saveProduct] ";
+		try {
+			Product.Builder productBuilder = null;
+			if (entity == null) {
+				productBuilder = Product.builder();
+			} else {
+				productBuilder = Product.builder(entity);
+			}
+
+			ProductCategory category = cbCategory.getSelectedItem().isPresent() ? cbCategory.getSelectedItem().get()
+					: null;
+			MeasurementUnit measurementUnit = cbMeasurementUnit.getSelectedItem().isPresent()
+					? cbMeasurementUnit.getSelectedItem().get()
+					: null;
+			ProductType type = cbType.getSelectedItem().isPresent() ? cbType.getSelectedItem().get() : null;
+
+			Double salePrice = txtSalePrice.getValue() != null && !txtSalePrice.getValue().isEmpty()
+					? Double.parseDouble(txtSalePrice.getValue())
+					: null;
+			Double purchasePrice = txtPurchasePrice.getValue() != null && !txtPurchasePrice.isEmpty()
+					? Double.parseDouble(txtPurchasePrice.getValue())
+					: null;
+			Double saleTax = txtSaleTax.getValue() != null && !txtSaleTax.getValue().isEmpty()
+					? Double.parseDouble(txtSaleTax.getValue())
+					: null;
+			Double purchaseTax = txtPurchaseTax.getValue() != null && !txtPurchaseTax.getValue().isEmpty()
+					? Double.parseDouble(txtPurchaseTax.getValue())
+					: null;
+			Double utility = txtUtility.getValue() != null && !txtUtility.getValue().isEmpty()
+					? Double.parseDouble(txtUtility.getValue())
+					: null;
+			Double stock = txtStock.getValue() != null && !txtStock.isEmpty() ? Double.parseDouble(txtStock.getValue())
+					: null;
+			entity = productBuilder.code(txtCode.getValue()).name(txtName.getValue())
+					.description(txtDescription.getValue()).category(category).type(type)
+					.measurementUnit(measurementUnit).eanCode(txtEan.getValue()).salePrice(salePrice)
+					.purchasePrice(purchasePrice).saleTax(saleTax).purchaseTax(purchaseTax).stock(stock)
+					.stockDate(DateUtil.stringToDate(txtStockDate.getValue())).archived(false).utility(utility).build();
+			save(productBll, entity, "Producto guardado");
+			tableSequenceBll.save(tableSequence);
+		} catch (Exception e) {
+			log.error(strLog + "[Exception]" + e.getMessage());
+			ViewHelper.showNotification("Se generó un error al guardar el producto", Notification.Type.ERROR_MESSAGE);
+		}
 
 	}
 
