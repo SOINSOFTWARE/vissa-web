@@ -1,22 +1,33 @@
 package com.soinsoftware.vissa.web;
 
-import static com.soinsoftware.vissa.web.VissaUI.KEY_WAREHOUSE;
+import static com.soinsoftware.vissa.web.VissaUI.KEY_ROLES;
 
 import java.io.IOException;
+import java.util.Locale;
 import java.util.Set;
 
 import org.apache.log4j.Logger;
 
+import com.google.gwt.cell.client.CheckboxCell;
+import com.soinsoftware.vissa.bll.PermissionBll;
 import com.soinsoftware.vissa.bll.RoleBll;
 import com.soinsoftware.vissa.bll.TableSequenceBll;
+import com.soinsoftware.vissa.model.Permission;
 import com.soinsoftware.vissa.model.Role;
 import com.soinsoftware.vissa.model.TableSequence;
 import com.soinsoftware.vissa.util.ViewHelper;
+import com.vaadin.client.renderers.Renderer;
+import com.vaadin.data.Binder;
+import com.vaadin.data.Binder.Binding;
+import com.vaadin.data.Converter;
+import com.vaadin.data.Result;
+import com.vaadin.data.ValueContext;
 import com.vaadin.data.provider.ConfigurableFilterDataProvider;
 import com.vaadin.data.provider.ListDataProvider;
 import com.vaadin.server.SerializablePredicate;
 import com.vaadin.ui.AbstractOrderedLayout;
 import com.vaadin.ui.Button;
+import com.vaadin.ui.CheckBox;
 import com.vaadin.ui.Component;
 import com.vaadin.ui.FormLayout;
 import com.vaadin.ui.Grid;
@@ -25,6 +36,7 @@ import com.vaadin.ui.HorizontalLayout;
 import com.vaadin.ui.Panel;
 import com.vaadin.ui.TextField;
 import com.vaadin.ui.VerticalLayout;
+import com.vaadin.ui.renderers.HtmlRenderer;
 import com.vaadin.ui.themes.ValoTheme;
 
 @SuppressWarnings("unchecked")
@@ -38,10 +50,12 @@ public class RoleLayout extends AbstractEditableLayout<Role> {
 	protected static final Logger log = Logger.getLogger(RoleLayout.class);
 
 	private final RoleBll roleBll;
+	private final PermissionBll permissionBll;
 
 	private final TableSequenceBll tableSequenceBll;
 
 	private Grid<Role> roleGrid;
+	private Grid<Permission> permissionGrid;
 
 	private TextField txFilterByName;
 	private TextField txFilterByCode;
@@ -51,12 +65,16 @@ public class RoleLayout extends AbstractEditableLayout<Role> {
 	private boolean listMode;
 	private TableSequence tableSequence;
 
-	private ConfigurableFilterDataProvider<Role, Void, SerializablePredicate<Role>> filterProductDataProvider;
+	private ListDataProvider<Role> dataProvider;
+	private ListDataProvider<Permission> permissionDataProvider;
+	private ConfigurableFilterDataProvider<Role, Void, SerializablePredicate<Role>> filterRoleDataProvider;
+	private ConfigurableFilterDataProvider<Permission, Void, SerializablePredicate<Permission>> filterPermissionDataProvider;
 
 	public RoleLayout(boolean list) throws IOException {
-		super("Roles", KEY_WAREHOUSE);
+		super("Roles", KEY_ROLES);
 		listMode = list;
 		roleBll = RoleBll.getInstance();
+		permissionBll = PermissionBll.getInstance();
 		tableSequenceBll = TableSequenceBll.getInstance();
 		if (listMode) {
 			addListTab();
@@ -64,8 +82,9 @@ public class RoleLayout extends AbstractEditableLayout<Role> {
 	}
 
 	public RoleLayout() throws IOException {
-		super("Roles", KEY_WAREHOUSE);
+		super("Roles", KEY_ROLES);
 		roleBll = RoleBll.getInstance();
+		permissionBll = PermissionBll.getInstance();
 		tableSequenceBll = TableSequenceBll.getInstance();
 		if (listMode) {
 			addListTab();
@@ -110,14 +129,47 @@ public class RoleLayout extends AbstractEditableLayout<Role> {
 		return ViewHelper.buildPanel(null, layout);
 	}
 
+	protected Panel buildPermissionGridPanel(Role role) {
+		VerticalLayout layout = ViewHelper.buildVerticalLayout(true, true);
+		permissionGrid = ViewHelper.buildGrid(SelectionMode.SINGLE);
+
+		permissionGrid.setEnabled(true);
+		permissionGrid.addColumn(permission -> {
+			if (permission.getMenu() != null) {
+				return permission.getMenu().getName();
+			} else {
+				return "";
+			}
+		}).setCaption("Menu");
+
+		// Columna cantidad editable
+		CheckBox checkView = new CheckBox("SI", false);
+		checkView.setStyleName("checked-checkbox");
+
+		Binder<Permission> binder = permissionGrid.getEditor().getBinder();
+		Binding<Permission, Boolean> doneBinding = binder.bind(checkView, Permission::canView, Permission::setView);
+		// permissionGrid.addColumn(Permission::canView).setCaption("Ver").setEditorBinding(doneBinding);
+		permissionGrid.addColumn(Permission::canView).setCaption("Ver")
+				.setEditorComponent(new CheckBox(), Permission::setView).setEditable(true);
+
+		// permissionGrid.addColumn(Permission::canView).setCaption("Ver");
+		permissionGrid.addColumn(Permission::canEdit).setCaption("Editar");
+		permissionGrid.addColumn(Permission::canDelete).setCaption("Eliminar");
+		permissionGrid.getEditor().setEnabled(true);
+
+		layout.addComponents(checkView,ViewHelper.buildPanel(null, permissionGrid));
+		fillPermissionGridData(role);
+		return ViewHelper.buildPanel("Permisos del rol " + role.getName(), layout);
+	}
+
 	@Override
 	protected Component buildEditionComponent(Role role) {
 
-		VerticalLayout layout = ViewHelper.buildVerticalLayout(true, true);
+		VerticalLayout layout = ViewHelper.buildVerticalLayout(false, false);
 		/// 1. Informacion rol
-		txtName = new TextField("Nombre");
+		txtName = new TextField("Rol");
 		txtName.setWidth("50%");
-		txtName.focus();
+		txtName.setReadOnly(true);
 		txtName.setValue(role != null ? role.getName() : "");
 
 		// ----------------------------------------------------------------------------------
@@ -132,7 +184,9 @@ public class RoleLayout extends AbstractEditableLayout<Role> {
 
 		form.addComponents(txtName);
 
-		layout.addComponents(form);
+		Panel permissionPanel = buildPermissionGridPanel(role);
+		layout.addComponents(permissionPanel);
+
 		return layout;
 	}
 
@@ -147,9 +201,16 @@ public class RoleLayout extends AbstractEditableLayout<Role> {
 
 	@Override
 	protected void fillGridData() {
-		ListDataProvider<Role> dataProvider = new ListDataProvider<>(roleBll.selectAll(false));
-		filterProductDataProvider = dataProvider.withConfigurableFilter();
-		roleGrid.setDataProvider(filterProductDataProvider);
+		dataProvider = new ListDataProvider<>(roleBll.selectAll(false));
+		filterRoleDataProvider = dataProvider.withConfigurableFilter();
+		roleGrid.setDataProvider(filterRoleDataProvider);
+
+	}
+
+	protected void fillPermissionGridData(Role role) {
+		permissionDataProvider = new ListDataProvider<>(permissionBll.select(role));
+		filterPermissionDataProvider = permissionDataProvider.withConfigurableFilter();
+		permissionGrid.setDataProvider(filterPermissionDataProvider);
 
 	}
 
@@ -195,7 +256,7 @@ public class RoleLayout extends AbstractEditableLayout<Role> {
 	}
 
 	private void refreshGrid() {
-		filterProductDataProvider.setFilter(filterGrid());
+		filterRoleDataProvider.setFilter(filterGrid());
 		roleGrid.getDataProvider().refreshAll();
 	}
 
@@ -204,6 +265,21 @@ public class RoleLayout extends AbstractEditableLayout<Role> {
 		String nameFilter = txFilterByName.getValue().trim();
 		columnPredicate = role -> (role.getName().toLowerCase().contains(nameFilter.toLowerCase()));
 		return columnPredicate;
+	}
+
+	public class BooleanConverter implements Converter<String, Boolean> {
+
+		@Override
+		public Result<Boolean> convertToModel(String value, ValueContext context) {
+			// TODO Auto-generated method stub
+			return null;
+		}
+
+		@Override
+		public String convertToPresentation(Boolean value, ValueContext context) {
+			// TODO Auto-generated method stub
+			return "<input type='checkbox' disabled='disabled'" + (value.booleanValue() ? " checked" : "") + " />";
+		}
 	}
 
 }
