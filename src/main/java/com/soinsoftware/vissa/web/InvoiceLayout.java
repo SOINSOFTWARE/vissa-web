@@ -558,7 +558,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		try {
 			qty = Double.parseDouble(quantity);
 
-			if (transactionType.equals(ETransactionType.SALIDA) && qty > 0) {
+			if (qty > 0) {
 				currentDetail = CommonsUtil.CURRENT_DOCUMENT_DETAIL;
 				log.info(strLog + "currentDetail:" + currentDetail);
 				if (!withoutLot) {
@@ -584,7 +584,8 @@ public class InvoiceLayout extends VerticalLayout implements View {
 					}
 
 				} else {
-					if (qty > currentDetail.getProduct().getStock()) {
+					if (transactionType.equals(ETransactionType.SALIDA)
+							&& qty > currentDetail.getProduct().getStock()) {
 						ViewHelper.showNotification("Cantidad mayor al stock del producto",
 								Notification.Type.ERROR_MESSAGE);
 					}
@@ -832,7 +833,8 @@ public class InvoiceLayout extends VerticalLayout implements View {
 				if (selectedProduct.getSalePrice() == null) {
 					ViewHelper.showNotification("El producto no tiene precio configurado",
 							Notification.Type.WARNING_MESSAGE);
-				} else if (selectedProduct.getStock() == null || selectedProduct.getStock() == 0) {
+				} else if (transactionType.equals(ETransactionType.SALIDA)
+						&& (selectedProduct.getStock() == null || selectedProduct.getStock() == 0)) {
 					ViewHelper.showNotification("El producto no tiene stock disponible",
 							Notification.Type.WARNING_MESSAGE);
 				} else {
@@ -1202,7 +1204,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			log.info(strLog + "[parameters] documentEntity: " + documentEntity);
 			Document.Builder docBuilder = null;
 			DocumentStatus documentStatus = null;
-			if (documentEntity == null) {
+			if (documentEntity == null || documentEntity.getCode() == null) {
 				docBuilder = Document.builder();
 				documentStatus = docStatusBll.select("Registrada").get(0);
 			} else {
