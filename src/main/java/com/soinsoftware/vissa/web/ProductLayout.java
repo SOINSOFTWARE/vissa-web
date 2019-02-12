@@ -154,8 +154,8 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 	@Override
 	protected Component buildEditionComponent(Product product) {
 		// Cosultar consecutivo de productos
-		getProductSequence();
-		VerticalLayout layout = ViewHelper.buildVerticalLayout(true, true);
+
+		VerticalLayout layout = ViewHelper.buildVerticalLayout(false, false);
 		/// 1. Informacion producto
 		txtCode = new TextField("Código del producto");
 		txtCode.setWidth("50%");
@@ -165,6 +165,8 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		txtName = new TextField("Nombre del producto");
 		txtName.setWidth("50%");
 		txtName.focus();
+		txtName.setRequiredIndicatorVisible(true);
+		
 
 		txtDescription = new TextField("Descripción");
 		txtDescription.setWidth("50%");
@@ -261,7 +263,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		form.setWidth("50%");
 		form.addStyleName(ValoTheme.FORMLAYOUT_LIGHT);
 
-		form.addComponents(txtCode, txtName, txtDescription, cbCategory, cbType, cbMeasurementUnit, txtEan,
+		form.addComponents(txtCode, txtName, txtDescription, cbCategory, cbMeasurementUnit, txtEan,
 				txtPurchasePrice, txtPurchaseTax, txtUtility, txtSalePrice, txtSaleTax, txtSalePriceWithTax, txtStock,
 				txtStockDate);
 
@@ -289,38 +291,46 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 	 */
 
 	private void setFieldValues(Product product) {
-		if (product != null) {
-			txtCode.setValue(product.getCode() != null ? product.getCode()
-					: tableSequence != null ? String.valueOf(tableSequence.getSequence()) : "");
+		String strLog = "[setFieldValues] ";
+		try {
+			if (product != null) {
+				txtCode.setValue(product.getCode() != null ? product.getCode()
+						: tableSequence != null ? String.valueOf(tableSequence.getSequence()) : "");
 
-			txtName.setValue(product.getName());
-			txtDescription.setValue(product.getDescription() != null ? product.getDescription() : "");
-			cbCategory.setValue(product.getCategory() != null ? product.getCategory() : null);
-			cbType.setValue(product.getType() != null ? product.getType() : null);
-			cbMeasurementUnit.setValue(product.getMeasurementUnit() != null ? product.getMeasurementUnit() : null);
-			txtBrand.setValue(product.getBrand() != null ? product.getBrand() : "");
-			txtEan.setValue(product.getEanCode() != null ? product.getEanCode() : "");
-			txtPurchasePrice
-					.setValue(product.getPurchasePrice() != null ? String.valueOf(product.getPurchasePrice()) : "");
+				txtName.setValue(product.getName());
+				txtDescription.setValue(product.getDescription() != null ? product.getDescription() : "");
+				cbCategory.setValue(product.getCategory() != null ? product.getCategory() : null);
+				cbType.setValue(product.getType() != null ? product.getType() : null);
+				cbMeasurementUnit.setValue(product.getMeasurementUnit() != null ? product.getMeasurementUnit() : null);
+				txtBrand.setValue(product.getBrand() != null ? product.getBrand() : "");
+				txtEan.setValue(product.getEanCode() != null ? product.getEanCode() : "");
+				txtPurchasePrice
+						.setValue(product.getPurchasePrice() != null ? String.valueOf(product.getPurchasePrice()) : "");
 
-			txtSalePrice.setValue(product.getSalePrice() != null ? String.valueOf(product.getSalePrice()) : "");
+				txtSalePrice.setValue(product.getSalePrice() != null ? String.valueOf(product.getSalePrice()) : "");
 
-			txtSaleTax.setValue(product.getSaleTax() != null ? String.valueOf(product.getSaleTax()) : "0");
+				txtSaleTax.setValue(product.getSaleTax() != null ? String.valueOf(product.getSaleTax()) : "0");
 
-			txtPurchaseTax.setValue(product.getPurchaseTax() != null ? String.valueOf(product.getPurchaseTax()) : "0");
+				txtPurchaseTax
+						.setValue(product.getPurchaseTax() != null ? String.valueOf(product.getPurchaseTax()) : "0");
 
-			txtUtility.setValue(product.getUtility() != null ? String.valueOf(product.getUtility()) : "0");
-			txtStock.setValue(product.getStock() != null ? String.valueOf(product.getStock()) : "");
+				txtUtility.setValue(product.getUtility() != null ? String.valueOf(product.getUtility()) : "0");
+				txtStock.setValue(product.getStock() != null ? String.valueOf(product.getStock()) : "");
 
-			txtStockDate.setValue(product.getStockDate() != null ? DateUtil.dateToString(product.getStockDate()) : "");
-			updateSalePriceWithTax();
-		} else {
-
-			txtPurchaseTax.setValue("0");
-			txtSaleTax.setValue("0");
-			txtUtility.setValue("0");
-			txtSalePrice.setValue("0");
-			txtSalePriceWithTax.setValue("0");
+				txtStockDate
+						.setValue(product.getStockDate() != null ? DateUtil.dateToString(product.getStockDate()) : "");
+				updateSalePriceWithTax();
+			} else {
+				getProductSequence();
+				txtCode.setValue(tableSequence != null ? String.valueOf(tableSequence.getSequence()) : "");
+				txtPurchaseTax.setValue("0");
+				txtSaleTax.setValue("0");
+				txtUtility.setValue("0");
+				txtSalePrice.setValue("0");
+				txtSalePriceWithTax.setValue("0");
+			}
+		} catch (Exception e) {
+			log.error(strLog + "[Exception]" + e.getMessage());
 		}
 	}
 

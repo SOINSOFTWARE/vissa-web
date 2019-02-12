@@ -3,16 +3,20 @@ package com.soinsoftware.vissa.web;
 import static com.soinsoftware.vissa.web.VissaUI.KEY_PRODUCTS;
 
 import java.io.IOException;
+import java.math.BigInteger;
 import java.util.Set;
 
 import org.apache.log4j.Logger;
 import org.vaadin.ui.NumberField;
 
 import com.soinsoftware.vissa.bll.LotBll;
+import com.soinsoftware.vissa.bll.TableSequenceBll;
 import com.soinsoftware.vissa.bll.WarehouseBll;
 import com.soinsoftware.vissa.model.Lot;
 import com.soinsoftware.vissa.model.Product;
+import com.soinsoftware.vissa.model.TableSequence;
 import com.soinsoftware.vissa.model.Warehouse;
+import com.soinsoftware.vissa.util.Commons;
 import com.soinsoftware.vissa.util.DateUtil;
 import com.soinsoftware.vissa.util.ViewHelper;
 import com.vaadin.data.provider.ConfigurableFilterDataProvider;
@@ -44,6 +48,7 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 
 	private final LotBll lotBll;
 	private final WarehouseBll warehouseBll;
+	private final TableSequenceBll tableSequenceBll;
 
 	private Grid<Lot> lotGrid;
 
@@ -56,7 +61,8 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 
 	private Product product;
 	private Warehouse warehouse;
-	boolean listMode;
+	private boolean listMode;
+	private TableSequence tableSequence;
 
 	private ConfigurableFilterDataProvider<Lot, Void, SerializablePredicate<Lot>> filterLotDataProvider;
 
@@ -65,6 +71,7 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 		this.product = product;
 		lotBll = LotBll.getInstance();
 		warehouseBll = WarehouseBll.getInstance();
+		tableSequenceBll = TableSequenceBll.getInstance();
 		addListTab();
 	}
 
@@ -73,6 +80,7 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 		this.warehouse = warehouse;
 		lotBll = LotBll.getInstance();
 		warehouseBll = WarehouseBll.getInstance();
+		tableSequenceBll = TableSequenceBll.getInstance();
 		addListTab();
 	}
 
@@ -150,22 +158,25 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 	@Override
 	protected Component buildEditionComponent(Lot entity) {
 		VerticalLayout layout = ViewHelper.buildVerticalLayout(true, true);
+		getLotSequence();
 		txtCode = new TextField("Código");
 		txtCode.setStyleName(ValoTheme.TEXTAREA_TINY);
 		txtCode.focus();
-		txtCode.setValue(entity != null ? entity.getCode() : "");
+		txtCode.setValue(entity != null ? entity.getCode()
+				: tableSequence != null ? String.valueOf(tableSequence.getSequence()) : "");
 		txtCode.setRequiredIndicatorVisible(true);
 
 		txtName = new TextField("Nombre");
 		txtName.setStyleName(ValoTheme.TEXTAREA_TINY);
 		txtName.setValue(entity != null ? entity.getName() : "");
-		txtName.setRequiredIndicatorVisible(true);
 
 		dtfFabricationDate = new DateTimeField("Fecha de fabricación");
+		dtfFabricationDate.setDateFormat(Commons.FORMAT_DATE_TIME);
 		dtfFabricationDate.setStyleName(ValoTheme.DATEFIELD_TINY);
 		dtfFabricationDate.setValue(entity != null ? DateUtil.dateToLocalDateTime(entity.getLotDate()) : null);
 
 		dtfExpirationDate = new DateTimeField("Fecha de vencimiento");
+		dtfExpirationDate.setDateFormat(Commons.FORMAT_DATE_TIME);
 		dtfExpirationDate.setStyleName(ValoTheme.DATEFIELD_TINY);
 		dtfExpirationDate.setValue(entity != null ? DateUtil.dateToLocalDateTime(entity.getExpirationDate()) : null);
 
@@ -219,28 +230,33 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 
 	@Override
 	protected void saveButtonAction(Lot entity) {
+		String strLog = "[saveButtonAction]";
 		try {
 			String message = validateRequiredFields();
 			if (!message.isEmpty()) {
 				throw new Exception(message);
-			}
-
-			Lot.Builder lotBuilder = null;
-			if (entity == null) {
-				lotBuilder = Lot.builder();
 			} else {
-				lotBuilder = Lot.builder(entity);
-			}
 
-			Warehouse warehouse = cbWarehouse.getSelectedItem().isPresent() ? cbWarehouse.getSelectedItem().get()
-					: null;
-			entity = lotBuilder.code(txtCode.getValue()).name(txtName.getValue())
-					.lotDate(DateUtil.localDateTimeToDate(dtfFabricationDate.getValue()))
-					.expirationDate(DateUtil.localDateTimeToDate(dtfExpirationDate.getValue())).archived(false)
-					.quantity(Double.parseDouble(txtQuantity.getValue())).product(product).warehouse(warehouse).build();
-			save(lotBll, entity, "Lote guardado");
+				Lot.Builder lotBuilder = null;
+				if (entity == null) {
+					lotBuilder = Lot.builder();
+				} else {
+					lotBuilder = Lot.builder(entity);
+				}
+
+				Warehouse warehouse = cbWarehouse.getSelectedItem().isPresent() ? cbWarehouse.getSelectedItem().get()
+						: null;
+				entity = lotBuilder.code(txtCode.getValue()).name(txtName.getValue())
+						.lotDate(DateUtil.localDateTimeToDate(dtfFabricationDate.getValue()))
+						.expirationDate(DateUtil.localDateTimeToDate(dtfExpirationDate.getValue())).archived(false)
+						.quantity(Double.parseDouble(txtQuantity.getValue())).product(product).warehouse(warehouse)
+						.build();
+				save(lotBll, entity, "Lote guardado");
+				tableSequenceBll.save(tableSequence);
+			}
 		} catch (Exception e) {
-			ViewHelper.showNotification("Error al guardar el lote", Notification.Type.ERROR_MESSAGE);
+			log.error(strLog + "[Exception]" + e.getMessage());
+			ViewHelper.showNotification("Se generó un error al guardar el lote", Notification.Type.ERROR_MESSAGE);
 
 		}
 
@@ -283,9 +299,31 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 
 	@Override
 	protected void delete(Lot entity) {
-		entity = Lot.builder(entity).archived(true).build();
-		save(lotBll, entity, "Lote borrado");
+		String strLog = "[delete]";
+		try {
+			entity = Lot.builder(entity).archived(true).build();
+			save(lotBll, entity, "Lote borrado");
+		} catch (Exception e) {
+			log.error(strLog + "[Exception]" + e.getMessage());
+			ViewHelper.showNotification("Se generó un error al eliminar el lote", Notification.Type.ERROR_MESSAGE);
+		}
 
+	}
+
+	/**
+	 * Obtener el consecutivo para lotes
+	 */
+	private void getLotSequence() {
+		BigInteger seq = null;
+		TableSequence tableSeqObj = tableSequenceBll.select(Lot.class.getSimpleName());
+		if (tableSeqObj != null) {
+			seq = tableSeqObj.getSequence().add(BigInteger.valueOf(1L));
+			TableSequence.Builder builder = TableSequence.builder(tableSeqObj);
+			tableSequence = builder.sequence(seq).build();
+		} else {
+			ViewHelper.showNotification("No hay consecutivo configurado para los lotes",
+					Notification.Type.ERROR_MESSAGE);
+		}
 	}
 
 }
