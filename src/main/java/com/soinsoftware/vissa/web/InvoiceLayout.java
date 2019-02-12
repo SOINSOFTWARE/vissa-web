@@ -194,7 +194,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		tittle.addStyleName(ValoTheme.LABEL_H2);
 		addComponent(tittle);
 
-		//Crear el generador de facturas
+		// Crear el generador de facturas
 		String reportName = null;
 		if (transactionType.equals(ETransactionType.ENTRADA)) {
 			reportName = Commons.PURCHASE_REPORT_NAME;
@@ -244,7 +244,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 			Button saveBtn = new Button("Guardar", FontAwesome.SAVE);
 			saveBtn.addStyleName("mystyle-btn");
-			saveBtn.addClickListener(e -> saveButtonAction(null));
+			saveBtn.addClickListener(e -> saveButtonAction(document));
 			layout.addComponents(saveBtn);
 
 			Button editBtn = new Button("Edit", FontAwesome.EDIT);
@@ -363,11 +363,18 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		cbPaymentType.setStyleName(ValoTheme.COMBOBOX_TINY);
 		cbPaymentType.setRequiredIndicatorVisible(true);
 
-		txtPaymentTerm = new TextField("Plazo");
+		txtPaymentTerm = new TextField("Plazo en días");
 		txtPaymentTerm.setStyleName(ValoTheme.TEXTFIELD_TINY);
+		txtPaymentTerm.setReadOnly(true);
+
+		cbPaymentType.addValueChangeListener(e -> {
+			if (cbPaymentType.getValue().getName().equals(EPaymemtType.CREDIT.getName())) {
+				txtPaymentTerm.setReadOnly(false);
+			}
+		});
 
 		dtfExpirationDate = new DateTimeField("Fecha de Vencimiento");
-		dtfExpirationDate.setReadOnly(false);
+		dtfExpirationDate.setReadOnly(true);
 		dtfExpirationDate.setDateFormat(Commons.FORMAT_DATE_TIME);
 		dtfExpirationDate.setStyleName(ValoTheme.DATEFIELD_TINY);
 		dtfExpirationDate.setWidth("184px");
@@ -525,6 +532,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		footer.getCell(columnQuantity).setHtml("<b>Total:</b>");
 
 		detailGrid.getEditor().setEnabled(true);
+		detailGrid.getEditor().addSaveListener(e -> changeQuantity(txtQuantity.getValue()));
 
 		HorizontalLayout itemsLayout = ViewHelper.buildHorizontalLayout(false, false);
 		itemsLayout.setSizeFull();
@@ -550,14 +558,14 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		try {
 			qty = Double.parseDouble(quantity);
 
-			if (qty > 0) {
+			if (transactionType.equals(ETransactionType.SALIDA) && qty > 0) {
 				currentDetail = CommonsUtil.CURRENT_DOCUMENT_DETAIL;
 				log.info(strLog + "currentDetail:" + currentDetail);
 				if (!withoutLot) {
 					DocumentDetailLot detailLot = detailLotMap.get(currentDetail);
 					log.info(strLog + "detailLot:" + detailLot);
 					if (detailLot != null) {
-						if (qty > detailLot.getInitialStockLot()) {
+						if (transactionType.equals(ETransactionType.SALIDA) && qty > detailLot.getInitialStockLot()) {
 							message = "Cantidad del lote menor a la cantidad solicitada";
 							throw new Exception(message);
 						} else {
@@ -1305,6 +1313,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 					selectedPerson = document.getPerson();
 					txtPerson.setValue(document.getPerson().getName() + " " + document.getPerson().getLastName());
 					dtfExpirationDate.setValue(DateUtil.dateToLocalDateTime(document.getExpirationDate()));
+					cbDocumentStatus.setValue(document.getStatus());
 					Set<DocumentDetail> detailSet = document.getDetails();
 
 					itemsList = new ArrayList<>();
