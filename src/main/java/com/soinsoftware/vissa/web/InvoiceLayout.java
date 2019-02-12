@@ -368,8 +368,10 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		txtPaymentTerm.setReadOnly(true);
 
 		cbPaymentType.addValueChangeListener(e -> {
-			if (cbPaymentType.getValue().getName().equals(EPaymemtType.CREDIT.getName())) {
+			if (cbPaymentType.getSelectedItem().get().getCode().equals(EPaymemtType.CREDIT.getName())) {
 				txtPaymentTerm.setReadOnly(false);
+			} else {
+				txtPaymentTerm.setReadOnly(true);
 			}
 		});
 
@@ -556,61 +558,62 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		Double qty;
 		DocumentDetail currentDetail = null;
 		try {
-			qty = Double.parseDouble(quantity);
+			if (quantity != null && !quantity.isEmpty()) {
+				qty = Double.parseDouble(quantity);
 
-			if (qty > 0) {
-				currentDetail = CommonsUtil.CURRENT_DOCUMENT_DETAIL;
-				log.info(strLog + "currentDetail:" + currentDetail);
-				if (!withoutLot) {
-					DocumentDetailLot detailLot = detailLotMap.get(currentDetail);
-					log.info(strLog + "detailLot:" + detailLot);
-					if (detailLot != null) {
-						if (transactionType.equals(ETransactionType.SALIDA) && qty > detailLot.getInitialStockLot()) {
-							message = "Cantidad del lote menor a la cantidad solicitada";
-							throw new Exception(message);
-						} else {
-							Double finalStock = 0.0;
-							if (transactionType.equals(ETransactionType.ENTRADA)) {
-								finalStock = detailLot.getInitialStockLot() + qty;
-							} else if (transactionType.equals(ETransactionType.SALIDA)) {
-								finalStock = detailLot.getInitialStockLot() - qty;
+				if (qty > 0) {
+					currentDetail = CommonsUtil.CURRENT_DOCUMENT_DETAIL;
+					log.info(strLog + "currentDetail:" + currentDetail);
+					if (!withoutLot) {
+						DocumentDetailLot detailLot = detailLotMap.get(currentDetail);
+						log.info(strLog + "detailLot:" + detailLot);
+						if (detailLot != null) {
+							if (transactionType.equals(ETransactionType.SALIDA)
+									&& qty > detailLot.getInitialStockLot()) {
+								message = "Cantidad del lote menor a la cantidad solicitada";
+								throw new Exception(message);
+							} else {
+								Double finalStock = 0.0;
+								if (transactionType.equals(ETransactionType.ENTRADA)) {
+									finalStock = detailLot.getInitialStockLot() + qty;
+								} else if (transactionType.equals(ETransactionType.SALIDA)) {
+									finalStock = detailLot.getInitialStockLot() - qty;
+								}
+								DocumentDetailLot detailLotTmp = DocumentDetailLot.builder(detailLot).quantity(qty)
+										.finalStockLot(finalStock).build();
+								log.info(strLog + "currentDetail again:" + currentDetail);
+								log.info(strLog + "detailLotTmp:" + detailLotTmp);
+								detailLotMap.put(currentDetail, detailLotTmp);
 							}
-							DocumentDetailLot detailLotTmp = DocumentDetailLot.builder(detailLot).quantity(qty)
-									.finalStockLot(finalStock).build();
-							log.info(strLog + "currentDetail again:" + currentDetail);
-							log.info(strLog + "detailLotTmp:" + detailLotTmp);
-							detailLotMap.put(currentDetail, detailLotTmp);
+						}
+
+					} else {
+						if (transactionType.equals(ETransactionType.SALIDA)
+								&& qty > currentDetail.getProduct().getStock()) {
+							ViewHelper.showNotification("Cantidad mayor al stock del producto",
+									Notification.Type.ERROR_MESSAGE);
 						}
 					}
+					correct = true;
 
 				} else {
-					if (transactionType.equals(ETransactionType.SALIDA)
-							&& qty > currentDetail.getProduct().getStock()) {
-						ViewHelper.showNotification("Cantidad mayor al stock del producto",
-								Notification.Type.ERROR_MESSAGE);
-					}
+					message = "La cantidad debe ser mayor a 0";
+					throw new Exception(message);
 				}
-				correct = true;
-
-			} else {
-				message = "La cantidad debe ser mayor a 0";
-				throw new Exception(message);
 			}
 
 		} catch (NumberFormatException nfe) {
-			log.error(nfe.getMessage());
+			log.error(strLog + "[NumberFormatException]" + nfe.getMessage());
 			message = "Formato de cantidad no valido";
 		} catch (Exception e) {
-			log.error(e.getMessage());
+			log.error(strLog + "[Exception]" + e.getMessage());
 			message = e.getMessage();
 		} finally {
 			log.info("Correct: " + correct);
 			if (!correct && message != null) {
 				ViewHelper.showNotification(message, Notification.Type.ERROR_MESSAGE);
 			}
-
 		}
-
 	}
 
 	/**

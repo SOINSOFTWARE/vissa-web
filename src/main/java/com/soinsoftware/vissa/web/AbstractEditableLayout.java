@@ -37,6 +37,7 @@ public abstract class AbstractEditableLayout<E> extends VerticalLayout implement
 	private TabSheet tabSheet;
 	protected String pageTitle;
 	private PermissionUtil permissionUtil;
+	protected boolean hasError = false;
 
 	public AbstractEditableLayout(String pageTitle, String menuName) {
 		super();
@@ -163,16 +164,26 @@ public abstract class AbstractEditableLayout<E> extends VerticalLayout implement
 	}
 
 	protected void save(AbstractBll<E, ?> bll, E entity, String caption) {
+		hasError = false;
 		try {
 			bll.save(entity);
 			afterSave(caption);
 		} catch (ModelValidationException ex) {
-			log.error(ex);
-			ViewHelper.showNotification(ex.getMessage(), Notification.Type.ERROR_MESSAGE);
-		} catch (HibernateException ex) {
+			hasError = true;
 			log.error(ex);
 			bll.rollback();
-			ViewHelper.showNotification("Los datos no pudieron ser salvados, contacte al administrador (3002007694)",
+			ViewHelper.showNotification(ex.getMessage(), Notification.Type.ERROR_MESSAGE);
+		} catch (HibernateException ex) {
+			hasError = true;
+			log.error(ex);
+			bll.rollback();
+			ViewHelper.showNotification("Los datos no pudieron ser salvados, contacte al administrador del sistema",
+					Notification.Type.ERROR_MESSAGE);
+		} catch (Exception ex) {
+			hasError = true;
+			log.error(ex);
+			bll.rollback();
+			ViewHelper.showNotification("Los datos no pudieron ser salvados, contacte al administrador del sistema",
 					Notification.Type.ERROR_MESSAGE);
 		}
 	}

@@ -8,6 +8,8 @@ import java.util.Date;
 import java.util.Set;
 
 import org.apache.log4j.Logger;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 import org.vaadin.dialogs.ConfirmDialog;
 import org.vaadin.ui.NumberField;
 
@@ -166,7 +168,6 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		txtName.setWidth("50%");
 		txtName.focus();
 		txtName.setRequiredIndicatorVisible(true);
-		
 
 		txtDescription = new TextField("Descripción");
 		txtDescription.setWidth("50%");
@@ -241,13 +242,12 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 
 		txtUtility.addValueChangeListener(e -> {
 			updateSalePrice();
-		});
-
-		txtSalePriceWithTax.addValueChangeListener(e -> {
-			updateSalePriceWithTax();
-		});
+		});	
 
 		txtSalePrice.addValueChangeListener(e -> {
+			updateSalePriceWithTax();
+		});
+		txtSaleTax.addValueChangeListener(e -> {
 			updateSalePriceWithTax();
 		});
 		txtStock.addValueChangeListener(e -> {
@@ -263,9 +263,8 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		form.setWidth("50%");
 		form.addStyleName(ValoTheme.FORMLAYOUT_LIGHT);
 
-		form.addComponents(txtCode, txtName, txtDescription, cbCategory, cbMeasurementUnit, txtEan,
-				txtPurchasePrice, txtPurchaseTax, txtUtility, txtSalePrice, txtSaleTax, txtSalePriceWithTax, txtStock,
-				txtStockDate);
+		form.addComponents(txtCode, txtName, txtDescription, cbCategory, cbMeasurementUnit, txtEan, txtPurchasePrice,
+				txtPurchaseTax, txtUtility, txtSalePrice, txtSaleTax, txtSalePriceWithTax, txtStock, txtStockDate);
 
 		// ---Panel de lotes
 		LotLayout lotPanel = null;
@@ -380,12 +379,12 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 			String saleTaxStr = txtSaleTax.getValue();
 			String salePriceStr = txtSalePrice.getValue();
 
-			if ((saleTaxStr != null) && (salePriceStr != null)) {
+			if ((saleTaxStr != null && !saleTaxStr.isEmpty()) && (salePriceStr != null && !salePriceStr.isEmpty())) {
 				Double saleTaxValue = Double.parseDouble(saleTaxStr) / 100;
 				Double salePriceValue = Double.parseDouble(salePriceStr);
 				saleWithTaxValue = salePriceValue;
 				if (!saleTaxValue.equals(0.0)) {
-					saleWithTaxValue = salePriceValue * saleTaxValue;
+					saleWithTaxValue = salePriceValue + (salePriceValue * saleTaxValue);
 				}
 				txtSalePriceWithTax.setValue(String.valueOf(saleWithTaxValue));
 				log.info(strLog + "saleWithTaxValue: " + saleWithTaxValue);
@@ -410,10 +409,16 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 	 */
 	@Override
 	protected void fillGridData() {
-		ListDataProvider<Product> dataProvider = new ListDataProvider<>(productBll.selectAll(false));
-		filterProductDataProvider = dataProvider.withConfigurableFilter();
-		productGrid.setDataProvider(filterProductDataProvider);
+		String strLog = "[fillGridData]";
 
+		try {
+			ListDataProvider<Product> dataProvider = new ListDataProvider<>(productBll.selectAll(false));
+			filterProductDataProvider = dataProvider.withConfigurableFilter();
+			productGrid.setDataProvider(filterProductDataProvider);
+		} catch (Exception e) {
+			productBll.rollback();
+			log.error(strLog + "[Exception]" + e.getMessage());
+		}
 	}
 
 	/**
@@ -474,6 +479,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 	 * 
 	 * @param entity
 	 */
+	@Transactional(readOnly = false, propagation = Propagation.REQUIRES_NEW)
 	private void saveProduct(Product entity) {
 		String strLog = "[saveProduct] ";
 		try {
@@ -514,10 +520,23 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 					.purchasePrice(purchasePrice).saleTax(saleTax).purchaseTax(purchaseTax).stock(stock)
 					.stockDate(DateUtil.stringToDate(txtStockDate.getValue())).archived(false).utility(utility).build();
 			save(productBll, entity, "Producto guardado");
-			tableSequenceBll.save(tableSequence);
+
 		} catch (Exception e) {
+			productBll.rollback();
 			log.error(strLog + "[Exception]" + e.getMessage());
 			ViewHelper.showNotification("Se generó un error al guardar el producto", Notification.Type.ERROR_MESSAGE);
+		}
+
+		// Consultar el producto guardado
+		Product productSaved = productBll.select(entity.getCode());
+		if (!hasError && (productSaved != null && productSaved.getCode() != null)) {
+			try {
+				// Actualizar consecutivo de producto
+				tableSequenceBll.save(tableSequence);
+			} catch (Exception e) {
+				tableSequenceBll.rollback();
+				log.error(strLog + "[Exception]" + e.getMessage());
+			}
 		}
 
 	}
