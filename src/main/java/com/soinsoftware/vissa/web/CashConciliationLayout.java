@@ -62,14 +62,14 @@ import com.vaadin.ui.Window;
 import com.vaadin.ui.themes.ValoTheme;
 
 @SuppressWarnings("unchecked")
-public class ConciliationAdministratorLayout extends AbstractEditableLayout<CashConciliation> {
+public class CashConciliationLayout extends AbstractEditableLayout<CashConciliation> {
 
 	/**
 	 * 
 	 */
 	private static final long serialVersionUID = 5076502522106126046L;
 
-	protected static final Logger log = Logger.getLogger(ConciliationAdministratorLayout.class);
+	protected static final Logger log = Logger.getLogger(CashConciliationLayout.class);
 
 	private final CashRegisterConciliationBll conciliationBll;
 	private final DocumentBll documentBll;
@@ -117,7 +117,7 @@ public class ConciliationAdministratorLayout extends AbstractEditableLayout<Cash
 	private ListDataProvider<Egress> loanDataProvider;
 	private ConfigurableFilterDataProvider<CashConciliation, Void, SerializablePredicate<CashConciliation>> filterProductDataProvider;
 
-	public ConciliationAdministratorLayout() throws IOException {
+	public CashConciliationLayout() throws IOException {
 		super("Cuadre de caja", KEY_SALESMAN_CONCILIATION);
 		conciliationBll = CashRegisterConciliationBll.getInstance();
 		documentBll = DocumentBll.getInstance();
@@ -468,12 +468,14 @@ public class ConciliationAdministratorLayout extends AbstractEditableLayout<Cash
 	private void setTotalCash() {
 		String strLog = "[setTotalCash]";
 		try {
-			log.info(strLog + "txtTotalSale double:" + txtTotalIngress.getDoubleValueDoNotThrow());
-			log.info(strLog + "txtTotalSale:" + BigDecimal.valueOf(txtTotalIngress.getDoubleValueDoNotThrow()));
-			log.info(strLog + "txtTotalEgress:" + BigDecimal.valueOf(txtTotalEgress.getDoubleValueDoNotThrow()));
 
-			txtTotalCash.setValue(String.valueOf((NumericUtil.stringToBigDecimal(txtTotalIngress.getValue()))
-					.subtract(NumericUtil.stringToBigDecimal(txtTotalEgress.getValue()))));
+			log.info(strLog + "txtTotalSale:" + txtTotalIngress.getDoubleValueDoNotThrow());
+			log.info(strLog + "txtTotalEgress:" + txtTotalEgress.getDoubleValueDoNotThrow());
+			BigDecimal cashBase = NumericUtil.stringToBigDecimal(txtCashBase.getValue());
+			BigDecimal ingress = NumericUtil.stringToBigDecimal(txtTotalIngress.getValue());
+			BigDecimal egress = NumericUtil.stringToBigDecimal(txtTotalEgress.getValue());
+
+			txtTotalCash.setValue(String.valueOf((cashBase.add(ingress)).subtract(egress)));
 
 		} catch (Exception e) {
 			log.error(strLog + "[Exception]" + e.getMessage());
