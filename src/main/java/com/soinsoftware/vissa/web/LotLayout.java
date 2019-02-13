@@ -50,7 +50,7 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 	private final WarehouseBll warehouseBll;
 	private final TableSequenceBll tableSequenceBll;
 
-	private Grid<Lot> lotGrid;
+	public Grid<Lot> lotGrid;
 
 	private TextField txtCode;
 	private TextField txtName;

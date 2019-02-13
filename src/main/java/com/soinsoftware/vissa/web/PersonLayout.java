@@ -82,7 +82,7 @@ public class PersonLayout extends AbstractEditableLayout<Person> {
 	private TextField txFilterByName;
 	private TextField txFilterByCode;
 	private TextField txFilterByLastName;
-	private Grid<Person> grid;
+	public Grid<Person> grid;
 
 	private TextField txtDocumentId;
 	private ComboBox<DocumentIdType> cbDocumentType;

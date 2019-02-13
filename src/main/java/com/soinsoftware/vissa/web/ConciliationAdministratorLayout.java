@@ -368,14 +368,14 @@ public class ConciliationAdministratorLayout extends AbstractEditableLayout<Cash
 		txtCashRegisterBorrow.addValueChangeListener(e -> setBalanceAdministrador());
 		txtCashRegisterBorrow.setReadOnly(true);
 
-		txtBalance = new NumberField("A devolver");
+		txtBalance = new NumberField("Saldo");
 		txtBalance.setStyleName(ValoTheme.TEXTFIELD_TINY);
 		txtBalance.setReadOnly(true);
 		txtBalance.setWidth("50%");
 
-		FormLayout egressForm = ViewHelper.buildForm("", false, false);
-		egressForm.addComponents(txtSupplierPayments, txtCashRegisterBorrow, txtBalance);
-		Panel egressPanel = ViewHelper.buildPanel("PROVEEDORES", egressForm);
+		FormLayout payemntForm = ViewHelper.buildForm("", false, false);
+		payemntForm.addComponents(txtSupplierPayments, txtCashRegisterBorrow, txtBalance);
+		Panel egressPanel = ViewHelper.buildPanel("", payemntForm);
 		layout.addComponents(egressPanel);
 
 		setAdminFieldValues(conciliation);
@@ -411,6 +411,8 @@ public class ConciliationAdministratorLayout extends AbstractEditableLayout<Cash
 			txtTotalEgress.setValue(String.valueOf(concil.getTotalEgress()));
 			txtTotalCredit.setValue(String.valueOf(concil.getTotalCredit()));
 			txtTotalCash.setValue(String.valueOf(concil.getTotalCash()));
+		} else {
+			txtCashBase.setValue(Commons.PARAM_SALESMAN_CASH_BASE);
 		}
 		setTotalSale();
 		setTotalEgress();
@@ -422,6 +424,11 @@ public class ConciliationAdministratorLayout extends AbstractEditableLayout<Cash
 			txtSupplierPayments.setValue(String.valueOf(concil.getSupplierPayments()));
 			txtCashRegisterBorrow.setValue(String.valueOf(concil.getCashRegisterBorrow()));
 			txtBalance.setValue(String.valueOf(concil.getBalance()));
+		} else {
+			txtCashBase.setValue(0.0);
+			txtSupplierPayments.setValue(0.0);
+			txtCashRegisterBorrow.setValue(0.0);
+			txtBalance.setValue(0.0);
 		}
 		setBalanceAdministrador();
 	}

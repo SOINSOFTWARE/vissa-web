@@ -59,7 +59,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 	private final MeasurementUnitBll measurementUnitBll;
 	private final TableSequenceBll tableSequenceBll;
 
-	private Grid<Product> productGrid;
+	public Grid<Product> productGrid;
 
 	private TextField txFilterByName;
 	private TextField txFilterByCode;

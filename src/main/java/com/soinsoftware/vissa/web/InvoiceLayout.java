@@ -29,8 +29,8 @@ import com.soinsoftware.vissa.bll.DocumentStatusBll;
 import com.soinsoftware.vissa.bll.DocumentTypeBll;
 import com.soinsoftware.vissa.bll.InventoryTransactionBll;
 import com.soinsoftware.vissa.bll.LotBll;
+import com.soinsoftware.vissa.bll.PaymentDocumentTypeBll;
 import com.soinsoftware.vissa.bll.PaymentMethodBll;
-import com.soinsoftware.vissa.bll.PaymentTypeBll;
 import com.soinsoftware.vissa.bll.ProductBll;
 import com.soinsoftware.vissa.common.CommonsUtil;
 import com.soinsoftware.vissa.exception.ModelValidationException;
@@ -41,14 +41,17 @@ import com.soinsoftware.vissa.model.DocumentDetailLot;
 import com.soinsoftware.vissa.model.DocumentStatus;
 import com.soinsoftware.vissa.model.DocumentType;
 import com.soinsoftware.vissa.model.EPaymemtType;
+import com.soinsoftware.vissa.model.ERole;
+import com.soinsoftware.vissa.model.ETransactionType;
 import com.soinsoftware.vissa.model.InventoryTransaction;
 import com.soinsoftware.vissa.model.Lot;
+import com.soinsoftware.vissa.model.PaymentDocumentType;
 import com.soinsoftware.vissa.model.PaymentMethod;
 import com.soinsoftware.vissa.model.PaymentType;
 import com.soinsoftware.vissa.model.Person;
 import com.soinsoftware.vissa.model.PersonType;
 import com.soinsoftware.vissa.model.Product;
-import com.soinsoftware.vissa.model.ETransactionType;
+import com.soinsoftware.vissa.model.Role;
 import com.soinsoftware.vissa.model.User;
 import com.soinsoftware.vissa.util.Commons;
 import com.soinsoftware.vissa.util.DateUtil;
@@ -93,8 +96,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 	// Bll
 	private final ProductBll productBll;
-	private final PaymentMethodBll payMethodBll;
-	private final PaymentTypeBll payTypeBll;
+	private final PaymentMethodBll paymentMethodBll;
 	private final DocumentBll documentBll;
 	private final InventoryTransactionBll inventoryBll;
 	private final DocumentTypeBll documentTypeBll;
@@ -102,6 +104,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	private final LotBll lotBll;
 	private final DocumentDetailLotBll detailLotBll;
 	private final CompanyBll companyBll;
+	private final PaymentDocumentTypeBll paymentDocumentTypeBll;
 
 	// Components
 	private TextField txtDocNumFilter;
@@ -110,7 +113,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	private TextField txtReference;
 	private TextField txtPerson;
 	private DateTimeField dtfDocumentDate;
-	private ComboBox<PaymentType> cbPaymentType;
+	private ComboBox<PaymentDocumentType> cbPaymentType;
 	private ComboBox<DocumentType> cbDocumentType;
 	private TextField txtPaymentTerm;
 	private DateTimeField dtfExpirationDate;
@@ -155,19 +158,24 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	private Company company;
 
 	private Button printBtn;
+	private Role role;
+
+	private Button addProductBtn;
+	private Button deleteProductBtn;
+	private Button searchPersonBtn;
 
 	public InvoiceLayout() throws IOException {
 		super();
 
 		productBll = ProductBll.getInstance();
-		payMethodBll = PaymentMethodBll.getInstance();
-		payTypeBll = PaymentTypeBll.getInstance();
+		paymentMethodBll = PaymentMethodBll.getInstance();
 		documentBll = DocumentBll.getInstance();
 		inventoryBll = InventoryTransactionBll.getInstance();
 		documentTypeBll = DocumentTypeBll.getInstance();
 		docStatusBll = DocumentStatusBll.getInstance();
 		detailLotBll = DocumentDetailLotBll.getInstance();
 		companyBll = CompanyBll.getInstance();
+		paymentDocumentTypeBll = PaymentDocumentTypeBll.getInstance();
 		lotBll = LotBll.getInstance();
 		document = new Document();
 		itemsList = new ArrayList<>();
@@ -182,6 +190,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		View.super.enter(event);
 
 		this.user = getSession().getAttribute(User.class);
+		this.role = user.getRole();
 		this.permissionUtil = new PermissionUtil(user.getRole().getPermissions());
 		// setMargin(true);
 		String title = "";
@@ -316,12 +325,6 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		txtDocNumber.setReadOnly(true);
 		txtDocNumber.setStyleName(ValoTheme.TEXTFIELD_TINY);
 
-		if (transactionType.equals(ETransactionType.SALIDA)) {
-			DocumentType docType = docTypeDataProv.getItems().iterator().next();
-			cbDocumentType.setValue(docType);
-			getNextDocumentNumber(docType);
-		}
-
 		txtResolution = new TextField("Resolución de factura");
 		txtResolution.setStyleName(ValoTheme.TEXTFIELD_TINY);
 		txtResolution.setReadOnly(true);
@@ -342,9 +345,9 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		txtPerson.setReadOnly(true);
 		txtPerson.setRequiredIndicatorVisible(true);
 		txtPerson.setStyleName(ValoTheme.TEXTFIELD_TINY);
-		Button searchSupplierButton = new Button("Buscar proveedor", FontAwesome.SEARCH);
-		searchSupplierButton.addClickListener(e -> buildPersonWindow(txtPerson.getValue()));
-		searchSupplierButton.setStyleName("icon-only");
+		searchPersonBtn = new Button("Buscar proveedor", FontAwesome.SEARCH);
+		searchPersonBtn.addClickListener(e -> buildPersonWindow(txtPerson.getValue()));
+		searchPersonBtn.setStyleName("icon-only");
 
 		dtfDocumentDate = new DateTimeField("Fecha");
 		dtfDocumentDate.setResolution(DateTimeResolution.SECOND);
@@ -354,12 +357,9 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		dtfDocumentDate.setRequiredIndicatorVisible(true);
 		dtfDocumentDate.setWidth("184px");
 
-		cbPaymentType = new ComboBox<PaymentType>("Forma de pago");
+		cbPaymentType = new ComboBox<>("Forma de pago");
 		cbPaymentType.setEmptySelectionAllowed(false);
 		cbPaymentType.setEmptySelectionCaption("Seleccione");
-		ListDataProvider<PaymentType> payTypeDataProv = new ListDataProvider<>(payTypeBll.selectAll());
-		cbPaymentType.setDataProvider(payTypeDataProv);
-		cbPaymentType.setItemCaptionGenerator(PaymentType::getName);
 		cbPaymentType.setStyleName(ValoTheme.COMBOBOX_TINY);
 		cbPaymentType.setRequiredIndicatorVisible(true);
 
@@ -368,7 +368,8 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		txtPaymentTerm.setReadOnly(true);
 
 		cbPaymentType.addValueChangeListener(e -> {
-			if (cbPaymentType.getSelectedItem().get().getCode().equals(EPaymemtType.CREDIT.getName())) {
+			if (cbPaymentType.getSelectedItem().get().getPaymentType().getCode()
+					.equals(EPaymemtType.CREDIT.getName())) {
 				txtPaymentTerm.setReadOnly(false);
 			} else {
 				txtPaymentTerm.setReadOnly(true);
@@ -389,7 +390,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		// cbPaymentMethod.setWidth("20%");
 		cbPaymentMethod.setEmptySelectionAllowed(false);
 		cbPaymentMethod.setEmptySelectionCaption("Seleccione");
-		ListDataProvider<PaymentMethod> payMetDataProv = new ListDataProvider<>(payMethodBll.selectAll());
+		ListDataProvider<PaymentMethod> payMetDataProv = new ListDataProvider<>(paymentMethodBll.selectAll());
 		cbPaymentMethod.setDataProvider(payMetDataProv);
 		cbPaymentMethod.setItemCaptionGenerator(PaymentMethod::getName);
 		cbPaymentMethod.setStyleName(ValoTheme.COMBOBOX_TINY);
@@ -419,12 +420,18 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			headerLayout1.addComponents(txtResolution);
 		}
 
-		headerLayout1.addComponents(txtReference, txtPerson, searchSupplierButton);
+		if (transactionType.equals(ETransactionType.SALIDA)) {
+			DocumentType docType = docTypeDataProv.getItems().iterator().next();
+			cbDocumentType.setValue(docType);
+			getNextDocumentNumber(docType);
+		}
+
+		headerLayout1.addComponents(txtReference, txtPerson, searchPersonBtn);
 
 		HorizontalLayout headerLayout2 = ViewHelper.buildHorizontalLayout(false, false);
 		headerLayout2.addComponents(dtfDocumentDate, cbPaymentType, txtPaymentTerm, dtfExpirationDate, cbPaymentMethod);
 
-		headerLayout1.setComponentAlignment(searchSupplierButton, Alignment.BOTTOM_CENTER);
+		headerLayout1.setComponentAlignment(searchPersonBtn, Alignment.BOTTOM_CENTER);
 
 		HorizontalLayout headerLayout3 = ViewHelper.buildHorizontalLayout(false, false);
 		headerLayout3.addComponents(cbDocumentStatus, txtTotal, txtTotalTax);
@@ -444,15 +451,15 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		VerticalLayout layout = ViewHelper.buildVerticalLayout(true, true);
 
 		HorizontalLayout buttonlayout = ViewHelper.buildHorizontalLayout(false, false);
-		Button addProductBt = new Button("Agregar producto", FontAwesome.PLUS);
-		addProductBt.addStyleName(ValoTheme.BUTTON_TINY);
-		addProductBt.addClickListener(e -> buildProductWindow());
+		addProductBtn = new Button("Agregar producto", FontAwesome.PLUS);
+		addProductBtn.addStyleName(ValoTheme.BUTTON_TINY);
+		addProductBtn.addClickListener(e -> buildProductWindow());
 
-		Button deleteProductBt = new Button("Eliminar producto", FontAwesome.ERASER);
-		deleteProductBt.addStyleName(ValoTheme.BUTTON_TINY);
-		deleteProductBt.addClickListener(e -> deleteItemDetail());
+		deleteProductBtn = new Button("Eliminar producto", FontAwesome.ERASER);
+		deleteProductBtn.addStyleName(ValoTheme.BUTTON_TINY);
+		deleteProductBtn.addClickListener(e -> deleteItemDetail());
 
-		buttonlayout.addComponents(addProductBt, deleteProductBt);
+		buttonlayout.addComponents(addProductBtn, deleteProductBtn);
 
 		detailGrid = new Grid<>();
 		detailGrid.setSizeFull();
@@ -570,7 +577,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 						if (detailLot != null) {
 							if (transactionType.equals(ETransactionType.SALIDA)
 									&& qty > detailLot.getInitialStockLot()) {
-								message = "Cantidad del lote menor a la cantidad solicitada";
+								message = "Cantidad ingresada es mayor al stock del lote producto";
 								throw new Exception(message);
 							} else {
 								Double finalStock = 0.0;
@@ -590,7 +597,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 					} else {
 						if (transactionType.equals(ETransactionType.SALIDA)
 								&& qty > currentDetail.getProduct().getStock()) {
-							ViewHelper.showNotification("Cantidad mayor al stock del producto",
+							ViewHelper.showNotification("Cantidad ingresada es mayor al stock del producto",
 									Notification.Type.ERROR_MESSAGE);
 						}
 					}
@@ -713,6 +720,14 @@ public class InvoiceLayout extends VerticalLayout implements View {
 				Commons.PERSON_TYPE = PersonType.CUSTOMER.getName();
 			}
 			personLayout = new PersonLayout(true);
+			
+			personLayout.grid.addItemClickListener(listener -> {
+				if (listener.getMouseEventDetails().isDoubleClick())
+					// pass the row/item that the user double clicked
+					// to method doStuff.
+					// doStuff(l.getItem());
+					selectPerson();
+			});
 
 		} catch (IOException e) {
 			log.error("Error al cargar lista de personas. Exception:" + e);
@@ -750,6 +765,16 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			DocumentType.Builder docTypeBuilder = DocumentType.builder(docType);
 			documentType = docTypeBuilder.sequence(docType.getSequence() + 1).build();
 			txtDocNumber.setValue(String.valueOf(documentType.getSequence()));
+			ListDataProvider<PaymentDocumentType> payTypeDataProv = new ListDataProvider<>(
+					paymentDocumentTypeBll.select(documentType));
+			cbPaymentType.setDataProvider(payTypeDataProv);
+			cbPaymentType.setItemCaptionGenerator(paymentDocumentType -> {
+				if (paymentDocumentType != null && paymentDocumentType.getPaymentType() != null) {
+					return paymentDocumentType.getPaymentType().getName();
+				} else {
+					return null;
+				}
+			});
 
 		} else {
 			ViewHelper.showNotification("El tipo de factura no tiene consecutivo configurado",
@@ -809,6 +834,13 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		try {
 			productLayout = new ProductLayout(true);
 
+			productLayout.productGrid.addItemClickListener(listener -> {
+				if (listener.getMouseEventDetails().isDoubleClick())
+					// pass the row/item that the user double clicked
+					// to method doStuff.
+					// doStuff(l.getItem());
+					selectProduct();
+			});
 		} catch (IOException e) {
 			log.error("Error al cargar lista de productos. Exception:" + e);
 		}
@@ -928,6 +960,13 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			lotLayout.setCaption("Lotes");
 			lotLayout.setMargin(false);
 			lotLayout.setSpacing(false);
+			lotLayout.lotGrid.addItemClickListener(listener -> {
+				if (listener.getMouseEventDetails().isDoubleClick())
+					// pass the row/item that the user double clicked
+					// to method doStuff.
+					// doStuff(l.getItem());
+					selectLot(detail);
+			});
 		} catch (IOException e) {
 			log.error("Error al cargar lista de lotes. Exception:" + e);
 		}
@@ -1187,6 +1226,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 				documentTypeBll.commit();
 				this.document = documentEntity;
 				ViewHelper.showNotification("Factura guardada con exito", Notification.Type.WARNING_MESSAGE);
+				disableComponents(true);
 			} else {
 				documentBll.rollback();
 			}
@@ -1229,9 +1269,10 @@ public class InvoiceLayout extends VerticalLayout implements View {
 					.reference(txtReference.getValue() != null ? txtReference.getValue() : "")
 					.documentType(cbDocumentType.getValue()).resolution(txtResolution.getValue()).person(selectedPerson)
 					.documentDate(docDate).paymentMethod(cbPaymentMethod.getValue())
-					.paymentType(cbPaymentType.getValue()).paymentTerm(txtPaymentTerm.getValue())
-					.expirationDate(expirationDate).totalValue(total).totalValueNoTax(totalIVA).status(documentStatus)
-					.salesman(user.getPerson()).details(details).build();
+					.paymentType(cbPaymentType.getSelectedItem().get().getPaymentType())
+					.paymentTerm(txtPaymentTerm.getValue()).expirationDate(expirationDate).totalValue(total)
+					.totalValueNoTax(totalIVA).status(documentStatus).salesman(user.getPerson()).details(details)
+					.build();
 
 			// persistir documento
 			documentBll.save(documentEntity, false);
@@ -1278,12 +1319,13 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			txtPaymentTerm.clear();
 			// cbDocumentType.clear();
 			cbPaymentMethod.clear();
-			cbPaymentType.clear();
+			//cbPaymentType.clear();
 			cbDocumentStatus.setSelectedItem(docStatusBll.select("Nueva").get(0));
 			itemsList.clear();
 			detailGrid.getDataProvider().refreshAll();
 			txtDocNumFilter.clear();
-			getNextDocumentNumber(cbDocumentType.getValue());
+			getNextDocumentNumber(cbDocumentType.getSelectedItem().get());
+			disableComponents(false);
 		} catch (Exception e) {
 			log.error(strLog + "[Exception]" + e.getMessage());
 			ViewHelper.showNotification(
@@ -1312,7 +1354,8 @@ public class InvoiceLayout extends VerticalLayout implements View {
 					txtReference.setValue(document.getReference() != null ? document.getReference() : "");
 					txtResolution.setValue(document.getResolution() != null ? document.getResolution() : "");
 					dtfDocumentDate.setValue(DateUtil.dateToLocalDateTime(document.getDocumentDate()));
-					cbPaymentType.setValue(document.getPaymentType());
+					cbPaymentType
+							.setValue(PaymentDocumentType.builder().paymentType(document.getPaymentType()).build());
 					cbPaymentMethod.setValue(document.getPaymentMethod());
 					txtPaymentTerm.setValue(document.getPaymentTerm() != null ? document.getPaymentTerm() : "");
 					selectedPerson = document.getPerson();
@@ -1326,6 +1369,12 @@ public class InvoiceLayout extends VerticalLayout implements View {
 						itemsList.add(iterator.next());
 					}
 					fillDetailGridData(itemsList);
+
+					if (role.getName().equals(ERole.SUDO.getName()) || role.getName().equals(ERole.MANAGER.getName())) {
+						disableComponents(false);
+					} else {
+						disableComponents(true);
+					}
 				}
 			}
 
@@ -1334,6 +1383,29 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			ViewHelper.showNotification("Se presentó un error al consultar la factura",
 					Notification.Type.ERROR_MESSAGE);
 		}
+	}
+
+	/**
+	 * Método para inactivar componentes
+	 * 
+	 * @param disable
+	 */
+	private void disableComponents(Boolean disable) {
+		cbDocumentType.setReadOnly(disable);
+		txtDocNumber.setReadOnly(disable);
+		txtReference.setReadOnly(disable);
+		txtResolution.setReadOnly(disable);
+		dtfDocumentDate.setReadOnly(disable);
+		cbPaymentType.setReadOnly(disable);
+		cbPaymentMethod.setReadOnly(disable);
+		txtPaymentTerm.setReadOnly(disable);
+		txtPerson.setReadOnly(disable);
+		dtfExpirationDate.setReadOnly(disable);
+		cbDocumentStatus.setReadOnly(disable);
+		searchPersonBtn.setEnabled(!disable);
+		addProductBtn.setEnabled(!disable);
+		deleteProductBtn.setEnabled(!disable);
+		detailGrid.getEditor().setEnabled(!disable);
 	}
 
 	/**
