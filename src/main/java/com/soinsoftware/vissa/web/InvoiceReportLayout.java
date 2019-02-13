@@ -12,10 +12,14 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.soinsoftware.vissa.bll.DocumentBll;
 import com.soinsoftware.vissa.bll.DocumentTypeBll;
+import com.soinsoftware.vissa.bll.PaymentDocumentTypeBll;
 import com.soinsoftware.vissa.common.CommonsUtil;
 import com.soinsoftware.vissa.model.Document;
 import com.soinsoftware.vissa.model.DocumentType;
+import com.soinsoftware.vissa.model.EPaymemtType;
 import com.soinsoftware.vissa.model.ETransactionType;
+import com.soinsoftware.vissa.model.PaymentDocumentType;
+import com.soinsoftware.vissa.model.PaymentType;
 import com.soinsoftware.vissa.model.Person;
 import com.soinsoftware.vissa.model.PersonType;
 import com.soinsoftware.vissa.util.Commons;
@@ -57,6 +61,7 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 
 	private final DocumentBll documentBll;
 	private final DocumentTypeBll documentTypeBll;
+	private final PaymentDocumentTypeBll paymentDocumentTypeBll;
 
 	private TextField txtFilterByCode;
 	private ComboBox<DocumentType> cbFilterByType;
@@ -65,6 +70,7 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 	private DateTimeField dtfFilterEndDate;
 	private TextField txtQuantity;
 	private TextField txtTotal;
+	private ComboBox<PaymentDocumentType> cbPaymentType;
 	private Grid<Document> grid;
 
 	private boolean listMode;
@@ -86,6 +92,7 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 
 		documentBll = DocumentBll.getInstance();
 		documentTypeBll = DocumentTypeBll.getInstance();
+		paymentDocumentTypeBll = PaymentDocumentTypeBll.getInstance();
 		transactionType = ETransactionType.valueOf(CommonsUtil.TRANSACTION_TYPE);
 
 		if (transactionType.equals(ETransactionType.ENTRADA)) {
@@ -104,6 +111,7 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 		this.listMode = listMode;
 		documentBll = DocumentBll.getInstance();
 		documentTypeBll = DocumentTypeBll.getInstance();
+		paymentDocumentTypeBll = PaymentDocumentTypeBll.getInstance();
 		transactionType = ETransactionType.valueOf(CommonsUtil.TRANSACTION_TYPE);
 
 		if (transactionType.equals(ETransactionType.ENTRADA)) {
@@ -288,7 +296,25 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 		dtfFilterEndDate.setRequiredIndicatorVisible(true);
 		dtfFilterEndDate.addValueChangeListener(e -> refreshGrid());
 
-		layout.addComponents(txtFilterByPerson, searchPersonBtn, dtfFilterIniDate, dtfFilterEndDate);
+		cbPaymentType = new ComboBox<>("Forma de pago");
+		cbPaymentType.setEmptySelectionAllowed(true);
+		cbPaymentType.setEmptySelectionCaption("Seleccione");
+		cbPaymentType.setStyleName(ValoTheme.COMBOBOX_TINY);
+
+		ListDataProvider<PaymentDocumentType> payTypeDataProv = new ListDataProvider<>(
+				paymentDocumentTypeBll.select(documentType));
+		cbPaymentType.setDataProvider(payTypeDataProv);
+		cbPaymentType.setItemCaptionGenerator(paymentDocumentType -> {
+			if (paymentDocumentType != null && paymentDocumentType.getPaymentType() != null) {
+				return paymentDocumentType.getPaymentType().getName();
+			} else {
+				return null;
+			}
+		});
+
+		cbPaymentType.addValueChangeListener(e -> refreshGrid());
+
+		layout.addComponents(txtFilterByPerson, searchPersonBtn, dtfFilterIniDate, dtfFilterEndDate, cbPaymentType);
 		layout.setComponentAlignment(searchPersonBtn, Alignment.BOTTOM_CENTER);
 		return ViewHelper.buildPanel("Buscar por", layout);
 	}
@@ -337,9 +363,17 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 			}
 			Person personFilter = !txtFilterByPerson.isEmpty() ? personSelected : null;
 
+			PaymentType paymentTypeFilter = null;
+			if (cbPaymentType.getSelectedItem().isPresent()) {
+				paymentTypeFilter = cbPaymentType.getSelectedItem().get().getPaymentType();
+			}
+
 			result = personFilter != null ? document.getPerson().equals(personFilter)
 					: true && document.getDocumentDate().before(endDateFilter)
 							&& document.getDocumentDate().after(iniDateFilter);
+			if (paymentTypeFilter != null) {
+				result = result && document.getPaymentType().equals(paymentTypeFilter);
+			}
 		} catch (Exception e) {
 			ViewHelper.showNotification(e.getMessage(), Notification.Type.ERROR_MESSAGE);
 		}
