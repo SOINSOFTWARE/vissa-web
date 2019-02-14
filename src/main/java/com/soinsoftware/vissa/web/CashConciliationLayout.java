@@ -5,7 +5,6 @@ import static com.soinsoftware.vissa.web.VissaUI.KEY_SALESMAN_CONCILIATION;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Set;
@@ -28,12 +27,12 @@ import com.soinsoftware.vissa.model.DocumentType;
 import com.soinsoftware.vissa.model.EEgressType;
 import com.soinsoftware.vissa.model.EPaymemtType;
 import com.soinsoftware.vissa.model.ERole;
+import com.soinsoftware.vissa.model.ETransactionType;
 import com.soinsoftware.vissa.model.Egress;
 import com.soinsoftware.vissa.model.EgressType;
 import com.soinsoftware.vissa.model.PaymentType;
 import com.soinsoftware.vissa.model.Person;
 import com.soinsoftware.vissa.model.PersonType;
-import com.soinsoftware.vissa.model.ETransactionType;
 import com.soinsoftware.vissa.model.User;
 import com.soinsoftware.vissa.util.Commons;
 import com.soinsoftware.vissa.util.DateUtil;
@@ -78,9 +77,11 @@ public class CashConciliationLayout extends AbstractEditableLayout<CashConciliat
 	private final EgressBll egressBll;
 	private final EgressTypeBll egressTypeBll;
 	private final CollectionBll collectionBll;
+
 	private final UserBll userBll;
 
 	private Grid<CashConciliation> concilicationGrid;
+	private Grid<Document> documentGrid;
 
 	private TextField txFilterByName;
 	private TextField txFilterByCode;
@@ -126,6 +127,7 @@ public class CashConciliationLayout extends AbstractEditableLayout<CashConciliat
 		egressBll = EgressBll.getInstance();
 		egressTypeBll = EgressTypeBll.getInstance();
 		collectionBll = CollectionBll.getInstance();
+
 		userBll = UserBll.getInstance();
 
 	}
@@ -187,6 +189,26 @@ public class CashConciliationLayout extends AbstractEditableLayout<CashConciliat
 
 		layout.addComponent(ViewHelper.buildPanel(null, concilicationGrid));
 		fillGridData();
+		return ViewHelper.buildPanel(null, layout);
+	}
+
+	protected Panel buildDocumentGrid() {
+		VerticalLayout layout = ViewHelper.buildVerticalLayout(true, true);
+		documentGrid = ViewHelper.buildGrid(SelectionMode.SINGLE);
+		documentGrid.addColumn(Document::getCode).setCaption("Número factura");
+		documentGrid.addColumn(Document::getReference).setCaption("Referencia proveedor");
+		documentGrid.addColumn(document -> {
+			if (document.getPerson() != null) {
+				return document.getPerson().getName() + " " + document.getPerson().getLastName();
+			} else {
+				return "";
+			}
+		}).setCaption("Proveedor");
+		documentGrid.addColumn(Document::getTotalValue).setCaption("Total factura");
+
+		layout.addComponent(ViewHelper.buildPanel(null, documentGrid));
+		getDailyPurchaseData();
+		fillDocumentGridData();
 		return ViewHelper.buildPanel(null, layout);
 	}
 
@@ -376,7 +398,8 @@ public class CashConciliationLayout extends AbstractEditableLayout<CashConciliat
 		FormLayout payemntForm = ViewHelper.buildForm("", false, false);
 		payemntForm.addComponents(txtSupplierPayments, txtCashRegisterBorrow, txtBalance);
 		Panel egressPanel = ViewHelper.buildPanel("", payemntForm);
-		layout.addComponents(egressPanel);
+		Panel documentGrid = buildDocumentGrid();
+		layout.addComponents(egressPanel, documentGrid);
 
 		setAdminFieldValues(conciliation);
 
@@ -426,9 +449,9 @@ public class CashConciliationLayout extends AbstractEditableLayout<CashConciliat
 			txtBalance.setValue(String.valueOf(concil.getBalance()));
 		} else {
 			txtCashBase.setValue(0.0);
-			txtSupplierPayments.setValue(0.0);
-			txtCashRegisterBorrow.setValue(0.0);
-			txtBalance.setValue(0.0);
+		//	txtSupplierPayments.setValue(txtSupplierPayments);
+		//	txtCashRegisterBorrow.setValue(0.0);
+		//	txtBalance.setValue(0.0);
 		}
 		setBalanceAdministrador();
 	}
@@ -513,6 +536,10 @@ public class CashConciliationLayout extends AbstractEditableLayout<CashConciliat
 
 	}
 
+	protected void fillDocumentGridData() {
+		documentGrid.setDataProvider(documentDataProvider);
+	}
+
 	@Override
 	protected void saveButtonAction(CashConciliation entity) {
 		String message = validateRequiredFields();
@@ -520,39 +547,6 @@ public class CashConciliationLayout extends AbstractEditableLayout<CashConciliat
 			ViewHelper.showNotification(message, Notification.Type.ERROR_MESSAGE);
 		} else {
 			saveConciliation(entity);
-		}
-
-	}
-
-	private void voidSaveConciliationBk(CashConciliation entity) {
-		String strLog = "[saveButtonAction]";
-		try {
-			CashConciliation.Builder conciliationBuilder = null;
-			if (entity == null) {
-				conciliationBuilder = CashConciliation.builder();
-			} else {
-				conciliationBuilder = CashConciliation.builder(entity);
-			}
-
-			Date concilitationDate = DateUtil.localDateToDate(dfConciliationDate.getValue());
-			entity = conciliationBuilder.person(selectedPerson).conciliationDate(concilitationDate)
-					.cashBase(NumericUtil.stringToBigDecimal(txtCashBase.getValue()))
-					.sales(NumericUtil.stringToBigDecimal(txtSales.getValue()))
-					.creditCollection(NumericUtil.stringToBigDecimal(txtCreditCollection.getValue()))
-					.totalIngress(NumericUtil.stringToBigDecimal(txtTotalIngress.getValue()))
-					.generalExpense(NumericUtil.stringToBigDecimal(txtGeneralExpense.getValue()))
-					.supplierPaymentsLoan(NumericUtil.stringToBigDecimal(txtSupplierPaymentsLoan.getValue()))
-					.totalEgress(NumericUtil.stringToBigDecimal(txtTotalEgress.getValue()))
-					.totalCredit(NumericUtil.stringToBigDecimal(txtTotalCredit.getValue()))
-					.totalCash(NumericUtil.stringToBigDecimal(txtTotalCash.getValue()))
-					.remnantSale(NumericUtil.stringToBigDecimal(txtRemnantSale.getValue()))
-					.remnantEgress(NumericUtil.stringToBigDecimal(txtRemnantEgress.getValue())).archived(false).build();
-
-			save(conciliationBll, entity, "Cuadre de caja guardado");
-		} catch (Exception e) {
-			log.error(strLog + "[Exception]" + e.getMessage());
-			e.printStackTrace();
-			ViewHelper.showNotification("Se generó un error al guardar el cuadre", Notification.Type.ERROR_MESSAGE);
 		}
 
 	}

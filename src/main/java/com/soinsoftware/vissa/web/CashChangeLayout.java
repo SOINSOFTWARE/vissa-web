@@ -10,7 +10,6 @@ import org.vaadin.ui.NumberField;
 import com.soinsoftware.vissa.bll.UserBll;
 import com.soinsoftware.vissa.exception.ModelValidationException;
 import com.soinsoftware.vissa.model.User;
-import com.soinsoftware.vissa.util.Commons;
 import com.soinsoftware.vissa.util.ViewHelper;
 import com.vaadin.navigator.View;
 import com.vaadin.navigator.ViewChangeListener.ViewChangeEvent;
@@ -39,6 +38,8 @@ public class CashChangeLayout extends VerticalLayout implements View {
 	private NumberField txtTotalInvoice;
 	private NumberField txtPaidAmount;
 	private NumberField txtChange;
+	private Double totalValueDocument;
+	private InvoiceLayout invoiceLayout;
 
 	private User user = null;
 
@@ -49,9 +50,12 @@ public class CashChangeLayout extends VerticalLayout implements View {
 
 	}
 
-	private void getUser() {
-		user = userBll.select(Commons.LOGIN);
-		log.info("user.person:" + user.getPerson());
+	public CashChangeLayout(InvoiceLayout invoiceLayout, Double totalValueDocument) throws IOException {
+		super();
+		userBll = UserBll.getInstance();
+		this.totalValueDocument = totalValueDocument;
+		this.invoiceLayout = invoiceLayout;
+		buildComponents();
 
 	}
 
@@ -77,18 +81,16 @@ public class CashChangeLayout extends VerticalLayout implements View {
 		addComponent(layout);
 		this.setMargin(false);
 		this.setSpacing(false);
-		getUser();
 
 	}
 
 	public void buildComponents() {
 
 		System.out.println("enter");
-		getUser();
 
 		VerticalLayout layout = ViewHelper.buildVerticalLayout(false, false);
 
-		Label tittle = new Label("Cambiar contraseña");
+		Label tittle = new Label("Cambio");
 		tittle.addStyleName(ValoTheme.LABEL_H3);
 		addComponent(tittle);
 
@@ -139,24 +141,38 @@ public class CashChangeLayout extends VerticalLayout implements View {
 		txtTotalInvoice.setStyleName(ValoTheme.TEXTFIELD_TINY);
 
 		txtPaidAmount = new NumberField("Valor pagado");
-		txtPaidAmount.setReadOnly(true);
+		txtPaidAmount.focus();
 		txtPaidAmount.setStyleName(ValoTheme.TEXTFIELD_TINY);
 
 		txtChange = new NumberField("Cambio");
 		txtChange.setReadOnly(true);
 		txtChange.setStyleName(ValoTheme.TEXTFIELD_TINY);
 
-		if (user != null) {
-			txtTotalInvoice.setValue(user.getPerson().getName() + " " + user.getPerson().getLastName());
-			txtChange.setValue(user.getLogin());
-		}
+		txtPaidAmount.addValueChangeListener(e -> setChangeValue());
 
-		FormLayout userForm = ViewHelper.buildForm("Cambio", false, false);
-		userForm.addComponents(txtTotalInvoice, txtPaidAmount, txtChange);
-		Panel userPanel = ViewHelper.buildPanel("", userForm);
+		setFieldValues();
+		FormLayout changeForm = ViewHelper.buildForm("Cambio", false, false);
+		changeForm.addComponents(txtTotalInvoice, txtPaidAmount, txtChange);
+		Panel userPanel = ViewHelper.buildPanel("", changeForm);
 
 		return userPanel;
 
+	}
+
+	private void setFieldValues() {
+		txtTotalInvoice.setValue(totalValueDocument);
+		txtChange.setValue("0");
+	}
+
+	private void setChangeValue() {
+		String strLog = "[setChangeValue]";
+		try {
+			Double totalValue = Double.valueOf(txtTotalInvoice.getValue());
+			Double paidValue = Double.valueOf(txtPaidAmount.getValue());
+			txtChange.setValue(String.valueOf(paidValue - totalValue));
+		} catch (Exception e) {
+			log.error(strLog + "[Exception]" + e.getMessage());
+		}
 	}
 
 	@Transactional(rollbackFor = Exception.class)
@@ -166,14 +182,11 @@ public class CashChangeLayout extends VerticalLayout implements View {
 		// Guardar Usuario
 		try {
 			if (txtPaidAmount.getValue() != null && !txtPaidAmount.getValue().isEmpty()) {
-				/*
-				 * user = User.builder(user).password(txtNewPassword.getValue()).build();
-				 * userBll.save(user);
-				 * ViewHelper.showNotification("Contraseña cambiada con éxito",
-				 * Notification.Type.WARNING_MESSAGE);
-				 */
+
+				invoiceLayout.saveInvoiceDetail(invoiceLayout.getDocument());
+			//	closeWindow();
 			} else {
-				ViewHelper.showNotification("Ingrese su contraseña anterior", Notification.Type.WARNING_MESSAGE);
+				ViewHelper.showNotification("Ingrese el valor pagado", Notification.Type.WARNING_MESSAGE);
 			}
 
 		} catch (ModelValidationException ex) {
@@ -182,17 +195,17 @@ public class CashChangeLayout extends VerticalLayout implements View {
 		} catch (HibernateException ex) {
 			log.error(ex);
 			userBll.rollback();
-			ViewHelper.showNotification("Los datos no pudieron ser salvados, contacte al administrador(3007200405)",
+			ViewHelper.showNotification("Los datos no pudieron ser salvados, contacte al administrador del sistema",
 					Notification.Type.ERROR_MESSAGE);
 		} catch (Exception ex) {
 			log.error(ex);
-			ViewHelper.showNotification("Se presentó un error, por favor contacte al adminisrador",
+			ViewHelper.showNotification("Se presentó un error, por favor contacte al adminisrador del sistema",
 					Notification.Type.ERROR_MESSAGE);
 		}
 	}
 
 	private void closeWindow() {
-		// getUI().close();
+		getUI().close();
 	}
 
 }

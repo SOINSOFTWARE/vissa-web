@@ -163,6 +163,8 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	private Button addProductBtn;
 	private Button deleteProductBtn;
 	private Button searchPersonBtn;
+	private CashChangeLayout cashChangeLayout;
+	private Window cashChangeWindow;
 
 	public InvoiceLayout() throws IOException {
 		super();
@@ -1058,12 +1060,15 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			ConfirmDialog.show(Page.getCurrent().getUI(), "Confirmar", "Está seguro de guardar la factura", "Si", "No",
 					e -> {
 						if (e.isConfirmed()) {
-							if (buildCashChangeWindow()) {
+							if (transactionType.equals(ETransactionType.SALIDA)) {
+								buildCashChangeWindow();
+							} else {
 								saveInvoiceDetail(documentEntity);
 							}
 						}
 					});
 		}
+
 	}
 
 	/**
@@ -1098,6 +1103,13 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			message = message.concat("La forma de pago es obligatoria");
 		}
 
+		if (txtTotal.getValue() != null && txtTotal.getValue().equals("0")) {
+			if (!message.isEmpty()) {
+				message = message.concat(character);
+			}
+			message = message.concat("El total de la factura es obligatorio");
+		}
+
 		return message;
 	}
 
@@ -1106,7 +1118,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	 * 
 	 * @param document
 	 */
-	private void saveInvoiceDetail(Document document) {
+	public void saveInvoiceDetail(Document document) {
 		String strLog = "[saveInvoiceDetail] ";
 		Document documentEntity = saveInvoiceHeader(document);
 		log.info(strLog + "Document saved:" + documentEntity);
@@ -1202,6 +1214,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 						log.info(strLog + "lot saved:" + product);
 
 						// afterSave(caption);
+						closeWindow(cashChangeWindow);
 					} catch (ModelValidationException ex) {
 						hasErrors = true;
 						documentEntity = null;
@@ -1416,7 +1429,9 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	 * @param w
 	 */
 	private void closeWindow(Window w) {
-		w.close();
+		if (w != null) {
+			w.close();
+		}
 	}
 
 	/**
@@ -1585,28 +1600,37 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	}
 
 	/**
-	 * Metodo que construye la ventana para buscar lores
+	 * Metodo que construye la ventana para mostrar el cambio de dinero
 	 */
 	private boolean buildCashChangeWindow() {
 
-		Window subWindow = lotSubwindow = ViewHelper.buildSubwindow("50%");
+		cashChangeWindow = ViewHelper.buildSubwindow("50%");
 
 		try {
-			CashChangeLayout userLayout = new CashChangeLayout();
-			userLayout.setMargin(false);
-			userLayout.setSpacing(false);
+			Double totalValue = txtTotal.getValue() != null ? Double.parseDouble(txtTotal.getValue()) : 0;
+			cashChangeLayout = new CashChangeLayout(this, totalValue);
+			cashChangeLayout.setMargin(false);
+			cashChangeLayout.setSpacing(false);
 
 			VerticalLayout subContent = ViewHelper.buildVerticalLayout(true, true);
-			subContent.addComponents(userLayout);
-			subWindow.setContent(subContent);
+			subContent.addComponents(cashChangeLayout);
+			cashChangeWindow.setContent(subContent);
 
-			getUI().addWindow(subWindow);
+			getUI().addWindow(cashChangeWindow);
 		} catch (IOException e) {
 			log.error("Error al cargar lista de lotes. Exception:" + e);
 		}
 
 		return true;
 
+	}
+
+	public Document getDocument() {
+		return document;
+	}
+
+	public void setDocument(Document document) {
+		this.document = document;
 	}
 
 }
