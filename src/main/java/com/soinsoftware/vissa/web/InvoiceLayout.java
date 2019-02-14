@@ -720,7 +720,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 				Commons.PERSON_TYPE = PersonType.CUSTOMER.getName();
 			}
 			personLayout = new PersonLayout(true);
-			
+
 			personLayout.grid.addItemClickListener(listener -> {
 				if (listener.getMouseEventDetails().isDoubleClick())
 					// pass the row/item that the user double clicked
@@ -1058,7 +1058,9 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			ConfirmDialog.show(Page.getCurrent().getUI(), "Confirmar", "Está seguro de guardar la factura", "Si", "No",
 					e -> {
 						if (e.isConfirmed()) {
-							saveInvoiceDetail(documentEntity);
+							if (buildCashChangeWindow()) {
+								saveInvoiceDetail(documentEntity);
+							}
 						}
 					});
 		}
@@ -1319,7 +1321,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			txtPaymentTerm.clear();
 			// cbDocumentType.clear();
 			cbPaymentMethod.clear();
-			//cbPaymentType.clear();
+			// cbPaymentType.clear();
 			cbDocumentStatus.setSelectedItem(docStatusBll.select("Nueva").get(0));
 			itemsList.clear();
 			detailGrid.getDataProvider().refreshAll();
@@ -1580,6 +1582,31 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 		}
 		return parameters;
+	}
+
+	/**
+	 * Metodo que construye la ventana para buscar lores
+	 */
+	private boolean buildCashChangeWindow() {
+
+		Window subWindow = lotSubwindow = ViewHelper.buildSubwindow("50%");
+
+		try {
+			CashChangeLayout userLayout = new CashChangeLayout();
+			userLayout.setMargin(false);
+			userLayout.setSpacing(false);
+
+			VerticalLayout subContent = ViewHelper.buildVerticalLayout(true, true);
+			subContent.addComponents(userLayout);
+			subWindow.setContent(subContent);
+
+			getUI().addWindow(subWindow);
+		} catch (IOException e) {
+			log.error("Error al cargar lista de lotes. Exception:" + e);
+		}
+
+		return true;
+
 	}
 
 }
