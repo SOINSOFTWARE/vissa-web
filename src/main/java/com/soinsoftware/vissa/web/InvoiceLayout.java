@@ -1583,7 +1583,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 				parameters.put(Commons.PARAM_SALESMAN,
 						document.getSalesman().getName() + " " + document.getSalesman().getLastName());
 				parameters.put(Commons.PARAM_CUSTOMER,
-						document.getPerson().getName() + " " + document.getSalesman().getLastName());
+						document.getPerson().getName() + " " + document.getPerson().getLastName());
 
 				parameters.put(Commons.PARAM_CUSTOMER_ID,
 						document.getPerson().getDocumentNumber() != null ? document.getPerson().getDocumentNumber()
