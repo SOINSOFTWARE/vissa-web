@@ -3,18 +3,15 @@ package com.soinsoftware.vissa.web;
 import static com.soinsoftware.vissa.web.VissaUI.KEY_PRODUCTS;
 
 import java.io.IOException;
-import java.math.BigInteger;
 import java.util.Set;
 
 import org.apache.log4j.Logger;
 import org.vaadin.ui.NumberField;
 
 import com.soinsoftware.vissa.bll.LotBll;
-import com.soinsoftware.vissa.bll.TableSequenceBll;
 import com.soinsoftware.vissa.bll.WarehouseBll;
 import com.soinsoftware.vissa.model.Lot;
 import com.soinsoftware.vissa.model.Product;
-import com.soinsoftware.vissa.model.TableSequence;
 import com.soinsoftware.vissa.model.Warehouse;
 import com.soinsoftware.vissa.util.Commons;
 import com.soinsoftware.vissa.util.DateUtil;
@@ -48,7 +45,6 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 
 	private final LotBll lotBll;
 	private final WarehouseBll warehouseBll;
-	private final TableSequenceBll tableSequenceBll;
 
 	public Grid<Lot> lotGrid;
 
@@ -62,16 +58,17 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 	private Product product;
 	private Warehouse warehouse;
 	private boolean listMode;
-	private TableSequence tableSequence;
+
+	private ProductLayout productLayout;
 
 	private ConfigurableFilterDataProvider<Lot, Void, SerializablePredicate<Lot>> filterLotDataProvider;
 
-	public LotLayout(Product product) throws IOException {
+	public LotLayout(Product product, ProductLayout productLayout) throws IOException {
 		super("Lotes", KEY_PRODUCTS);
 		this.product = product;
+		this.productLayout = productLayout;
 		lotBll = LotBll.getInstance();
 		warehouseBll = WarehouseBll.getInstance();
-		tableSequenceBll = TableSequenceBll.getInstance();
 		addListTab();
 	}
 
@@ -80,7 +77,6 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 		this.warehouse = warehouse;
 		lotBll = LotBll.getInstance();
 		warehouseBll = WarehouseBll.getInstance();
-		tableSequenceBll = TableSequenceBll.getInstance();
 		addListTab();
 	}
 
@@ -158,12 +154,12 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 	@Override
 	protected Component buildEditionComponent(Lot entity) {
 		VerticalLayout layout = ViewHelper.buildVerticalLayout(true, true);
-		getLotSequence();
+
+		Integer sequence = getLotSequence();
 		txtCode = new TextField("Código");
 		txtCode.setStyleName(ValoTheme.TEXTAREA_TINY);
 		txtCode.focus();
-		txtCode.setValue(entity != null ? entity.getCode()
-				: tableSequence != null ? String.valueOf(tableSequence.getSequence()) : "");
+		txtCode.setValue(entity != null ? entity.getCode() : sequence != null ? String.valueOf(sequence) : "");
 		txtCode.setRequiredIndicatorVisible(true);
 
 		txtName = new TextField("Nombre");
@@ -231,12 +227,12 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 	@Override
 	protected void saveButtonAction(Lot entity) {
 		String strLog = "[saveButtonAction]";
+		String confirmMsg = null;
 		try {
 			String message = validateRequiredFields();
 			if (!message.isEmpty()) {
 				throw new Exception(message);
 			} else {
-
 				Lot.Builder lotBuilder = null;
 				if (entity == null) {
 					lotBuilder = Lot.builder();
@@ -251,9 +247,20 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 						.expirationDate(DateUtil.localDateTimeToDate(dtfExpirationDate.getValue())).archived(false)
 						.quantity(Double.parseDouble(txtQuantity.getValue())).product(product).warehouse(warehouse)
 						.build();
-				save(lotBll, entity, "Lote guardado");
-				tableSequenceBll.save(tableSequence);
+				// Guardar el lote
+				save(lotBll, entity, null);
+				log.info("Lote guardado: " + entity);
+
+				if (!productLayout.isShowConfirmMessage()) {
+					confirmMsg = "Producto guardado con éxito";
+				} else {
+					confirmMsg = "Lote guardado";
+				}
+
+				ViewHelper.showNotification(confirmMsg, Notification.Type.WARNING_MESSAGE);
+
 			}
+
 		} catch (Exception e) {
 			log.error(strLog + "[Exception]" + e.getMessage());
 			ViewHelper.showNotification("Se generó un error al guardar el lote", Notification.Type.ERROR_MESSAGE);
@@ -275,12 +282,6 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 				message = message.concat(character);
 			}
 			message = message.concat("La cantidad es obligatoria");
-		}
-		if (txtName.getValue() == null || txtName.getValue().isEmpty()) {
-			if (!message.isEmpty()) {
-				message = message.concat(character);
-			}
-			message = message.concat("El nombre es obligatorio");
 		}
 
 		return message;
@@ -313,17 +314,29 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 	/**
 	 * Obtener el consecutivo para lotes
 	 */
-	private void getLotSequence() {
-		BigInteger seq = null;
-		TableSequence tableSeqObj = tableSequenceBll.select(Lot.class.getSimpleName());
-		if (tableSeqObj != null) {
-			seq = tableSeqObj.getSequence().add(BigInteger.valueOf(1L));
-			TableSequence.Builder builder = TableSequence.builder(tableSeqObj);
-			tableSequence = builder.sequence(seq).build();
-		} else {
-			ViewHelper.showNotification("No hay consecutivo configurado para los lotes",
-					Notification.Type.ERROR_MESSAGE);
+	private Integer getLotSequence() {
+		String strLog = "[getLotSequence] ";
+		Lot lastLot = null;
+		Integer maxCode = 1;
+		try {
+			if (product == null) {
+				productLayout.setShowConfirmMessage(false);
+				productLayout.saveButtonAction(product);
+				product = productLayout.getProduct();
+			} else {
+				productLayout.setShowConfirmMessage(true);
+			}
+
+			if (product != null) {
+				lastLot = lotBll.getLastLotByProduct(product);
+				if (lastLot != null) {
+					maxCode = Integer.parseInt(lastLot.getCode()) + 1;
+				}
+			}
+		} catch (Exception e) {
+			log.error(strLog + "[Exception]" + e.getMessage());
 		}
+		return maxCode;
 	}
 
 }

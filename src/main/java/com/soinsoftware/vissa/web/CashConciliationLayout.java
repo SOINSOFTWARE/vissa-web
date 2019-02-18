@@ -449,9 +449,9 @@ public class CashConciliationLayout extends AbstractEditableLayout<CashConciliat
 			txtBalance.setValue(String.valueOf(concil.getBalance()));
 		} else {
 			txtCashBase.setValue(0.0);
-			// txtSupplierPayments.setValue(txtSupplierPayments);
-			// txtCashRegisterBorrow.setValue(0.0);
-			// txtBalance.setValue(0.0);
+		//	txtSupplierPayments.setValue(txtSupplierPayments);
+		//	txtCashRegisterBorrow.setValue(0.0);
+		//	txtBalance.setValue(0.0);
 		}
 		setBalanceAdministrador();
 	}
@@ -494,11 +494,11 @@ public class CashConciliationLayout extends AbstractEditableLayout<CashConciliat
 
 			log.info(strLog + "txtTotalSale:" + txtTotalIngress.getDoubleValueDoNotThrow());
 			log.info(strLog + "txtTotalEgress:" + txtTotalEgress.getDoubleValueDoNotThrow());
-
+			
 			BigDecimal ingress = NumericUtil.stringToBigDecimal(txtTotalIngress.getValue());
 			BigDecimal egress = NumericUtil.stringToBigDecimal(txtTotalEgress.getValue());
 
-			// Ingresos - Egresos
+			//Ingresos - Egresos
 			txtTotalCash.setValue(String.valueOf(ingress.subtract(egress)));
 
 		} catch (Exception e) {

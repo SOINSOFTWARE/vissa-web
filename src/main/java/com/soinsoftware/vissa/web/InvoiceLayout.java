@@ -707,7 +707,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 		Button selectBtn = new Button("Seleccionar", FontAwesome.CHECK);
 		selectBtn.addStyleName("mystyle-btn");
-		selectBtn.addClickListener(e -> selectPerson());
+		selectBtn.addClickListener(e -> selectPerson(null));
 
 		HorizontalLayout buttonLayout = ViewHelper.buildHorizontalLayout(true, true);
 		buttonLayout.addComponents(backBtn, selectBtn);
@@ -723,12 +723,12 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			}
 			personLayout = new PersonLayout(true);
 
-			personLayout.grid.addItemClickListener(listener -> {
+			personLayout.getGrid().addItemClickListener(listener -> {
 				if (listener.getMouseEventDetails().isDoubleClick())
 					// pass the row/item that the user double clicked
 					// to method doStuff.
 					// doStuff(l.getItem());
-					selectPerson();
+					selectPerson(listener.getItem());
 			});
 
 		} catch (IOException e) {
@@ -745,8 +745,8 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	/**
 	 * Método para seleccionar proveedor o cliente
 	 */
-	private void selectPerson() {
-		selectedPerson = personLayout.getSelected();
+	private void selectPerson(Person person) {
+		selectedPerson = person != null ? person : personLayout.getSelected();
 
 		if (selectedPerson != null) {
 			txtPerson.setValue(selectedPerson.getName() + " " + selectedPerson.getLastName());
@@ -827,7 +827,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 		Button selectBtn = new Button("Seleccionar", FontAwesome.CHECK);
 		selectBtn.addStyleName("mystyle-btn");
-		selectBtn.addClickListener(e -> selectProduct());
+		selectBtn.addClickListener(e -> selectProduct(null));
 
 		HorizontalLayout buttonLayout = ViewHelper.buildHorizontalLayout(true, true);
 		buttonLayout.addComponents(backBtn, selectBtn);
@@ -841,7 +841,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 					// pass the row/item that the user double clicked
 					// to method doStuff.
 					// doStuff(l.getItem());
-					selectProduct();
+					selectProduct(listener.getItem());
 			});
 		} catch (IOException e) {
 			log.error("Error al cargar lista de productos. Exception:" + e);
@@ -857,9 +857,9 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	/**
 	 * Metodo para escoger productos a agregar a la factura
 	 */
-	private void selectProduct() {
+	private void selectProduct(Product product) {
 
-		selectedProduct = productLayout.getSelected();
+		selectedProduct = product != null ? product : productLayout.getSelected();
 
 		if (selectedProduct != null) {
 			DocumentDetail docDetail = DocumentDetail.builder().product(selectedProduct).build();
@@ -867,7 +867,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 				ViewHelper.showNotification("Este producto ya está agregado a la factura",
 						Notification.Type.WARNING_MESSAGE);
 			} else {
-				if (selectedProduct.getSalePrice() == null) {
+				if (selectedProduct.getSalePrice() == null || selectedProduct.getSalePrice().equals("0")) {
 					ViewHelper.showNotification("El producto no tiene precio configurado",
 							Notification.Type.WARNING_MESSAGE);
 				} else if (transactionType.equals(ETransactionType.SALIDA)
@@ -947,18 +947,18 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		// Panel de botones
 		Button backBtn = new Button("Cancelar", FontAwesome.BACKWARD);
 		backBtn.addStyleName("mystyle-btn");
-		backBtn.addClickListener(e -> selectLot(detail));
+		backBtn.addClickListener(e -> selectLot(detail, null));
 
 		Button selectBtn = new Button("Seleccionar", FontAwesome.CHECK);
 		selectBtn.addStyleName("mystyle-btn");
-		selectBtn.addClickListener(e -> selectLot(detail));
+		selectBtn.addClickListener(e -> selectLot(detail, null));
 
 		HorizontalLayout buttonLayout = ViewHelper.buildHorizontalLayout(true, true);
 		buttonLayout.addComponents(backBtn, selectBtn);
 		Panel buttonPanel = ViewHelper.buildPanel(null, buttonLayout);
 
 		try {
-			lotLayout = new LotLayout(selectedProduct);
+			lotLayout = new LotLayout(selectedProduct, productLayout);
 			lotLayout.setCaption("Lotes");
 			lotLayout.setMargin(false);
 			lotLayout.setSpacing(false);
@@ -967,7 +967,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 					// pass the row/item that the user double clicked
 					// to method doStuff.
 					// doStuff(l.getItem());
-					selectLot(detail);
+					selectLot(detail, listener.getItem());
 			});
 		} catch (IOException e) {
 			log.error("Error al cargar lista de lotes. Exception:" + e);
@@ -982,14 +982,14 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	/**
 	 * Metodo para escoger lotes para tomar los productos
 	 */
-	private void selectLot(DocumentDetail detail) {
+	private void selectLot(DocumentDetail detail, Lot lot) {
 		String strLog = "[selectLot]";
 		try {
 
 			log.info(strLog + "[parameters]" + detail);
 
 			// Lote seleccionado en la grid
-			selectedLot = lotLayout.getSelected();
+			selectedLot = lot != null ? lot : lotLayout.getSelected();
 
 			log.info(strLog + "selectedLot:" + selectedLot);
 
@@ -1218,12 +1218,12 @@ public class InvoiceLayout extends VerticalLayout implements View {
 					} catch (ModelValidationException ex) {
 						hasErrors = true;
 						documentEntity = null;
-						log.error(strLog + ex);
+						log.error(strLog + "[ModelValidationException]" + ex);
 						ViewHelper.showNotification(ex.getMessage(), Notification.Type.ERROR_MESSAGE);
 					} catch (HibernateException ex) {
 						hasErrors = true;
 						documentEntity = null;
-						log.error(strLog + ex);
+						log.error(strLog + "[HibernateException]" + ex);
 						ViewHelper.showNotification(
 								"Los datos no pudieron ser salvados, contacte al administrador del sistema",
 								Notification.Type.ERROR_MESSAGE);
@@ -1278,6 +1278,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			Double total = txtTotal.getValue() != null ? Double.parseDouble(txtTotal.getValue()) : 0;
 			Double totalIVA = txtTotalTax.getValue() != null ? Double.parseDouble(txtTotalTax.getValue()) : 0;
 
+			// Setear el detalle de items a la factura
 			Set<DocumentDetail> details = detailGrid.getDataProvider().fetch(new Query<>()).collect(Collectors.toSet());
 
 			documentEntity = docBuilder.code(txtDocNumber.getValue())
