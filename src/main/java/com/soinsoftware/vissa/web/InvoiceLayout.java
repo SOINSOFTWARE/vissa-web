@@ -29,6 +29,8 @@ import com.soinsoftware.vissa.bll.DocumentStatusBll;
 import com.soinsoftware.vissa.bll.DocumentTypeBll;
 import com.soinsoftware.vissa.bll.InventoryTransactionBll;
 import com.soinsoftware.vissa.bll.LotBll;
+import com.soinsoftware.vissa.bll.MeasurementUnitBll;
+import com.soinsoftware.vissa.bll.MeasurementUnitProductBll;
 import com.soinsoftware.vissa.bll.PaymentDocumentTypeBll;
 import com.soinsoftware.vissa.bll.PaymentMethodBll;
 import com.soinsoftware.vissa.bll.ProductBll;
@@ -45,9 +47,11 @@ import com.soinsoftware.vissa.model.ERole;
 import com.soinsoftware.vissa.model.ETransactionType;
 import com.soinsoftware.vissa.model.InventoryTransaction;
 import com.soinsoftware.vissa.model.Lot;
+import com.soinsoftware.vissa.model.MeasurementUnit;
 import com.soinsoftware.vissa.model.PaymentDocumentType;
 import com.soinsoftware.vissa.model.PaymentMethod;
 import com.soinsoftware.vissa.model.PaymentType;
+import com.soinsoftware.vissa.model.Permission;
 import com.soinsoftware.vissa.model.Person;
 import com.soinsoftware.vissa.model.PersonType;
 import com.soinsoftware.vissa.model.Product;
@@ -57,6 +61,8 @@ import com.soinsoftware.vissa.util.Commons;
 import com.soinsoftware.vissa.util.DateUtil;
 import com.soinsoftware.vissa.util.PermissionUtil;
 import com.soinsoftware.vissa.util.ViewHelper;
+import com.vaadin.data.Binder;
+import com.vaadin.data.Binder.Binding;
 import com.vaadin.data.provider.ConfigurableFilterDataProvider;
 import com.vaadin.data.provider.ListDataProvider;
 import com.vaadin.data.provider.Query;
@@ -105,6 +111,8 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	private final DocumentDetailLotBll detailLotBll;
 	private final CompanyBll companyBll;
 	private final PaymentDocumentTypeBll paymentDocumentTypeBll;
+	private final MeasurementUnitBll measurementUnitBll;
+	private final MeasurementUnitProductBll measurementUnitProductBll;
 
 	// Components
 	private TextField txtDocNumFilter;
@@ -148,6 +156,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	private Column<?, ?> columnSubtotal;
 	private Column<?, ?> columnTax;
 	private Column<?, ?> columnPrice;
+	private Column<DocumentDetail, MeasurementUnit> columnUM;
 	private FooterRow footer;
 
 	private boolean withoutLot;
@@ -178,6 +187,8 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		detailLotBll = DocumentDetailLotBll.getInstance();
 		companyBll = CompanyBll.getInstance();
 		paymentDocumentTypeBll = PaymentDocumentTypeBll.getInstance();
+		measurementUnitBll = MeasurementUnitBll.getInstance();
+		measurementUnitProductBll = MeasurementUnitProductBll.getInstance();
 		lotBll = LotBll.getInstance();
 		document = new Document();
 		itemsList = new ArrayList<>();
@@ -482,28 +493,35 @@ public class InvoiceLayout extends VerticalLayout implements View {
 				return null;
 			}
 		}).setCaption("Nombre");
-		detailGrid.addColumn(documentDetail -> {
-			if (documentDetail.getProduct() != null && documentDetail.getProduct().getMeasurementUnit() != null) {
-				return documentDetail.getProduct().getMeasurementUnit().getName();
-			} else {
-				return null;
-			}
-		}).setCaption("Unidad de medida");
-		columnPrice = detailGrid.addColumn(documentDetail -> {
-			if (documentDetail.getProduct() != null) {
-				if (transactionType.equals(ETransactionType.ENTRADA)
-						&& documentDetail.getProduct().getPurchasePrice() != null) {
-					return documentDetail.getProduct().getPurchasePrice();
-				} else if (transactionType.equals(ETransactionType.SALIDA)
-						&& documentDetail.getProduct().getSalePrice() != null) {
-					return documentDetail.getProduct().getSalePrice();
-				} else {
-					return null;
-				}
-			} else {
-				return null;
-			}
-		}).setCaption("Precio");
+
+		/*
+		 * detailGrid.addColumn(documentDetail -> { if (documentDetail.getProduct() !=
+		 * null && documentDetail.getProduct().getMeasurementUnit() != null) { return
+		 * documentDetail.getProduct().getMeasurementUnit().getName(); } else { return
+		 * null; } }).setCaption("Unidad de medida");
+		 * 
+		 * /* columnPrice = detailGrid.addColumn(documentDetail -> { if
+		 * (documentDetail.getProduct() != null) { if
+		 * (transactionType.equals(ETransactionType.ENTRADA) &&
+		 * documentDetail.getProduct().getPurchasePrice() != null) { return
+		 * documentDetail.getProduct().getPurchasePrice(); } else if
+		 * (transactionType.equals(ETransactionType.SALIDA) &&
+		 * documentDetail.getProduct().getSalePrice() != null) { return
+		 * documentDetail.getProduct().getSalePrice(); } else { return null; } } else {
+		 * return null; } }).setCaption("Precio");
+		 */
+		ComboBox<MeasurementUnit> cbMeasurementUnit = new ComboBox<>();
+
+		Binder<DocumentDetail> binder = detailGrid.getEditor().getBinder();
+		Binding<DocumentDetail, MeasurementUnit> muBinding = binder.bind(cbMeasurementUnit,
+				DocumentDetail::getMeasurementUnit, DocumentDetail::setMeasurementUnit);
+
+		columnUM = detailGrid.addColumn(DocumentDetail::getMeasurementUnit).setCaption("Unidad de medida")
+				.setEditorBinding(muBinding);
+
+		NumberField txtPrice = new NumberField();
+		columnPrice = detailGrid.addColumn(DocumentDetail::getPriceStr).setCaption("Precio")
+				.setEditorComponent(txtPrice, DocumentDetail::setPriceStr);
 
 		columnTax = detailGrid.addColumn(documentDetail -> {
 			if (documentDetail.getProduct() != null) {
@@ -519,7 +537,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			} else {
 				return "0.0";
 			}
-		}).setCaption("IVA");
+		}).setCaption("% IVA");
 
 		// Columna cantidad editable
 		NumberField txtQuantity = new NumberField();
@@ -862,7 +880,11 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		selectedProduct = product != null ? product : productLayout.getSelected();
 
 		if (selectedProduct != null) {
+
 			DocumentDetail docDetail = DocumentDetail.builder().product(selectedProduct).build();
+			List<MeasurementUnit> muList = measurementUnitProductBll.selectMuByProduct(selectedProduct);
+			docDetail.setMeasurementUnitList(muList);
+			docDetail.setMeasurementUnit(muList.get(0));
 			if (itemsList.contains(docDetail)) {
 				ViewHelper.showNotification("Este producto ya está agregado a la factura",
 						Notification.Type.WARNING_MESSAGE);
@@ -909,6 +931,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		try {
 			itemsList.add(docDetail);
 			fillDetailGridData(itemsList);
+			setMeasurementUnitComponent();
 			productSubwindow.close();
 		} catch (Exception e) {
 			log.error(strLog + e.getLocalizedMessage());
@@ -1632,6 +1655,21 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 	public void setDocument(Document document) {
 		this.document = document;
+	}
+
+	private void setMeasurementUnitComponent() {
+		ComboBox<MeasurementUnit> cbMeasurementUnit = new ComboBox<>();
+
+		cbMeasurementUnit.setEmptySelectionAllowed(false);
+		List<MeasurementUnit> muList = measurementUnitProductBll.selectMuByProduct(selectedProduct);
+		ListDataProvider<MeasurementUnit> measurementDataProv = new ListDataProvider<>(muList);
+		cbMeasurementUnit.setDataProvider(measurementDataProv);
+		cbMeasurementUnit.setItemCaptionGenerator(MeasurementUnit::getName);
+
+		Binder<DocumentDetail> binder = detailGrid.getEditor().getBinder();
+		Binding<DocumentDetail, MeasurementUnit> muBinding = binder.bind(cbMeasurementUnit,
+				DocumentDetail::getMeasurementUnit, DocumentDetail::setMeasurementUnit);
+		columnUM.setEditorBinding(muBinding);
 	}
 
 }
