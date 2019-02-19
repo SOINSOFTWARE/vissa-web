@@ -48,10 +48,10 @@ import com.soinsoftware.vissa.model.ETransactionType;
 import com.soinsoftware.vissa.model.InventoryTransaction;
 import com.soinsoftware.vissa.model.Lot;
 import com.soinsoftware.vissa.model.MeasurementUnit;
+import com.soinsoftware.vissa.model.MeasurementUnitProduct;
 import com.soinsoftware.vissa.model.PaymentDocumentType;
 import com.soinsoftware.vissa.model.PaymentMethod;
 import com.soinsoftware.vissa.model.PaymentType;
-import com.soinsoftware.vissa.model.Permission;
 import com.soinsoftware.vissa.model.Person;
 import com.soinsoftware.vissa.model.PersonType;
 import com.soinsoftware.vissa.model.Product;
@@ -155,7 +155,8 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	private Column<?, ?> columnQuantity;
 	private Column<?, ?> columnSubtotal;
 	private Column<?, ?> columnTax;
-	private Column<?, ?> columnPrice;
+	private Column<DocumentDetail, String> columnPrice;
+	private Column<DocumentDetail, String> columnDiscount;
 	private Column<DocumentDetail, MeasurementUnit> columnUM;
 	private FooterRow footer;
 
@@ -510,18 +511,15 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		 * documentDetail.getProduct().getSalePrice(); } else { return null; } } else {
 		 * return null; } }).setCaption("Precio");
 		 */
-		ComboBox<MeasurementUnit> cbMeasurementUnit = new ComboBox<>();
 
-		Binder<DocumentDetail> binder = detailGrid.getEditor().getBinder();
-		Binding<DocumentDetail, MeasurementUnit> muBinding = binder.bind(cbMeasurementUnit,
-				DocumentDetail::getMeasurementUnit, DocumentDetail::setMeasurementUnit);
+		columnUM = detailGrid.addColumn(DocumentDetail::getMeasurementUnit).setCaption("Unidad de medida");
 
-		columnUM = detailGrid.addColumn(DocumentDetail::getMeasurementUnit).setCaption("Unidad de medida")
-				.setEditorBinding(muBinding);
+		columnPrice = detailGrid.addColumn(DocumentDetail::getPriceStr).setCaption("Precio");
 
-		NumberField txtPrice = new NumberField();
-		columnPrice = detailGrid.addColumn(DocumentDetail::getPriceStr).setCaption("Precio")
-				.setEditorComponent(txtPrice, DocumentDetail::setPriceStr);
+		
+		NumberField txtDiscount = new NumberField();
+		columnDiscount =  detailGrid.addColumn(DocumentDetail::getDiscountStr).setCaption("Descuento").setEditorComponent(txtDiscount,
+				DocumentDetail::setDiscountStr);
 
 		columnTax = detailGrid.addColumn(documentDetail -> {
 			if (documentDetail.getProduct() != null) {
@@ -882,9 +880,12 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		if (selectedProduct != null) {
 
 			DocumentDetail docDetail = DocumentDetail.builder().product(selectedProduct).build();
+			// Setear unidad de medida
 			List<MeasurementUnit> muList = measurementUnitProductBll.selectMuByProduct(selectedProduct);
 			docDetail.setMeasurementUnitList(muList);
 			docDetail.setMeasurementUnit(muList.get(0));
+			// Setear el precio
+			docDetail.setPrice(selectPriceXMU(muList.get(0), selectedProduct));
 			if (itemsList.contains(docDetail)) {
 				ViewHelper.showNotification("Este producto ya está agregado a la factura",
 						Notification.Type.WARNING_MESSAGE);
@@ -1658,18 +1659,51 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	}
 
 	private void setMeasurementUnitComponent() {
+		Product product = selectedProduct != null ? selectedProduct : CommonsUtil.CURRENT_DOCUMENT_DETAIL.getProduct();
 		ComboBox<MeasurementUnit> cbMeasurementUnit = new ComboBox<>();
 
 		cbMeasurementUnit.setEmptySelectionAllowed(false);
-		List<MeasurementUnit> muList = measurementUnitProductBll.selectMuByProduct(selectedProduct);
+		List<MeasurementUnit> muList = measurementUnitProductBll.selectMuByProduct(product);
 		ListDataProvider<MeasurementUnit> measurementDataProv = new ListDataProvider<>(muList);
 		cbMeasurementUnit.setDataProvider(measurementDataProv);
 		cbMeasurementUnit.setItemCaptionGenerator(MeasurementUnit::getName);
+		cbMeasurementUnit
+				.addValueChangeListener(e -> selectPriceXMU(cbMeasurementUnit.getSelectedItem().get(), product));
 
 		Binder<DocumentDetail> binder = detailGrid.getEditor().getBinder();
-		Binding<DocumentDetail, MeasurementUnit> muBinding = binder.bind(cbMeasurementUnit,
+		Binding<DocumentDetail, MeasurementUnit> binding = binder.bind(cbMeasurementUnit,
 				DocumentDetail::getMeasurementUnit, DocumentDetail::setMeasurementUnit);
-		columnUM.setEditorBinding(muBinding);
+		columnUM.setEditorBinding(binding);
+
+	}
+
+	/**
+	 * Metodo para seleccionar el precio para una UM
+	 * @param mu
+	 * @param product
+	 * @return
+	 */
+	private Double selectPriceXMU(MeasurementUnit mu, Product product) {
+		String strLog = "";
+		Double price = 0.0;
+		try {
+			Binder<DocumentDetail> binder = detailGrid.getEditor().getBinder();
+			NumberField txtPrice = new NumberField();
+			List<MeasurementUnitProduct> priceList = measurementUnitProductBll.select(mu, product);
+			if (priceList.size() > 0) {
+				price = priceList.get(0).getSalePrice();
+				txtPrice.setValue(price);
+			}
+			Binding<DocumentDetail, String> binding = binder.bind(txtPrice, DocumentDetail::getPriceStr,
+					DocumentDetail::setPriceStr);
+			columnPrice.setEditorBinding(binding);
+
+		} catch (Exception e) {
+			log.error(strLog + "[Exception]" + e.getMessage());
+
+		}
+		return price;
+
 	}
 
 }
