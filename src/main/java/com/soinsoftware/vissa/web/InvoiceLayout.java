@@ -154,7 +154,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	private ConfigurableFilterDataProvider<DocumentDetail, Void, SerializablePredicate<DocumentDetail>> filterDataProv;
 	private Column<?, ?> columnQuantity;
 	private Column<?, ?> columnSubtotal;
-	private Column<?, ?> columnTax;
+	private Column<DocumentDetail, String> columnTax;
 	private Column<DocumentDetail, String> columnPrice;
 	private Column<DocumentDetail, String> columnDiscount;
 	private Column<DocumentDetail, MeasurementUnit> columnUM;
@@ -495,47 +495,16 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			}
 		}).setCaption("Nombre");
 
-		/*
-		 * detailGrid.addColumn(documentDetail -> { if (documentDetail.getProduct() !=
-		 * null && documentDetail.getProduct().getMeasurementUnit() != null) { return
-		 * documentDetail.getProduct().getMeasurementUnit().getName(); } else { return
-		 * null; } }).setCaption("Unidad de medida");
-		 * 
-		 * /* columnPrice = detailGrid.addColumn(documentDetail -> { if
-		 * (documentDetail.getProduct() != null) { if
-		 * (transactionType.equals(ETransactionType.ENTRADA) &&
-		 * documentDetail.getProduct().getPurchasePrice() != null) { return
-		 * documentDetail.getProduct().getPurchasePrice(); } else if
-		 * (transactionType.equals(ETransactionType.SALIDA) &&
-		 * documentDetail.getProduct().getSalePrice() != null) { return
-		 * documentDetail.getProduct().getSalePrice(); } else { return null; } } else {
-		 * return null; } }).setCaption("Precio");
-		 */
-
 		columnUM = detailGrid.addColumn(DocumentDetail::getMeasurementUnit).setCaption("Unidad de medida");
 
 		columnPrice = detailGrid.addColumn(DocumentDetail::getPriceStr).setCaption("Precio");
 
-		
-		NumberField txtDiscount = new NumberField();
-		columnDiscount =  detailGrid.addColumn(DocumentDetail::getDiscountStr).setCaption("Descuento").setEditorComponent(txtDiscount,
-				DocumentDetail::setDiscountStr);
+		if (transactionType.equals(ETransactionType.SALIDA)) {
+			columnDiscount = detailGrid.addColumn(DocumentDetail::getDiscountStr).setCaption("Descuento")
+					.setEditorComponent(new NumberField(), DocumentDetail::setDiscountStr);
+		}
 
-		columnTax = detailGrid.addColumn(documentDetail -> {
-			if (documentDetail.getProduct() != null) {
-				if (transactionType.equals(ETransactionType.ENTRADA)
-						&& documentDetail.getProduct().getPurchaseTax() != null) {
-					return documentDetail.getProduct().getPurchaseTax();
-				} else if (transactionType.equals(ETransactionType.SALIDA)
-						&& documentDetail.getProduct().getSaleTax() != null) {
-					return documentDetail.getProduct().getSaleTax();
-				} else {
-					return "0.0";
-				}
-			} else {
-				return "0.0";
-			}
-		}).setCaption("% IVA");
+		columnTax = detailGrid.addColumn(DocumentDetail::getTaxStr).setCaption("% IVA");
 
 		// Columna cantidad editable
 		NumberField txtQuantity = new NumberField();
@@ -555,7 +524,11 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 		txtQuantity.addBlurListener(e -> changeQuantity(txtQuantity.getValue()));
 		footer = detailGrid.prependFooterRow();
-		footer.getCell(columnPrice).setHtml("<b>Total IVA:</b>");
+		if (columnDiscount != null) {
+			footer.getCell(columnDiscount).setHtml("<b>Total IVA:</b>");
+		} else {
+			footer.getCell(columnPrice).setHtml("<b>Total IVA:</b>");
+		}
 		footer.getCell(columnQuantity).setHtml("<b>Total:</b>");
 
 		detailGrid.getEditor().setEnabled(true);
@@ -635,7 +608,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			message = e.getMessage();
 		} finally {
 			log.info("Correct: " + correct);
-			if (!correct && message != null) {
+			if (!correct && (message != null && !message.isEmpty())) {
 				ViewHelper.showNotification(message, Notification.Type.ERROR_MESSAGE);
 			}
 		}
@@ -874,52 +847,47 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	 * Metodo para escoger productos a agregar a la factura
 	 */
 	private void selectProduct(Product product) {
+		String strLog = "[selectProduct]";
+		try {
+			selectedProduct = product != null ? product : productLayout.getSelected();
 
-		selectedProduct = product != null ? product : productLayout.getSelected();
+			if (selectedProduct != null) {
 
-		if (selectedProduct != null) {
+				DocumentDetail docDetail = DocumentDetail.builder().product(selectedProduct).build();
 
-			DocumentDetail docDetail = DocumentDetail.builder().product(selectedProduct).build();
-			// Setear unidad de medida
-			List<MeasurementUnit> muList = measurementUnitProductBll.selectMuByProduct(selectedProduct);
-			docDetail.setMeasurementUnitList(muList);
-			docDetail.setMeasurementUnit(muList.get(0));
-			// Setear el precio
-			docDetail.setPrice(selectPriceXMU(muList.get(0), selectedProduct));
-			if (itemsList.contains(docDetail)) {
-				ViewHelper.showNotification("Este producto ya está agregado a la factura",
-						Notification.Type.WARNING_MESSAGE);
-			} else {
-				if (selectedProduct.getSalePrice() == null || selectedProduct.getSalePrice().equals("0")) {
-					ViewHelper.showNotification("El producto no tiene precio configurado",
-							Notification.Type.WARNING_MESSAGE);
-				} else if (transactionType.equals(ETransactionType.SALIDA)
-						&& (selectedProduct.getStock() == null || selectedProduct.getStock() == 0)) {
-					ViewHelper.showNotification("El producto no tiene stock disponible",
+				if (itemsList.contains(docDetail)) {
+					ViewHelper.showNotification("Este producto ya está agregado a la factura",
 							Notification.Type.WARNING_MESSAGE);
 				} else {
+					if (selectedProduct.getSalePrice() == null || selectedProduct.getSalePrice().equals("0")) {
+						ViewHelper.showNotification("El producto no tiene precio configurado",
+								Notification.Type.WARNING_MESSAGE);
+					} else if (transactionType.equals(ETransactionType.SALIDA)
+							&& (selectedProduct.getStock() == null || selectedProduct.getStock() == 0)) {
+						ViewHelper.showNotification("El producto no tiene stock disponible",
+								Notification.Type.WARNING_MESSAGE);
+					} else {
+						try {
 
-					try {
-
-						// ---Panel de lotes
-						log.info("selectedLot:" + selectedLot + "withoutLot:" + withoutLot);
-						if (selectedLot == null && !withoutLot) {
-							buildLotWindow(docDetail);
-						} /*
-							 * else if (selectedLot != null || withoutLot) { addItemToDetail(docDetail); }
-							 */
-					} catch (Exception e) {
-						log.error("Error al cargar lotes del producto. Exception: " + e);
+							// ---Panel de lotes
+							log.info("selectedLot:" + selectedLot + ", withoutLot:" + withoutLot);
+							if (selectedLot == null && !withoutLot) {
+								buildLotWindow(docDetail);
+							}
+						} catch (Exception e) {
+							log.error("Error al cargar lotes del producto. Exception: " + e);
+						}
 					}
 				}
+
+			} else
+
+			{
+				ViewHelper.showNotification("No ha seleccionado un producto", Notification.Type.WARNING_MESSAGE);
 			}
-
-		} else
-
-		{
-			ViewHelper.showNotification("No ha seleccionado un producto", Notification.Type.WARNING_MESSAGE);
+		} catch (Exception e) {
+			log.error(strLog + "[Exception]" + e.getMessage());
 		}
-
 	}
 
 	/**
@@ -930,6 +898,21 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	private void addItemToDetail(DocumentDetail docDetail) {
 		String strLog = "[addItemToDetail]";
 		try {
+			// Setear unidad de medida por defecto para item
+			List<MeasurementUnit> muList = measurementUnitProductBll.selectMuByProduct(docDetail.getProduct());
+			docDetail.setMeasurementUnitList(muList);
+			MeasurementUnit mu = muList.get(0);
+			docDetail.setMeasurementUnit(mu);
+			// Setear el precio e impuesto
+			MeasurementUnitProduct priceXMu = selectPriceXMU(mu, selectedProduct);
+			if (transactionType.equals(ETransactionType.ENTRADA)) {
+				docDetail.setPrice(priceXMu.getPurchasePrice());
+				docDetail.setTax(priceXMu.getPurchaseTax());
+			} else if (transactionType.equals(ETransactionType.SALIDA)) {
+				docDetail.setPrice(priceXMu.getSalePrice());
+				docDetail.setTax(priceXMu.getSaleTax());
+			}
+
 			itemsList.add(docDetail);
 			fillDetailGridData(itemsList);
 			setMeasurementUnitComponent();
@@ -1150,7 +1133,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		if (documentEntity != null) {
 			boolean hasErrors = false;
 			for (DocumentDetail detail : documentEntity.getDetails()) {
-				if (detail.getQuantity() == null) {
+				if (detail.getQuantity() == null || detail.getQuantity().isEmpty()) {
 					ViewHelper.showNotification("Cantidad no ingresada", Notification.Type.ERROR_MESSAGE);
 					hasErrors = true;
 					documentBll.rollback();
@@ -1161,7 +1144,9 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 					// Detail sin relacion al documento
 					DocumentDetail detailTmp = detailBuilder.product(detail.getProduct()).quantity(detail.getQuantity())
-							.description(detail.getDescription()).subtotal(detail.getSubtotal()).build();
+							.description(detail.getDescription()).subtotal(detail.getSubtotal())
+							.measurementUnit(detail.getMeasurementUnit()).price(detail.getPrice())
+							.discount(detail.getDiscount()).build();
 
 					// Relacion detail con lote. Se busca DetailLot a partir del Detail
 					DocumentDetailLot detailLot = detailLotMap.get(detailTmp);
@@ -1679,31 +1664,44 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 	/**
 	 * Metodo para seleccionar el precio para una UM
-	 * @param mu
+	 * 
+	 * @param mus
 	 * @param product
 	 * @return
 	 */
-	private Double selectPriceXMU(MeasurementUnit mu, Product product) {
+	private MeasurementUnitProduct selectPriceXMU(MeasurementUnit mu, Product product) {
+		MeasurementUnitProduct pricexMU = null;
 		String strLog = "";
-		Double price = 0.0;
 		try {
 			Binder<DocumentDetail> binder = detailGrid.getEditor().getBinder();
 			NumberField txtPrice = new NumberField();
+			NumberField txtTax = new NumberField();
 			List<MeasurementUnitProduct> priceList = measurementUnitProductBll.select(mu, product);
-			if (priceList.size() > 0) {
-				price = priceList.get(0).getSalePrice();
-				txtPrice.setValue(price);
+			if (priceList.size() == 1) {
+				pricexMU = priceList.get(0);
+				if (transactionType.equals(ETransactionType.ENTRADA)) {
+					txtPrice.setValue(pricexMU.getPurchasePrice());
+					txtTax.setValue(pricexMU.getPurchaseTax());
+				} else if (transactionType.equals(ETransactionType.SALIDA)) {
+					txtPrice.setValue(pricexMU.getSalePrice());
+					txtTax.setValue(pricexMU.getSaleTax());
+				}
 			}
-			Binding<DocumentDetail, String> binding = binder.bind(txtPrice, DocumentDetail::getPriceStr,
+			// Binding de precio
+			Binding<DocumentDetail, String> priceBinding = binder.bind(txtPrice, DocumentDetail::getPriceStr,
 					DocumentDetail::setPriceStr);
-			columnPrice.setEditorBinding(binding);
+			columnPrice.setEditorBinding(priceBinding);
+
+			// Binding de impuesto
+			Binding<DocumentDetail, String> taxBinding = binder.bind(txtTax, DocumentDetail::getTaxStr,
+					DocumentDetail::setTaxStr);
+			columnTax.setEditorBinding(taxBinding);
 
 		} catch (Exception e) {
 			log.error(strLog + "[Exception]" + e.getMessage());
 
 		}
-		return price;
-
+		return pricexMU;
 	}
 
 }
