@@ -3,12 +3,14 @@ package com.soinsoftware.vissa.web;
 import static com.soinsoftware.vissa.web.VissaUI.KEY_PRODUCTS;
 
 import java.io.IOException;
+import java.util.Date;
 import java.util.Set;
 
 import org.apache.log4j.Logger;
 import org.vaadin.ui.NumberField;
 
 import com.soinsoftware.vissa.bll.LotBll;
+import com.soinsoftware.vissa.bll.ProductBll;
 import com.soinsoftware.vissa.bll.WarehouseBll;
 import com.soinsoftware.vissa.model.Lot;
 import com.soinsoftware.vissa.model.Product;
@@ -18,6 +20,7 @@ import com.soinsoftware.vissa.util.DateUtil;
 import com.soinsoftware.vissa.util.ViewHelper;
 import com.vaadin.data.provider.ConfigurableFilterDataProvider;
 import com.vaadin.data.provider.ListDataProvider;
+import com.vaadin.data.provider.Query;
 import com.vaadin.server.SerializablePredicate;
 import com.vaadin.ui.AbstractOrderedLayout;
 import com.vaadin.ui.Button;
@@ -26,12 +29,14 @@ import com.vaadin.ui.Component;
 import com.vaadin.ui.DateTimeField;
 import com.vaadin.ui.FormLayout;
 import com.vaadin.ui.Grid;
+import com.vaadin.ui.Grid.Column;
 import com.vaadin.ui.Grid.SelectionMode;
 import com.vaadin.ui.HorizontalLayout;
 import com.vaadin.ui.Notification;
 import com.vaadin.ui.Panel;
 import com.vaadin.ui.TextField;
 import com.vaadin.ui.VerticalLayout;
+import com.vaadin.ui.components.grid.FooterRow;
 import com.vaadin.ui.themes.ValoTheme;
 
 @SuppressWarnings("unchecked")
@@ -44,6 +49,7 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 	protected static final Logger log = Logger.getLogger(LotLayout.class);
 
 	private final LotBll lotBll;
+	private final ProductBll productBll;
 	private final WarehouseBll warehouseBll;
 
 	public Grid<Lot> lotGrid;
@@ -58,16 +64,22 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 	private Product product;
 	private Warehouse warehouse;
 	private boolean listMode;
+	private Double totalStock;
 
 	private ProductLayout productLayout;
+	private Column<?, ?> columnQuantity;
+	private Column<?, ?> columnWarehouse;
+	private FooterRow footer;
 
 	private ConfigurableFilterDataProvider<Lot, Void, SerializablePredicate<Lot>> filterLotDataProvider;
+	private ListDataProvider<Lot> dataProvider = null;
 
 	public LotLayout(Product product, ProductLayout productLayout) throws IOException {
 		super("Lotes", KEY_PRODUCTS);
 		this.product = product;
 		this.productLayout = productLayout;
 		lotBll = LotBll.getInstance();
+		productBll = ProductBll.getInstance();
 		warehouseBll = WarehouseBll.getInstance();
 		addListTab();
 	}
@@ -76,6 +88,7 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 		super("Lotes", KEY_PRODUCTS);
 		this.warehouse = warehouse;
 		lotBll = LotBll.getInstance();
+		productBll = ProductBll.getInstance();
 		warehouseBll = WarehouseBll.getInstance();
 		addListTab();
 	}
@@ -105,16 +118,16 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 
 		}
 		lotGrid = ViewHelper.buildGrid(SelectionMode.SINGLE);
-		lotGrid.setSizeFull();
+		lotGrid.setHeight("300px");
 		lotGrid.addColumn(Lot::getCode).setCaption("Código");
-		lotGrid.addColumn(lot -> {
+		columnWarehouse = lotGrid.addColumn(lot -> {
 			if (lot != null && lot.getWarehouse() != null) {
 				return lot.getWarehouse().getName();
 			} else {
 				return null;
 			}
 		}).setCaption("Bodega");
-		lotGrid.addColumn(Lot::getQuantity).setCaption("Cantidad de productos");
+		columnQuantity = lotGrid.addColumn(Lot::getQuantity).setCaption("Cantidad de productos");
 		lotGrid.addColumn(lot -> {
 			if (lot != null && lot.getLotDate() != null) {
 				return DateUtil.dateToString(lot.getLotDate());
@@ -130,6 +143,8 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 			}
 		}).setCaption("Fecha de vencimiento");
 
+		footer = lotGrid.prependFooterRow();
+		footer.getCell(columnWarehouse).setHtml("<b>Totat cantidad:</b>");
 		fillGridData();
 		return ViewHelper.buildPanel(null, lotGrid);
 	}
@@ -211,7 +226,7 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 
 	@Override
 	protected void fillGridData() {
-		ListDataProvider<Lot> dataProvider = null;
+
 		if (product != null) {
 			dataProvider = new ListDataProvider<>(lotBll.select(product));
 		} else if (warehouse != null) {
@@ -221,7 +236,9 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 			filterLotDataProvider = dataProvider.withConfigurableFilter();
 			lotGrid.setDataProvider(filterLotDataProvider);
 		}
-
+		dataProvider.addDataProviderListener(
+				event -> footer.getCell(columnQuantity).setHtml(calculateTotalQuantity(dataProvider)));
+		dataProvider.refreshAll();
 	}
 
 	@Override
@@ -250,6 +267,12 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 				// Guardar el lote
 				save(lotBll, entity, null);
 				log.info("Lote guardado: " + entity);
+
+				// Actualizar stock del product
+				product.setStock(totalStock);
+				product.setStockDate(new Date());
+				productBll.save(product);
+				log.info("Stock actualizado: " + totalStock);
 
 				if (!productLayout.isShowConfirmMessage()) {
 					confirmMsg = "Producto guardado con éxito";
@@ -337,6 +360,25 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 			log.error(strLog + "[Exception]" + e.getMessage());
 		}
 		return maxCode;
+	}
+
+	private String calculateTotalQuantity(ListDataProvider<Lot> dataProvider) {
+		String strLog = "[calculateTotalQuantity]";
+
+		try {
+			log.info(strLog + "[parameters]" + dataProvider);
+			totalStock = dataProvider.fetch(new Query<>()).mapToDouble(lot -> {
+				return lot.getQuantity();
+			}).sum();
+
+			return "<b>" + totalStock + "</b>";
+		} catch (Exception e) {
+			log.error(strLog + "[Exception]" + e.getMessage());
+		}
+
+		log.info("total->" + totalStock);
+
+		return null;
 	}
 
 }

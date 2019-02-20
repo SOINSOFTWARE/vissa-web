@@ -21,13 +21,13 @@ import com.vaadin.ui.themes.ValoTheme;
  *
  */
 public class ViewHelper {
-	
+
 	public static Button buildButton(String caption, Resource icon, String style) {
 		Button button = new Button(caption, icon);
 		button.addStyleName(style);
 		return button;
 	}
-	
+
 	@SuppressWarnings("rawtypes")
 	public static Grid buildGrid(SelectionMode selectionMode) {
 		Grid grid = new Grid<>();
@@ -35,29 +35,29 @@ public class ViewHelper {
 		grid.setSizeFull();
 		return grid;
 	}
-	
+
 	public static HorizontalLayout buildHorizontalLayout(boolean spacing, boolean margin) {
 		HorizontalLayout layout = new HorizontalLayout();
 		layout.setSpacing(spacing);
 		layout.setMargin(margin);
 		return layout;
 	}
-	
+
 	public static VerticalLayout buildVerticalLayout(boolean spacing, boolean margin) {
 		VerticalLayout layout = new VerticalLayout();
 		layout.setSpacing(spacing);
 		layout.setMargin(margin);
 		return layout;
 	}
-	
+
 	public static Panel buildPanel(String caption, Component content) {
 		Panel panel = (caption != null) ? new Panel(caption) : new Panel();
 		panel.setContent(content);
 		panel.addStyleName("well");
 		return panel;
 	}
-	
-	public static FormLayout buildForm(String caption,  boolean margin, boolean spacing) {
+
+	public static FormLayout buildForm(String caption, boolean margin, boolean spacing) {
 		final FormLayout form = new FormLayout();
 		form.setMargin(margin);
 		form.setCaption(caption);
@@ -67,16 +67,19 @@ public class ViewHelper {
 		form.addStyleName(ValoTheme.FORMLAYOUT_LIGHT);
 		return form;
 	}
-	
+
 	public static void showNotification(String caption, Notification.Type type) {
 		new Notification(caption, type).show(Page.getCurrent());
 	}
-	
-	public static Window  buildSubwindow(String width) {		
+
+	public static Window buildSubwindow(String width, String height) {
 		Window subdwindow = new Window();
 		subdwindow.setModal(true);
 		subdwindow.center();
-		subdwindow.setWidth(width);	
+		subdwindow.setWidth(width);
+		if (height != null && !height.isEmpty()) {
+			subdwindow.setHeight(height);
+		}
 		return subdwindow;
 	}
 }

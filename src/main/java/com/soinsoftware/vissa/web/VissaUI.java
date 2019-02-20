@@ -407,7 +407,7 @@ public class VissaUI extends UI {
 	}
 
 	private void buildChangePasswordWindow(String login) {
-		Window subWindow = ViewHelper.buildSubwindow("50%");
+		Window subWindow = ViewHelper.buildSubwindow("50%", null);
 		UserLayout userLayout;
 		log.info("login=" + login);
 		try {

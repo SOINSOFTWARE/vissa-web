@@ -406,7 +406,7 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 
 	private void buildPersonWindow(String personFiltter) {
 
-		personSubwindow = ViewHelper.buildSubwindow("75%");
+		personSubwindow = ViewHelper.buildSubwindow("75%", null);
 		personSubwindow.setCaption("Personas");
 
 		VerticalLayout subContent = ViewHelper.buildVerticalLayout(true, true);

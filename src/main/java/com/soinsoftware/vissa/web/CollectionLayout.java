@@ -414,7 +414,7 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 	@SuppressWarnings("deprecation")
 	private void builInvoiceWindow(String invoiceFilter) {
 
-		invoiceWindow = ViewHelper.buildSubwindow("75%");
+		invoiceWindow = ViewHelper.buildSubwindow("75%", null);
 		invoiceWindow.setCaption("Facturas");
 
 		VerticalLayout subContent = ViewHelper.buildVerticalLayout(true, true);
