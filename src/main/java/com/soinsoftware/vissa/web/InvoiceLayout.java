@@ -1682,9 +1682,11 @@ public class InvoiceLayout extends VerticalLayout implements View {
 				if (transactionType.equals(ETransactionType.ENTRADA)) {
 					txtPrice.setValue(pricexMU.getPurchasePrice());
 					txtTax.setValue(pricexMU.getPurchaseTax());
+					txtPrice.setReadOnly(false);
 				} else if (transactionType.equals(ETransactionType.SALIDA)) {
 					txtPrice.setValue(pricexMU.getSalePrice());
 					txtTax.setValue(pricexMU.getSaleTax());
+					txtPrice.setReadOnly(true);
 				}
 			}
 			// Binding de precio
