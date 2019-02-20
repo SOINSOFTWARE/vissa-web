@@ -358,7 +358,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		LotLayout lotPanel = null;
 
 		try {
-			lotPanel = new LotLayout(product, this);
+			lotPanel = new LotLayout(product, this, null);
 			lotPanel.setCaption("Lotes");
 			lotPanel.setMargin(false);
 			lotPanel.setSpacing(false);

@@ -29,7 +29,6 @@ import com.soinsoftware.vissa.bll.DocumentStatusBll;
 import com.soinsoftware.vissa.bll.DocumentTypeBll;
 import com.soinsoftware.vissa.bll.InventoryTransactionBll;
 import com.soinsoftware.vissa.bll.LotBll;
-import com.soinsoftware.vissa.bll.MeasurementUnitBll;
 import com.soinsoftware.vissa.bll.MeasurementUnitProductBll;
 import com.soinsoftware.vissa.bll.PaymentDocumentTypeBll;
 import com.soinsoftware.vissa.bll.PaymentMethodBll;
@@ -111,7 +110,6 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	private final DocumentDetailLotBll detailLotBll;
 	private final CompanyBll companyBll;
 	private final PaymentDocumentTypeBll paymentDocumentTypeBll;
-	private final MeasurementUnitBll measurementUnitBll;
 	private final MeasurementUnitProductBll measurementUnitProductBll;
 
 	// Components
@@ -190,7 +188,6 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		detailLotBll = DocumentDetailLotBll.getInstance();
 		companyBll = CompanyBll.getInstance();
 		paymentDocumentTypeBll = PaymentDocumentTypeBll.getInstance();
-		measurementUnitBll = MeasurementUnitBll.getInstance();
 		measurementUnitProductBll = MeasurementUnitProductBll.getInstance();
 		lotBll = LotBll.getInstance();
 		document = new Document();
@@ -216,7 +213,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			title = "Venta";
 		}
 		Label tittle = new Label(title);
-		tittle.addStyleName(ValoTheme.LABEL_H2);
+		tittle.addStyleName(ValoTheme.LABEL_H1);
 		addComponent(tittle);
 
 		// Crear el generador de facturas
@@ -867,11 +864,12 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 							// ---Panel de lotes
 							log.info("selectedLot:" + selectedLot + ", withoutLot:" + withoutLot);
-							if (selectedLot == null && !withoutLot) {
-								buildLotWindow(docDetail);
-							}
+							// if (selectedLot == null && !withoutLot) {
+							buildLotWindow(docDetail);
+							// }
 						} catch (Exception e) {
-							log.error(strLog + "[Exception]" + "Error al cargar lotes del producto. Exception: " + e.getMessage());
+							log.error(strLog + "[Exception]" + "Error al cargar lotes del producto. Exception: "
+									+ e.getMessage());
 							e.printStackTrace();
 						}
 					}
@@ -952,7 +950,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			withoutLot = false;
 
 			Product product = detail.getProduct();
-			lotSubwindow = ViewHelper.buildSubwindow("70%", "50%");
+			lotSubwindow = ViewHelper.buildSubwindow("70%", "90%");
 			lotSubwindow.setCaption("Lotes del producto " + product.getName());
 
 			VerticalLayout subContent = ViewHelper.buildVerticalLayout(true, true);
@@ -970,7 +968,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			buttonLayout.addComponents(backBtn, selectBtn);
 			Panel buttonPanel = ViewHelper.buildPanel(null, buttonLayout);
 
-			lotLayout = new LotLayout(selectedProduct, productLayout);
+			lotLayout = new LotLayout(selectedProduct, productLayout, transactionType);
 			lotLayout.setCaption("Lotes");
 			lotLayout.setMargin(false);
 			lotLayout.setSpacing(false);
@@ -1169,7 +1167,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 					InventoryTransaction.Builder invBuilder = InventoryTransaction.builder();
 
 					// Se actualiza stock en el movimiento de inventario
-					Double stock = detail.getProduct().getStock();
+					Double stock = lotLayout.getTotalStock();
 					Double initialStock = stock != null ? stock : 0;
 					log.info(strLog + "initialStock:" + initialStock);
 					Double finalStock = 0.0;
@@ -1192,20 +1190,29 @@ public class InvoiceLayout extends VerticalLayout implements View {
 					product.setStockDate(new Date());
 
 					// Actualizar lotes del producto
-					List<Lot> lotList = lotBll.select(detail.getProduct());
-					Lot lot = null;
-					if (lotList.size() > 0) {
-						lot = lotList.get(0);
-						log.info(strLog + "Lote más pronto a vencer:" + lot.getExpirationDate());
+					/*
+					 * List<Lot> lotList = lotBll.select(detail.getProduct()); Lot lot = null; if
+					 * (lotList.size() > 0) { lot = lotList.get(0); log.info(strLog +
+					 * "Lote más pronto a vencer:" + lot.getExpirationDate());
+					 * 
+					 * Double newLotStock = 0.0; if
+					 * (transactionType.equals(ETransactionType.ENTRADA)) { newLotStock =
+					 * lot.getQuantity() + quantity; } else if
+					 * (transactionType.equals(ETransactionType.SALIDA)) { newLotStock =
+					 * lot.getQuantity() - quantity; } lot.setQuantity(newLotStock); }
+					 */
 
-						Double newLotStock = 0.0;
-						if (transactionType.equals(ETransactionType.ENTRADA)) {
-							newLotStock = lot.getQuantity() + quantity;
-						} else if (transactionType.equals(ETransactionType.SALIDA)) {
-							newLotStock = lot.getQuantity() - quantity;
-						}
-						lot.setQuantity(newLotStock);
+					log.info(strLog + "Lote a actualizar stock:" + selectedLot);
+
+					Double newLotStock = 0.0;
+					Lot lotTmp = selectedLot;
+					if (transactionType.equals(ETransactionType.ENTRADA)) {
+						newLotStock = lotTmp.getQuantity() + quantity;
+					} else if (transactionType.equals(ETransactionType.SALIDA)) {
+						newLotStock = lotTmp.getQuantity() - quantity;
 					}
+					log.info(strLog + "newLotStock: " + newLotStock);
+					lotTmp.setQuantity(newLotStock);
 
 					try {
 						// Guardar relación item factura con lote
@@ -1223,8 +1230,8 @@ public class InvoiceLayout extends VerticalLayout implements View {
 						log.info("product saved:" + product);
 
 						// Actualizar stock de lote
-						if (lot != null) {
-							lotBll.save(lot, false);
+						if (lotTmp != null) {
+							lotBll.save(lotTmp, false);
 						}
 						log.info(strLog + "lot saved:" + product);
 
@@ -1344,6 +1351,11 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		String strLog = "[cleanButtonAction]";
 
 		try {
+			document = null;
+			selectedPerson = null;
+			selectedProduct = null;
+			selectedLot = null;
+
 			txtDocNumber.clear();
 			txtDocNumFilter.clear();
 			txtReference.clear();
@@ -1734,6 +1746,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 					entity = muProductBuilder.salePrice(price).build();
 				}
 				measurementUnitProductBll.save(entity, false);
+				log.info(strLog + "Precio actualizado");
 			}
 		} catch (Exception e) {
 			log.error(strLog + "[Exception]" + e.getMessage());

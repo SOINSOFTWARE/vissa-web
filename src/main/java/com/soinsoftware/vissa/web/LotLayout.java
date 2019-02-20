@@ -12,6 +12,7 @@ import org.vaadin.ui.NumberField;
 import com.soinsoftware.vissa.bll.LotBll;
 import com.soinsoftware.vissa.bll.ProductBll;
 import com.soinsoftware.vissa.bll.WarehouseBll;
+import com.soinsoftware.vissa.model.ETransactionType;
 import com.soinsoftware.vissa.model.Lot;
 import com.soinsoftware.vissa.model.Product;
 import com.soinsoftware.vissa.model.Warehouse;
@@ -65,6 +66,7 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 	private Warehouse warehouse;
 	private boolean listMode;
 	private Double totalStock;
+	private ETransactionType transactionType;
 
 	private ProductLayout productLayout;
 	private Column<?, ?> columnQuantity;
@@ -74,10 +76,12 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 	private ConfigurableFilterDataProvider<Lot, Void, SerializablePredicate<Lot>> filterLotDataProvider;
 	private ListDataProvider<Lot> dataProvider = null;
 
-	public LotLayout(Product product, ProductLayout productLayout) throws IOException {
+	public LotLayout(Product product, ProductLayout productLayout, ETransactionType transactionType)
+			throws IOException {
 		super("Lotes", KEY_PRODUCTS);
 		this.product = product;
 		this.productLayout = productLayout;
+		this.transactionType = transactionType;
 		lotBll = LotBll.getInstance();
 		productBll = ProductBll.getInstance();
 		warehouseBll = WarehouseBll.getInstance();
@@ -96,10 +100,13 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 	@Override
 	public AbstractOrderedLayout buildListView() {
 		VerticalLayout layout = ViewHelper.buildVerticalLayout(false, false);
-		Panel buttonPanel = buildButtonPanelForLists();
+		if (transactionType != null && transactionType.equals(ETransactionType.ENTRADA)) {
+			Panel buttonPanel = buildButtonPanelForLists();
+			layout.addComponent(buttonPanel);
+		}
 		// Panel filterPanel = buildFilterPanel();
 		Panel dataPanel = buildGridPanel();
-		layout.addComponents(buttonPanel, dataPanel);
+		layout.addComponent(dataPanel);
 		return layout;
 	}
 
@@ -118,7 +125,7 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 
 		}
 		lotGrid = ViewHelper.buildGrid(SelectionMode.SINGLE);
-		lotGrid.setHeight("300px");
+		lotGrid.setHeight("200px");
 		lotGrid.addColumn(Lot::getCode).setCaption("Código");
 		columnWarehouse = lotGrid.addColumn(lot -> {
 			if (lot != null && lot.getWarehouse() != null) {
@@ -293,20 +300,25 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 	}
 
 	private String validateRequiredFields() {
-
+		String strLog = "[validateRequiredFields] ";
 		String message = "";
-		String character = "|";
+		try {
 
-		if (!cbWarehouse.getSelectedItem().isPresent()) {
-			message = "La bodega es obligatoria";
-		}
-		if (txtQuantity.getValue() == null || txtQuantity.getValue().isEmpty()) {
-			if (!message.isEmpty()) {
-				message = message.concat(character);
+			String character = "|";
+
+			if (!cbWarehouse.getSelectedItem().isPresent()) {
+				message = "La bodega es obligatoria";
 			}
-			message = message.concat("La cantidad es obligatoria");
-		}
+			if (txtQuantity.getValue() == null || txtQuantity.getValue().isEmpty()) {
+				if (!message.isEmpty()) {
+					message = message.concat(character);
+				}
+				message = message.concat("La cantidad del lote es obligatoria");
+			}
 
+		} catch (Exception e) {
+			log.error(strLog + "[Exception]" + e.getMessage());
+		}
 		return message;
 
 	}
@@ -379,6 +391,14 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 		log.info("total->" + totalStock);
 
 		return null;
+	}
+
+	public Double getTotalStock() {
+		return totalStock;
+	}
+
+	public void setTotalStock(Double totalStock) {
+		this.totalStock = totalStock;
 	}
 
 }
