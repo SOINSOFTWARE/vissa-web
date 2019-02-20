@@ -71,6 +71,7 @@ public class VissaUI extends UI {
 	protected static final String KEY_INVENTORY = "Inventario";
 	protected static final String KEY_INVENTORY_MOV = "Movimientos";
 	protected static final String KEY_PURCHASES = "Compras";
+	protected static final String KEY_RETURNS = "Devoluciones";
 	protected static final String KEY_WAREHOUSE = "Bodegas";
 	protected static final String KEY_SALES = "Ventas";
 	protected static final String KEY_SALES_REPORT = "Reporte de Ventas";
@@ -142,6 +143,10 @@ public class VissaUI extends UI {
 				treeData.addItem(KEY_SALES, KEY_CUSTOMER);
 			}
 		}
+		if (permissionUtil.canView(KEY_RETURNS)) {
+			treeData.addItem(null, KEY_RETURNS);
+		}
+
 		if (permissionUtil.canView(KEY_INVENTORY)) {
 			treeData.addItem(null, KEY_INVENTORY);
 			if (permissionUtil.canView(KEY_PRODUCTS)) {
@@ -296,6 +301,9 @@ public class VissaUI extends UI {
 		if (item.equals(KEY_PURCHASE_INVOICES) || item.equals(KEY_PURCHASES_REPORT)) {
 			CommonsUtil.TRANSACTION_TYPE = ETransactionType.ENTRADA.getName();
 		}
+		if (item.equals(KEY_RETURNS)) {
+			CommonsUtil.TRANSACTION_TYPE = ETransactionType.SALIDA.getName();
+		}
 		if (item.equals(KEY_SUPPLIER)) {
 			Commons.PERSON_TYPE = PersonType.SUPPLIER.getName();
 		}
@@ -339,6 +347,7 @@ public class VissaUI extends UI {
 		navigator.addView(KEY_ADMIN_CONCILIATION, CashConciliationLayout.class);
 		navigator.addView(KEY_COLLECTION, CollectionLayout.class);
 		navigator.addView(KEY_EGRESS, EgressLayout.class);
+		navigator.addView(KEY_RETURNS, ReturnLayout.class);
 		navigator.setErrorView(DefaultView.class);
 		UI.getCurrent().setNavigator(navigator);
 

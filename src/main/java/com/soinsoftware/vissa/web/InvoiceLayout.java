@@ -1149,7 +1149,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 					// Detail sin relacion al documento
 					DocumentDetail detailTmp = detailBuilder.product(detail.getProduct()).quantity(detail.getQuantity())
 							.description(detail.getDescription()).subtotal(detail.getSubtotal())
-							.measurementUnit(detail.getMeasurementUnit()).price(detail.getPrice())
+							.measurementUnit(detail.getMeasurementUnit()).price(detail.getPrice()).tax(detail.getTax())
 							.discount(detail.getDiscount()).build();
 
 					// Relacion detail con lote. Se busca DetailLot a partir del Detail
