@@ -26,6 +26,8 @@ public class Commons {
 	public static final String PARAM_CUSTOMER_ID = "P_CUSTOMER_ID";
 	public static final String PARAM_CUSTOMER_ADDRESS = "P_CUSTOMER_ADDRESS";
 	public static final String PARAM_CUSTOMER_PHONE = "P_CUSTOMER_PHONE";
+	public static final String PARAM_CASH = "P_CASH";
+	public static final String PARAM_CHANGE = "P_CHANGE";
 	public static final Double PARAM_SALESMAN_CASH_BASE = 100000.0;
 
 	public static final String SALE_REPORT_NAME = "/WEB-INF/reports/saleInvoicePOS.jrxml";

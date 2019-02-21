@@ -563,36 +563,34 @@ public class InvoiceLayout extends VerticalLayout implements View {
 				if (qty > 0) {
 					currentDetail = CommonsUtil.CURRENT_DOCUMENT_DETAIL;
 					log.info(strLog + "currentDetail:" + currentDetail);
-					if (!withoutLot) {
-						DocumentDetailLot detailLot = detailLotMap.get(currentDetail);
-						log.info(strLog + "detailLot:" + detailLot);
-						if (detailLot != null) {
-							if (transactionType.equals(ETransactionType.SALIDA)
-									&& qty > detailLot.getInitialStockLot()) {
-								message = "Cantidad ingresada es mayor al stock del lote producto";
-								throw new Exception(message);
-							} else {
-								Double finalStock = 0.0;
-								if (transactionType.equals(ETransactionType.ENTRADA)) {
-									finalStock = detailLot.getInitialStockLot() + qty;
-								} else if (transactionType.equals(ETransactionType.SALIDA)) {
-									finalStock = detailLot.getInitialStockLot() - qty;
-								}
-								DocumentDetailLot detailLotTmp = DocumentDetailLot.builder(detailLot).quantity(qty)
-										.finalStockLot(finalStock).build();
-								log.info(strLog + "currentDetail again:" + currentDetail);
-								log.info(strLog + "detailLotTmp:" + detailLotTmp);
-								detailLotMap.put(currentDetail, detailLotTmp);
+					// if (!withoutLot) {
+					DocumentDetailLot detailLot = detailLotMap.get(currentDetail);
+					log.info(strLog + "detailLot:" + detailLot);
+					if (detailLot != null) {
+						if (transactionType.equals(ETransactionType.SALIDA) && qty > detailLot.getInitialStockLot()) {
+							message = "Cantidad ingresada es mayor al stock del lote producto";
+							throw new Exception(message);
+						} else {
+							Double finalStock = 0.0;
+							if (transactionType.equals(ETransactionType.ENTRADA)) {
+								finalStock = detailLot.getInitialStockLot() + qty;
+							} else if (transactionType.equals(ETransactionType.SALIDA)) {
+								finalStock = detailLot.getInitialStockLot() - qty;
 							}
-						}
-
-					} else {
-						if (transactionType.equals(ETransactionType.SALIDA)
-								&& qty > currentDetail.getProduct().getStock()) {
-							ViewHelper.showNotification("Cantidad ingresada es mayor al stock del producto",
-									Notification.Type.ERROR_MESSAGE);
+							DocumentDetailLot detailLotTmp = DocumentDetailLot.builder(detailLot).quantity(qty)
+									.finalStockLot(finalStock).build();
+							log.info(strLog + "currentDetail again:" + currentDetail);
+							log.info(strLog + "detailLotTmp:" + detailLotTmp);
+							detailLotMap.put(currentDetail, detailLotTmp);
 						}
 					}
+
+					/*
+					 * } else { if (transactionType.equals(ETransactionType.SALIDA) && qty >
+					 * currentDetail.getProduct().getStock()) { ViewHelper.
+					 * showNotification("Cantidad ingresada es mayor al stock del producto",
+					 * Notification.Type.ERROR_MESSAGE); } }
+					 ****/
 					correct = true;
 
 				} else {
@@ -1621,6 +1619,9 @@ public class InvoiceLayout extends VerticalLayout implements View {
 						document.getPerson().getAddress() != null ? document.getPerson().getAddress() : "");
 				parameters.put(Commons.PARAM_CUSTOMER_PHONE,
 						document.getPerson().getMobile() != null ? document.getPerson().getMobile() : "");
+				parameters.put(Commons.PARAM_CASH, document.getPayValue() != null ? document.getPayValue() : "0.0");
+				parameters.put(Commons.PARAM_CHANGE,
+						document.getPayValue() != null ? document.getTotalValue() - document.getPayValue() : "0.0");
 			}
 		} catch (Exception e) {
 

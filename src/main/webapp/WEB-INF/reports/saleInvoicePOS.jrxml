@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Created with Jaspersoft Studio version 6.2.2.final using JasperReports Library version 6.2.2  -->
-<!-- 2019-02-12T21:57:19 -->
+<!-- 2019-02-21T07:08:45 -->
 <jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="ordenVenta" pageWidth="226" pageHeight="408" columnWidth="216" leftMargin="5" rightMargin="5" topMargin="20" bottomMargin="20" uuid="c416d1c5-e979-4b62-bb6b-b23441d7438d">
 	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="One Empty Record"/>
 	<property name="com.jaspersoft.studio.unit." value="mm"/>
@@ -25,6 +25,8 @@
 	<parameter name="P_CUSTOMER_ID" class="java.lang.String"/>
 	<parameter name="P_CUSTOMER_ADDRESS" class="java.lang.String"/>
 	<parameter name="P_CUSTOMER_PHONE" class="java.lang.String"/>
+	<parameter name="P_CASH" class="java.lang.Double"/>
+	<parameter name="P_CHANGE" class="java.lang.Double"/>
 	<field name="product.code" class="java.lang.String">
 		<fieldDescription><![CDATA[product.code]]></fieldDescription>
 	</field>
@@ -391,7 +393,8 @@
 		</band>
 	</detail>
 	<summary>
-		<band height="64">
+		<band height="79">
+			<property name="com.jaspersoft.studio.unit.height" value="mm"/>
 			<textField pattern="#,##0">
 				<reportElement x="78" y="10" width="38" height="11" uuid="696eda34-8d20-4d68-ae57-3039f9335442">
 					<property name="com.jaspersoft.studio.unit.height" value="mm"/>
@@ -439,13 +442,43 @@
 				<textFieldExpression><![CDATA[$V{countItems}]]></textFieldExpression>
 			</textField>
 			<staticText>
-				<reportElement x="41" y="50" width="140" height="14" uuid="d933cdc6-3de8-4cf8-a995-f0ff05aad5f2">
+				<reportElement x="41" y="59" width="140" height="14" uuid="d933cdc6-3de8-4cf8-a995-f0ff05aad5f2">
 					<property name="com.jaspersoft.studio.unit.height" value="mm"/>
 				</reportElement>
 				<textElement textAlignment="Center">
 					<font size="9" isBold="true"/>
 				</textElement>
 				<text><![CDATA[GRACIAS POR SU COMPRA]]></text>
+			</staticText>
+			<textField pattern="#,##0">
+				<reportElement x="78" y="39" width="38" height="11" uuid="eed5a114-bf6e-4d6e-a8b1-91f3fb4b8077">
+					<property name="com.jaspersoft.studio.unit.height" value="mm"/>
+				</reportElement>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8" isBold="false"/>
+				</textElement>
+				<textFieldExpression><![CDATA[new javax.swing.text.NumberFormatter(new  java.text.DecimalFormat("#,##0")).valueToString($P{P_CASH})]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement x="3" y="39" width="75" height="11" uuid="d8db41ed-1219-4162-a7d2-da4f3589209b"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8" isBold="false"/>
+				</textElement>
+				<text><![CDATA[EFECTIVO:]]></text>
+			</staticText>
+			<textField pattern="#,##0">
+				<reportElement x="170" y="39" width="38" height="11" uuid="b35adeb4-2319-4fe2-b9ba-5fc67364ebfc"/>
+				<textElement textAlignment="Right">
+					<font fontName="DejaVu Sans" size="8" isBold="false"/>
+				</textElement>
+				<textFieldExpression><![CDATA[new javax.swing.text.NumberFormatter(new  java.text.DecimalFormat("#,##0")).valueToString($P{P_CHANGE})]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement x="129" y="39" width="41" height="11" uuid="4dcd0496-9473-4efc-bd08-1f5c1aa3427a"/>
+				<textElement>
+					<font fontName="DejaVu Sans" size="8" isBold="false"/>
+				</textElement>
+				<text><![CDATA[CAMBIO:]]></text>
 			</staticText>
 		</band>
 	</summary>

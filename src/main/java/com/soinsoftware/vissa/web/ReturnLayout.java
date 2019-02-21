@@ -107,6 +107,7 @@ public class ReturnLayout extends VerticalLayout implements View {
 	private final DocumentTypeBll documentTypeBll;
 	private final DocumentStatusBll docStatusBll;
 	private final LotBll lotBll;
+	private final DocumentDetailLotBll docDetailLotBll;
 	private final DocumentDetailLotBll detailLotBll;
 	private final CompanyBll companyBll;
 	private final PaymentDocumentTypeBll paymentDocumentTypeBll;
@@ -189,6 +190,7 @@ public class ReturnLayout extends VerticalLayout implements View {
 		companyBll = CompanyBll.getInstance();
 		paymentDocumentTypeBll = PaymentDocumentTypeBll.getInstance();
 		measurementUnitProductBll = MeasurementUnitProductBll.getInstance();
+		docDetailLotBll = DocumentDetailLotBll.getInstance();
 		lotBll = LotBll.getInstance();
 		document = new Document();
 		itemsList = new ArrayList<>();
@@ -558,36 +560,54 @@ public class ReturnLayout extends VerticalLayout implements View {
 				if (qty > 0) {
 					currentDetail = CommonsUtil.CURRENT_DOCUMENT_DETAIL;
 					log.info(strLog + "currentDetail:" + currentDetail);
-					if (!withoutLot) {
-						DocumentDetailLot detailLot = detailLotMap.get(currentDetail);
-						log.info(strLog + "detailLot:" + detailLot);
-						if (detailLot != null) {
-							if (transactionType.equals(ETransactionType.SALIDA)
-									&& qty > detailLot.getInitialStockLot()) {
-								message = "Cantidad ingresada es mayor al stock del lote producto";
-								throw new Exception(message);
-							} else {
-								Double finalStock = 0.0;
-								if (transactionType.equals(ETransactionType.ENTRADA)) {
-									finalStock = detailLot.getInitialStockLot() + qty;
-								} else if (transactionType.equals(ETransactionType.SALIDA)) {
-									finalStock = detailLot.getInitialStockLot() - qty;
-								}
-								DocumentDetailLot detailLotTmp = DocumentDetailLot.builder(detailLot).quantity(qty)
-										.finalStockLot(finalStock).build();
-								log.info(strLog + "currentDetail again:" + currentDetail);
-								log.info(strLog + "detailLotTmp:" + detailLotTmp);
-								detailLotMap.put(currentDetail, detailLotTmp);
+					// if (!withoutLot) {
+					DocumentDetailLot detailLot = detailLotMap.get(currentDetail);
+					log.info(strLog + "detailLot:" + detailLot);
+					if (detailLot != null) {
+						if (transactionType.equals(ETransactionType.SALIDA) && qty > detailLot.getInitialStockLot()) {
+							message = "Cantidad ingresada es mayor al stock del lote producto";
+							throw new Exception(message);
+						} else {
+							Double finalStock = 0.0;
+							Double diffQty = 0.0;
+							Double oldQty = Double.parseDouble(currentDetail.getOldQuantity());
+							if (qty > oldQty) {
+								diffQty = (qty - oldQty);
+								currentDetail.setTransactionType(ETransactionType.SALIDA);
+							} else if (qty < oldQty) {
+								diffQty = oldQty - qty;
+								currentDetail.setTransactionType(ETransactionType.ENTRADA);
 							}
-						}
+							currentDetail.setDiffQuantity(String.valueOf(diffQty));
 
-					} else {
-						if (transactionType.equals(ETransactionType.SALIDA)
-								&& qty > currentDetail.getProduct().getStock()) {
-							ViewHelper.showNotification("Cantidad ingresada es mayor al stock del producto",
-									Notification.Type.ERROR_MESSAGE);
+							log.info(strLog + "initialStock:" + detailLot.getInitialStockLot());
+
+							log.info(strLog + "Diferencia de cantidad inicia con la final:" + diffQty);
+
+							if (currentDetail.getTransactionType().equals(ETransactionType.ENTRADA)) {
+								finalStock = detailLot.getInitialStockLot() + diffQty;
+							} else if (currentDetail.getTransactionType().equals(ETransactionType.SALIDA)) {
+								finalStock = detailLot.getInitialStockLot() - diffQty;
+							}
+
+							log.info(strLog + "finalStock:" + finalStock);
+							DocumentDetailLot detailLotTmp = DocumentDetailLot.builder(detailLot).quantity(diffQty)
+									.finalStockLot(finalStock).build();
+
+							log.info(strLog + "currentDetail again:" + currentDetail);
+							log.info(strLog + "detailLotTmp:" + detailLotTmp);
+							detailLotMap.put(currentDetail, detailLotTmp);
 						}
 					}
+
+					CommonsUtil.CURRENT_DOCUMENT_DETAIL = currentDetail;
+
+					/*
+					 * } else { if (transactionType.equals(ETransactionType.SALIDA) && qty >
+					 * currentDetail.getProduct().getStock()) { ViewHelper.
+					 * showNotification("Cantidad ingresada es mayor al stock del producto",
+					 * Notification.Type.ERROR_MESSAGE); } }
+					 */
 					correct = true;
 
 				} else {
@@ -1138,114 +1158,120 @@ public class ReturnLayout extends VerticalLayout implements View {
 					documentBll.rollback();
 					break;
 				} else {
-					// Guardar Detail
-					DocumentDetail.Builder detailBuilder = DocumentDetail.builder();
+					if (detail.getQuantity().equals(detail.getOldQuantity())) {
+						log.info(strLog + "Item no tiene cambios: " + detail.getProduct().getName());
 
-					// Detail sin relacion al documento
-					DocumentDetail detailTmp = detailBuilder.product(detail.getProduct()).quantity(detail.getQuantity())
-							.description(detail.getDescription()).subtotal(detail.getSubtotal())
-							.measurementUnit(detail.getMeasurementUnit()).price(detail.getPrice()).tax(detail.getTax())
-							.discount(detail.getDiscount()).build();
+					} else {
+						// Guardar Detail
+						DocumentDetail.Builder detailBuilder = DocumentDetail.builder();
 
-					// Relacion detail con lote. Se busca DetailLot a partir del Detail
-					DocumentDetailLot detailLot = detailLotMap.get(detailTmp);
+						// Detail sin relacion al documento
+						DocumentDetail detailTmp = detailBuilder.product(detail.getProduct())
+								.quantity(detail.getDiffQuantity()).description(detail.getDescription())
+								.subtotal(detail.getSubtotal()).measurementUnit(detail.getMeasurementUnit())
+								.price(detail.getPrice()).tax(detail.getTax()).discount(detail.getDiscount()).build();
 
-					// Detail con relacion al documento
-					detailTmp = detailBuilder.document(documentEntity).build();
+						// Relacion detail con lote. Se busca DetailLot a partir del Detail
+						DocumentDetailLot detailLot = detailLotMap.get(detailTmp);
 
-					// Se actualiza el detail del objeto DetailLot
-					if (detailLot != null) {
-						detailLot = DocumentDetailLot.builder(detailLot).documentDetail(detail).build();
-					}
+						// Detail con relacion al documento
+						detailTmp = detailBuilder.document(documentEntity).build();
 
-					// Guardar inventario
-					InventoryTransaction.Builder invBuilder = InventoryTransaction.builder();
-
-					// Se actualiza stock en el movimiento de inventario
-					Double stock = lotLayout.getTotalStock();
-					Double initialStock = stock != null ? stock : 0;
-					log.info(strLog + "initialStock:" + initialStock);
-					Double finalStock = 0.0;
-					Double quantity = Double.parseDouble(detail.getQuantity());
-					log.info(strLog + "quantity:" + quantity);
-
-					if (transactionType.equals(ETransactionType.ENTRADA)) {
-						finalStock = initialStock != 0 ? initialStock + quantity : quantity;
-					} else if (transactionType.equals(ETransactionType.SALIDA)) {
-						finalStock = initialStock != 0 ? initialStock - quantity : quantity;
-					}
-					log.info(strLog + "finalStock:" + finalStock);
-					InventoryTransaction inventoryTransaction = invBuilder.product(detail.getProduct())
-							.transactionType(transactionType).initialStock(initialStock).quantity(quantity)
-							.finalStock(finalStock).document(documentEntity).build();
-
-					// Actualizar stock total del producto
-					Product product = productBll.select(detail.getProduct().getCode());
-					product.setStock(finalStock);
-					product.setStockDate(new Date());
-
-					// Actualizar lotes del producto
-					/*
-					 * List<Lot> lotList = lotBll.select(detail.getProduct()); Lot lot = null; if
-					 * (lotList.size() > 0) { lot = lotList.get(0); log.info(strLog +
-					 * "Lote más pronto a vencer:" + lot.getExpirationDate());
-					 * 
-					 * Double newLotStock = 0.0; if
-					 * (transactionType.equals(ETransactionType.ENTRADA)) { newLotStock =
-					 * lot.getQuantity() + quantity; } else if
-					 * (transactionType.equals(ETransactionType.SALIDA)) { newLotStock =
-					 * lot.getQuantity() - quantity; } lot.setQuantity(newLotStock); }
-					 */
-
-					log.info(strLog + "Lote a actualizar stock:" + selectedLot);
-
-					Double newLotStock = 0.0;
-					Lot lotTmp = selectedLot;
-					if (transactionType.equals(ETransactionType.ENTRADA)) {
-						newLotStock = lotTmp.getQuantity() + quantity;
-					} else if (transactionType.equals(ETransactionType.SALIDA)) {
-						newLotStock = lotTmp.getQuantity() - quantity;
-					}
-					log.info(strLog + "newLotStock: " + newLotStock);
-					lotTmp.setQuantity(newLotStock);
-
-					try {
-						// Guardar relación item factura con lote
+						// Se actualiza el detail del objeto DetailLot
 						if (detailLot != null) {
-							detailLotBll.save(detailLot, false);
+							detailLot = DocumentDetailLot.builder(detailLot).documentDetail(detail).build();
 						}
-						log.info(strLog + "detailLot saved:" + detailLot);
 
-						// Guardar movimiento de inventario
-						inventoryBll.save(inventoryTransaction, false);
-						log.info(strLog + "inventoryTransaction saved:" + inventoryTransaction);
+						// Guardar inventario
+						InventoryTransaction.Builder invBuilder = InventoryTransaction.builder();
 
-						// Actualizar stock producto
-						productBll.save(product, false);
-						log.info("product saved:" + product);
+						// Se actualiza stock en el movimiento de inventario
+						Double stock = lotLayout.getTotalStock();
+						Double initialStock = stock != null ? stock : 0;
+						log.info(strLog + "initialStock:" + initialStock);
+						Double finalStock = 0.0;
+						Double quantity = Double.parseDouble(detail.getDiffQuantity());
+						log.info(strLog + "quantity:" + quantity);
 
-						// Actualizar stock de lote
-						if (lotTmp != null) {
-							lotBll.save(lotTmp, false);
+						if (transactionType.equals(ETransactionType.ENTRADA)) {
+							finalStock = initialStock != 0 ? initialStock + quantity : quantity;
+						} else if (transactionType.equals(ETransactionType.SALIDA)) {
+							finalStock = initialStock != 0 ? initialStock - quantity : quantity;
 						}
-						log.info(strLog + "lot saved:" + product);
+						log.info(strLog + "finalStock:" + finalStock);
+						InventoryTransaction inventoryTransaction = invBuilder.product(detail.getProduct())
+								.transactionType(detail.getTransactionType()).initialStock(initialStock)
+								.quantity(quantity).finalStock(finalStock).document(documentEntity).build();
 
-						// Actualizar precio del producto
-						updatePrice(detailTmp.getMeasurementUnitProduct(), detailTmp.getPrice());
+						// Actualizar stock total del producto
+						Product product = productBll.select(detail.getProduct().getCode());
+						product.setStock(finalStock);
+						product.setStockDate(new Date());
 
-						closeWindow(cashChangeWindow);
-					} catch (ModelValidationException ex) {
-						hasErrors = true;
-						documentEntity = null;
-						log.error(strLog + "[ModelValidationException]" + ex);
-						ViewHelper.showNotification(ex.getMessage(), Notification.Type.ERROR_MESSAGE);
-					} catch (HibernateException ex) {
-						hasErrors = true;
-						documentEntity = null;
-						log.error(strLog + "[HibernateException]" + ex);
-						ViewHelper.showNotification(
-								"Los datos no pudieron ser salvados, contacte al administrador del sistema",
-								Notification.Type.ERROR_MESSAGE);
+						// Actualizar lotes del producto
+						/*
+						 * List<Lot> lotList = lotBll.select(detail.getProduct()); Lot lot = null; if
+						 * (lotList.size() > 0) { lot = lotList.get(0); log.info(strLog +
+						 * "Lote más pronto a vencer:" + lot.getExpirationDate());
+						 * 
+						 * Double newLotStock = 0.0; if
+						 * (transactionType.equals(ETransactionType.ENTRADA)) { newLotStock =
+						 * lot.getQuantity() + quantity; } else if
+						 * (transactionType.equals(ETransactionType.SALIDA)) { newLotStock =
+						 * lot.getQuantity() - quantity; } lot.setQuantity(newLotStock); }
+						 */
+
+						log.info(strLog + "Lote a actualizar stock:" + selectedLot);
+
+						Double newLotStock = 0.0;
+						Lot lotTmp = selectedLot;
+						if (detail.getTransactionType().equals(ETransactionType.ENTRADA)) {
+							newLotStock = lotTmp.getQuantity() + quantity;
+						} else if (detail.getTransactionType().equals(ETransactionType.SALIDA)) {
+							newLotStock = lotTmp.getQuantity() - quantity;
+						}
+						log.info(strLog + "newLotStock: " + newLotStock);
+						lotTmp.setQuantity(newLotStock);
+
+						try {
+							// Guardar relación item factura con lote
+							if (detailLot != null) {
+								detailLotBll.save(detailLot, false);
+							}
+							log.info(strLog + "detailLot saved:" + detailLot);
+
+							// Guardar movimiento de inventario
+							inventoryBll.save(inventoryTransaction, false);
+							log.info(strLog + "inventoryTransaction saved:" + inventoryTransaction);
+
+							// Actualizar stock producto
+							productBll.save(product, false);
+							log.info("product saved:" + product);
+
+							// Actualizar stock de lote
+							if (lotTmp != null) {
+								lotBll.save(lotTmp, false);
+							}
+							log.info(strLog + "lot saved:" + product);
+
+							// Actualizar precio del producto
+							// updatePrice(detailTmp.getMeasurementUnitProduct(), detailTmp.getPrice());
+
+							closeWindow(cashChangeWindow);
+						} catch (ModelValidationException ex) {
+							hasErrors = true;
+							documentEntity = null;
+							log.error(strLog + "[ModelValidationException]" + ex);
+							ViewHelper.showNotification(ex.getMessage(), Notification.Type.ERROR_MESSAGE);
+						} catch (HibernateException ex) {
+							hasErrors = true;
+							documentEntity = null;
+							log.error(strLog + "[HibernateException]" + ex);
+							ViewHelper.showNotification(
+									"Los datos no pudieron ser salvados, contacte al administrador del sistema",
+									Notification.Type.ERROR_MESSAGE);
+						}
+
 					}
 
 				}
@@ -1363,7 +1389,9 @@ public class ReturnLayout extends VerticalLayout implements View {
 			itemsList.clear();
 			detailGrid.getDataProvider().refreshAll();
 			txtDocNumFilter.clear();
+			detailLotMap.clear();
 			getNextDocumentNumber(cbDocumentType.getSelectedItem().get());
+
 			disableComponents(false);
 		} catch (Exception e) {
 			log.error(strLog + "[Exception]" + e.getMessage());
@@ -1384,6 +1412,7 @@ public class ReturnLayout extends VerticalLayout implements View {
 		try {
 			// cleanButtonAction();
 			log.info(strLog + "[parameters] documentNumber: " + documentNumber);
+
 			List<DocumentType> docTypeList = documentTypeBll.select(transactionType);
 			if (documentNumber != null && !documentNumber.isEmpty() && !docTypeList.isEmpty()) {
 				document = documentBll.select(documentNumber, docTypeList);
@@ -1405,15 +1434,14 @@ public class ReturnLayout extends VerticalLayout implements View {
 
 					itemsList = new ArrayList<>();
 					for (Iterator<DocumentDetail> iterator = detailSet.iterator(); iterator.hasNext();) {
-						itemsList.add(iterator.next());
+						DocumentDetail docDetail = iterator.next();
+						docDetail.setOldQuantity(docDetail.getQuantity());
+						itemsList.add(docDetail);
+						DocumentDetailLot detailLot = docDetailLotBll.select(docDetail);
+						detailLot.setInitialStockLot(detailLot.getLot().getQuantity());
+						detailLotMap.put(docDetail, detailLot);
 					}
 					fillDetailGridData(itemsList);
-
-					if (role.getName().equals(ERole.SUDO.getName()) || role.getName().equals(ERole.MANAGER.getName())) {
-						disableComponents(false);
-					} else {
-						disableComponents(true);
-					}
 				}
 			}
 
