@@ -165,7 +165,13 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 				return "";
 			}
 		}).setCaption("Tipo");
-		grid.addColumn(Document::getDocumentDate).setCaption("Fecha");
+		grid.addColumn(document -> {
+			if (document.getDocumentDate() != null) {
+				return DateUtil.dateToString(document.getDocumentDate());
+			} else {
+				return "";
+			}
+		}).setCaption("Fecha");
 
 		personColumn = grid.addColumn(document -> {
 			if (document.getPerson() != null) {

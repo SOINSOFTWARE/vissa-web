@@ -135,6 +135,15 @@ public class DateUtil {
 	}
 
 	/**
+	 * Retorna la fecha inicial para reportes, hasta las 00:00:00
+	 * 
+	 * @return
+	 */
+	public static LocalDateTime getDefaultIniMonthDate() {
+		return LocalDateTime.now().minusDays(30).withHour(0).withMinute(0).withSecond(0);
+	}
+
+	/**
 	 * Metodo para convertir una fecha en LocalDate a Date
 	 * 
 	 * @param localDate

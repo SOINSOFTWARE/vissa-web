@@ -349,7 +349,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		 * cbMeasurementUnit, txtEan, txtPurchasePrice, txtPurchaseTax, txtUtility,
 		 * txtSalePrice, txtSaleTax, txtSalePriceWithTax, txtStock, txtStockDate);
 		 */
-		form.addComponents(txtCode, txtName, txtDescription, cbCategory, txtBrand);
+		form.addComponents(txtCode, txtName, txtDescription, cbCategory, txtBrand, txtStock, txtStockDate);
 
 		// Panel de UM y precios
 		Panel pricePanel = buildPriceGridPanel(product);
@@ -759,7 +759,11 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 	}
 
 	private void addItemPriceGrid() {
-		priceProductList.add(new MeasurementUnitProduct());
+		MeasurementUnitProduct muProduct = new MeasurementUnitProduct();
+		priceProductList.add(muProduct);
+
+		priceGrid.select(muProduct);
+
 		refreshPriceGrid();
 	}
 

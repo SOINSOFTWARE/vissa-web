@@ -715,7 +715,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			log.error("Error al cargar lista de personas. Exception:" + e);
 		}
 		Panel personPanel = ViewHelper.buildPanel(null, personLayout);
-		subContent.addComponents(buttonPanel, personPanel);
+		subContent.addComponents(personPanel);
 
 		personSubwindow.setContent(subContent);
 		getUI().addWindow(personSubwindow);
@@ -827,7 +827,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			log.error("Error al cargar lista de productos. Exception:" + e);
 		}
 		Panel productPanel = ViewHelper.buildPanel(null, productLayout);
-		subContent.addComponents(buttonPanel, productPanel);
+		subContent.addComponents(productPanel);
 
 		productSubwindow.setContent(subContent);
 		getUI().addWindow(productSubwindow);
@@ -977,9 +977,10 @@ public class InvoiceLayout extends VerticalLayout implements View {
 					// doStuff(l.getItem());
 					selectLot(detail, listener.getItem());
 			});
-			subContent.addComponents(buttonPanel, lotLayout);
+			subContent.addComponents(lotLayout);
 
 			lotSubwindow.setContent(subContent);
+			lotSubwindow.addCloseListener(e -> closeWindow(lotSubwindow));
 			getUI().addWindow(lotSubwindow);
 		} catch (Exception e) {
 			log.error(strLog + "[Exception]" + e.getMessage());
@@ -1002,12 +1003,13 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 			if (selectedLot != null) {
 
-				// Se agrega el producto al detail de la factura
-				addItemToDetail(detail);
 				if (selectedLot.getQuantity() <= 0) {
 					ViewHelper.showNotification("El lote no tiene un stock productos: " + selectedLot.getQuantity(),
 							Notification.Type.ERROR_MESSAGE);
 				} else {
+					// Se agrega el producto al detail de la factura
+					addItemToDetail(detail);
+
 					// Se asocia el lote al registro del detail
 					addLotToDetail(detail);
 					closeWindow(lotSubwindow);
@@ -1264,6 +1266,9 @@ public class InvoiceLayout extends VerticalLayout implements View {
 				this.document = documentEntity;
 				ViewHelper.showNotification("Factura guardada con exito", Notification.Type.WARNING_MESSAGE);
 				disableComponents(true);
+				if (transactionType.equals(ETransactionType.SALIDA)) {
+					printInvoice();
+				}
 			} else {
 				documentBll.rollback();
 			}
@@ -1619,9 +1624,9 @@ public class InvoiceLayout extends VerticalLayout implements View {
 						document.getPerson().getAddress() != null ? document.getPerson().getAddress() : "");
 				parameters.put(Commons.PARAM_CUSTOMER_PHONE,
 						document.getPerson().getMobile() != null ? document.getPerson().getMobile() : "");
-				parameters.put(Commons.PARAM_CASH, document.getPayValue() != null ? document.getPayValue() : "0.0");
+				parameters.put(Commons.PARAM_CASH, document.getPayValue() != null ? document.getPayValue() : 0.0);
 				parameters.put(Commons.PARAM_CHANGE,
-						document.getPayValue() != null ? document.getTotalValue() - document.getPayValue() : "0.0");
+						document.getPayValue() != null ? document.getTotalValue() - document.getPayValue() : 0.0);
 			}
 		} catch (Exception e) {
 

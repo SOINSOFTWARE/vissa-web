@@ -23,6 +23,8 @@ import com.soinsoftware.vissa.model.DocumentType;
 import com.soinsoftware.vissa.model.EPaymemtType;
 import com.soinsoftware.vissa.model.ETransactionType;
 import com.soinsoftware.vissa.model.PaymentType;
+import com.soinsoftware.vissa.model.Person;
+import com.soinsoftware.vissa.model.PersonType;
 import com.soinsoftware.vissa.model.User;
 import com.soinsoftware.vissa.util.Commons;
 import com.soinsoftware.vissa.util.DateUtil;
@@ -33,6 +35,7 @@ import com.vaadin.data.provider.ListDataProvider;
 import com.vaadin.data.provider.Query;
 import com.vaadin.server.FontAwesome;
 import com.vaadin.server.SerializablePredicate;
+import com.vaadin.shared.ui.datefield.DateTimeResolution;
 import com.vaadin.ui.AbstractOrderedLayout;
 import com.vaadin.ui.Alignment;
 import com.vaadin.ui.Button;
@@ -40,7 +43,9 @@ import com.vaadin.ui.Component;
 import com.vaadin.ui.DateTimeField;
 import com.vaadin.ui.FormLayout;
 import com.vaadin.ui.Grid;
+import com.vaadin.ui.Grid.Column;
 import com.vaadin.ui.Grid.SelectionMode;
+import com.vaadin.ui.components.grid.FooterRow;
 import com.vaadin.ui.HorizontalLayout;
 import com.vaadin.ui.Label;
 import com.vaadin.ui.Notification;
@@ -78,14 +83,25 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 	private NumberField txtInitialBalance;
 	private NumberField txtFee;
 	private NumberField txtFinalBalance;
+	private TextField txtFilterByPerson;
+	private DateTimeField dtfFilterIniDate;
+	private DateTimeField dtfFilterEndDate;
+	private TextField txtQuantity;
+	private TextField txtTotal;
 
 	private Window invoiceWindow;
 	private InvoiceReportLayout invoicListLayout = null;
 	private Document selectedDocument = null;
-
+	private Window personSubwindow;
+	private PersonLayout personLayout = null;
 	private User user;
+	private Person personSelected = null;
+	private Column<?, ?> totalColumn;
+	private Column<?, ?> feeColumn;
+	private FooterRow footer;
 
 	private ListDataProvider<Document> documentDataProvider;
+	ListDataProvider<Collection> collectionDataProvider;
 	private ConfigurableFilterDataProvider<Collection, Void, SerializablePredicate<Collection>> filterProductDataProvider;
 
 	public CollectionLayout() throws IOException {
@@ -105,8 +121,9 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 		VerticalLayout layout = ViewHelper.buildVerticalLayout(false, false);
 		Panel buttonPanel = buildButtonPanelForLists();
 		Panel filterPanel = buildFilterPanel();
+		Panel totalPanel = builTotalPanel();
 		Panel dataPanel = buildGridPanel();
-		layout.addComponents(buttonPanel, dataPanel);
+		layout.addComponents(buttonPanel, filterPanel, totalPanel, dataPanel);
 		this.setMargin(false);
 		this.setSpacing(false);
 		return layout;
@@ -160,11 +177,15 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 		}).setCaption("Valor factura");
 
 		collectionGrid.addColumn(Collection::getInitialBalance).setCaption("Monto inicial");
-		collectionGrid.addColumn(Collection::getFee).setCaption("Valor abono");
-		collectionGrid.addColumn(Collection::getFinalBalance).setCaption("Saldo final");
+		feeColumn = collectionGrid.addColumn(Collection::getFee).setCaption("Valor abono");
+		totalColumn = collectionGrid.addColumn(Collection::getFinalBalance).setCaption("Saldo final");
+
+		footer = collectionGrid.prependFooterRow();
+		footer.getCell(feeColumn).setHtml("<b>Total deuda:</b>");
 
 		layout.addComponent(ViewHelper.buildPanel(null, collectionGrid));
 		fillGridData();
+		refreshGrid();
 		return ViewHelper.buildPanel(null, layout);
 	}
 
@@ -184,6 +205,7 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 
 		txtDocumentNumber = new TextField("Número de factura");
 		txtDocumentNumber.setStyleName(ValoTheme.TEXTFIELD_TINY);
+		txtDocumentNumber.setReadOnly(true);
 		txtDocumentNumber.setWidth("50%");
 
 		Button searchInvoiceBtn = new Button("Buscar factura", FontAwesome.SEARCH);
@@ -289,14 +311,14 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 
 	@Override
 	protected void fillGridData() {
-		List<Collection> concilitationList = null;
+		List<Collection> collectionList = collectionBll.selectAll();
 
-		concilitationList = collectionBll.selectAll();
+		collectionDataProvider = new ListDataProvider<>(collectionList);
 
-		ListDataProvider<Collection> dataProvider = new ListDataProvider<>(concilitationList);
-		filterProductDataProvider = dataProvider.withConfigurableFilter();
-		collectionGrid.setDataProvider(filterProductDataProvider);
-
+		collectionGrid.setDataProvider(collectionDataProvider);
+		collectionDataProvider.addDataProviderListener(
+				event -> footer.getCell(totalColumn).setHtml(calculateTotal(collectionDataProvider)));
+		refreshGrid();
 	}
 
 	@Override
@@ -379,31 +401,93 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 
 	}
 
+	private Panel builTotalPanel() {
+		HorizontalLayout layout = ViewHelper.buildHorizontalLayout(true, true);
+
+		txtQuantity = new TextField("Cantidad:");
+		txtQuantity.setReadOnly(true);
+		txtQuantity.setStyleName(ValoTheme.TEXTFIELD_TINY);
+
+		txtTotal = new TextField("Total:");
+		txtTotal.setReadOnly(true);
+		txtTotal.setStyleName(ValoTheme.TEXTFIELD_TINY);
+
+		layout.addComponents(txtQuantity, txtTotal);
+		return ViewHelper.buildPanel(null, layout);
+	}
+
+	@SuppressWarnings("deprecation")
 	private Panel buildFilterPanel() {
 		HorizontalLayout layout = ViewHelper.buildHorizontalLayout(true, true);
 		txFilterByName = new TextField("Nombre");
 		txFilterByName.addValueChangeListener(e -> refreshGrid());
 		txFilterByCode = new TextField("Código");
 		txFilterByCode.addValueChangeListener(e -> refreshGrid());
-		layout.addComponents(txFilterByCode, txFilterByName);
-		return ViewHelper.buildPanel("Filtrar por", layout);
+
+		txtFilterByPerson = new TextField(Commons.PERSON_TYPE);
+		txtFilterByPerson.addValueChangeListener(e -> refreshGrid());
+		txtFilterByPerson.setStyleName(ValoTheme.TEXTFIELD_TINY);
+		txtFilterByPerson.focus();
+
+		Button searchPersonBtn = new Button("Buscar", FontAwesome.SEARCH);
+		searchPersonBtn.addClickListener(e -> buildPersonWindow(txtFilterByPerson.getValue()));
+		searchPersonBtn.setStyleName("icon-only");
+
+		dtfFilterIniDate = new DateTimeField("Fecha inicial");
+		dtfFilterIniDate.setResolution(DateTimeResolution.SECOND);
+		dtfFilterIniDate.setValue(DateUtil.getDefaultIniMonthDate());
+		dtfFilterIniDate.setDateFormat(Commons.FORMAT_DATE_TIME);
+		dtfFilterIniDate.setStyleName(ValoTheme.DATEFIELD_TINY);
+		dtfFilterIniDate.setRequiredIndicatorVisible(true);
+		dtfFilterIniDate.addValueChangeListener(e -> refreshGrid());
+
+		dtfFilterEndDate = new DateTimeField("Fecha final");
+		dtfFilterEndDate.setResolution(DateTimeResolution.SECOND);
+		dtfFilterEndDate.setValue(DateUtil.getDefaultEndDate());
+		dtfFilterEndDate.setDateFormat(Commons.FORMAT_DATE_TIME);
+		dtfFilterEndDate.setStyleName(ValoTheme.DATEFIELD_TINY);
+		dtfFilterEndDate.setRequiredIndicatorVisible(true);
+		dtfFilterEndDate.addValueChangeListener(e -> refreshGrid());
+
+		layout.addComponents(txtFilterByPerson, searchPersonBtn, dtfFilterIniDate, dtfFilterEndDate);
+		layout.setComponentAlignment(searchPersonBtn, Alignment.BOTTOM_CENTER);
+		return ViewHelper.buildPanel("Buscar por", layout);
 	}
 
 	private void refreshGrid() {
-		filterProductDataProvider.setFilter(filterGrid());
-		collectionGrid.getDataProvider().refreshAll();
+		collectionDataProvider.setFilter(collection -> filterGrid(collection));
+		// collectionGrid.getDataProvider().refreshAll();
 	}
 
-	private SerializablePredicate<Collection> filterGrid() {
-		SerializablePredicate<Collection> columnPredicate = null;
-		// String codeFilter = txFilterByCode.getValue().trim();
-		// String nameFilter = txFilterByName.getValue().trim();
-		/*
-		 * columnPredicate = warehouse ->
-		 * (warehouse.getName().toLowerCase().contains(nameFilter.toLowerCase()) &&
-		 * warehouse.getCode().toLowerCase().contains(codeFilter.toLowerCase()));
-		 **********/
-		return columnPredicate;
+	private boolean filterGrid(Collection collection) {
+
+		boolean result = false;
+		try {
+
+			Date iniDateFilter = dtfFilterIniDate.getValue() != null
+					? DateUtil.localDateTimeToDate(dtfFilterIniDate.getValue())
+					: DateUtil.stringToDate("01-01-2000 00:00:00");
+
+			Date endDateFilter = dtfFilterEndDate.getValue() != null
+					? DateUtil.localDateTimeToDate(dtfFilterEndDate.getValue())
+					: new Date();
+
+			if (endDateFilter.before(iniDateFilter)) {
+				throw new Exception("La fecha final debe ser mayor que la inicial");
+			}
+
+			Person personFilter = !txtFilterByPerson.isEmpty() ? personSelected : null;
+
+			result = personFilter != null ? collection.getDocument().getPerson().equals(personFilter)
+					: true && collection.getDocument().getDocumentDate().before(endDateFilter)
+							&& collection.getDocument().getDocumentDate().after(iniDateFilter)
+							&& collection.getFinalBalance().compareTo(BigDecimal.ZERO) == 1;
+
+		} catch (Exception e) {
+			ViewHelper.showNotification(e.getMessage(), Notification.Type.ERROR_MESSAGE);
+		}
+		return result;
+
 	}
 
 	/**
@@ -550,6 +634,80 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 
 		}
 		invoiceWindow.close();
+	}
+
+	@SuppressWarnings("deprecation")
+	private void buildPersonWindow(String personFiltter) {
+
+		personSubwindow = ViewHelper.buildSubwindow("75%", null);
+		personSubwindow.setCaption("Personas");
+
+		VerticalLayout subContent = ViewHelper.buildVerticalLayout(true, true);
+
+		// Panel de botones
+		Button backBtn = new Button("Cancelar", FontAwesome.BACKWARD);
+		backBtn.addStyleName("mystyle-btn");
+		backBtn.addClickListener(e -> closeWindow(personSubwindow));
+
+		Button selectBtn = new Button("Seleccionar", FontAwesome.CHECK);
+		selectBtn.addStyleName("mystyle-btn");
+		selectBtn.addClickListener(e -> selectPerson());
+
+		HorizontalLayout buttonLayout = ViewHelper.buildHorizontalLayout(true, true);
+		buttonLayout.addComponents(backBtn, selectBtn);
+		Panel buttonPanel = ViewHelper.buildPanel(null, buttonLayout);
+
+		try {
+
+			Commons.PERSON_TYPE = PersonType.CUSTOMER.getName();
+			personLayout = new PersonLayout(true);
+			
+
+		} catch (IOException e) {
+			log.error("Error al cargar lista de personas. Exception:" + e);
+		}
+		Panel personPanel = ViewHelper.buildPanel(null, personLayout);
+		subContent.addComponents(buttonPanel, personPanel);
+
+		personSubwindow.setContent(subContent);
+		getUI().addWindow(personSubwindow);
+
+	}
+
+	/**
+	 * Método para seleccionar proveedor o cliente
+	 */
+	private void selectPerson() {
+		personSelected = personLayout.getSelected();
+
+		if (personSelected != null) {
+			txtFilterByPerson.setValue(personSelected.getName() + " " + personSelected.getLastName());
+			personSubwindow.close();
+			refreshGrid();
+
+		} else {
+			ViewHelper.showNotification("Seleccione un proveedor", Notification.Type.WARNING_MESSAGE);
+		}
+
+	}
+
+	private String calculateTotal(ListDataProvider<Collection> dataProvider) {
+		String strLog = "[calculateTotal]";
+		String total = null;
+		try {
+
+			total = String.valueOf(dataProvider.fetch(new Query<>()).mapToDouble(collection -> {
+				return NumericUtil.bigDecimalToDouble(collection.getFinalBalance());
+			}).sum());
+			String quantity = String.valueOf(dataProvider.size(new Query<>()));
+			txtQuantity.setValue(quantity);
+			txtTotal.setValue(total);
+			log.info(strLog + "total: " + total);
+		} catch (Exception e) {
+			log.error(strLog + "[Exception]" + e.getMessage());
+		}
+		return "<b>" + total + "</b>";
+
 	}
 
 }
