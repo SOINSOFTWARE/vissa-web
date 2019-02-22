@@ -6,6 +6,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -65,6 +66,8 @@ import com.vaadin.data.Binder.Binding;
 import com.vaadin.data.provider.ConfigurableFilterDataProvider;
 import com.vaadin.data.provider.ListDataProvider;
 import com.vaadin.data.provider.Query;
+import com.vaadin.event.ShortcutAction;
+import com.vaadin.event.ShortcutListener;
 import com.vaadin.navigator.View;
 import com.vaadin.navigator.ViewChangeListener.ViewChangeEvent;
 import com.vaadin.server.FileResource;
@@ -76,6 +79,7 @@ import com.vaadin.shared.ui.datefield.DateTimeResolution;
 import com.vaadin.ui.Alignment;
 import com.vaadin.ui.Button;
 import com.vaadin.ui.ComboBox;
+import com.vaadin.ui.Component;
 import com.vaadin.ui.DateTimeField;
 import com.vaadin.ui.Embedded;
 import com.vaadin.ui.Grid;
@@ -136,7 +140,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	private Product selectedProduct = null;
 	private Lot selectedLot = null;
 	private Document document;
-	private List<DocumentDetail> itemsList = null;
+	private Set<DocumentDetail> itemsList = null;
 	private ProductLayout productLayout = null;
 	private LotLayout lotLayout = null;
 	private PersonLayout personLayout = null;
@@ -152,6 +156,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	private ConfigurableFilterDataProvider<DocumentDetail, Void, SerializablePredicate<DocumentDetail>> filterDataProv;
 	private Column<?, ?> columnQuantity;
 	private Column<?, ?> columnSubtotal;
+	private Column<DocumentDetail, String> columnCode;
 	private Column<DocumentDetail, String> columnTax;
 	private Column<DocumentDetail, String> columnPrice;
 	private Column<DocumentDetail, String> columnDiscount;
@@ -191,7 +196,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		measurementUnitProductBll = MeasurementUnitProductBll.getInstance();
 		lotBll = LotBll.getInstance();
 		document = new Document();
-		itemsList = new ArrayList<>();
+		itemsList = new HashSet<DocumentDetail>();
 		transactionType = ETransactionType.valueOf(CommonsUtil.TRANSACTION_TYPE);
 		company = companyBll.selectAll().get(0);
 
@@ -474,18 +479,22 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 		buttonlayout.addComponents(addProductBtn, deleteProductBtn);
 
+		layout.addComponents(buttonlayout, builGridPanel());
+
+		return ViewHelper.buildPanel("Productos", layout);
+	}
+
+	private Component builGridPanel() {
 		detailGrid = new Grid<>();
 		detailGrid.setSizeFull();
 		detailGrid.setEnabled(true);
 
 		// columns
-		detailGrid.addColumn(documentDetail -> {
-			if (documentDetail.getProduct() != null) {
-				return documentDetail.getProduct().getCode();
-			} else {
-				return null;
-			}
-		}).setCaption("Código");
+		TextField txtCode = new TextField();
+		columnCode = detailGrid.addColumn(DocumentDetail::getCode).setCaption("Código").setEditorComponent(txtCode,
+				DocumentDetail::setCode);
+
+
 		detailGrid.addColumn(documentDetail -> {
 			if (documentDetail.getProduct() != null) {
 				return documentDetail.getProduct().getName();
@@ -520,6 +529,18 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			}
 		}).setCaption("Subtotal");
 
+		// Evento de enter
+		txtCode.addShortcutListener(new ShortcutListener("Shortcut Name", ShortcutAction.KeyCode.ENTER, null) {
+			/**
+			 * 
+			 */
+			private static final long serialVersionUID = -5916648926624995228L;
+
+			@Override
+			public void handleAction(Object sender, Object target) {
+				searchProduct(txtCode.getValue());
+			}
+		});
 		txtQuantity.setMaxLength(100);
 		txtQuantity.setRequiredIndicatorVisible(true);
 
@@ -535,13 +556,31 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		detailGrid.getEditor().setEnabled(true);
 		detailGrid.getEditor().addSaveListener(e -> changeQuantity(txtQuantity.getValue()));
 
+		initializeGrid();
+
 		HorizontalLayout itemsLayout = ViewHelper.buildHorizontalLayout(false, false);
 		itemsLayout.setSizeFull();
 		itemsLayout.addComponents(ViewHelper.buildPanel(null, detailGrid));
+		return itemsLayout;
 
-		layout.addComponents(buttonlayout, itemsLayout);
+	}
 
-		return ViewHelper.buildPanel("Productos", layout);
+	private void initializeGrid() {
+		itemsList.add(new DocumentDetail());
+		dataProvider = new ListDataProvider<>(itemsList);
+		detailGrid.setDataProvider(dataProvider);
+	}
+
+	private void searchProduct(String code) {
+		String strLog = "[searchProduct] ";
+		try {
+			log.info(strLog + "[parameters] code: " + code);
+			Product product = productBll.select(code);
+			selectProduct(product);
+
+		} catch (Exception e) {
+			log.error(strLog + "[Exception]" + e.getMessage());
+		}
 	}
 
 	/**
@@ -912,7 +951,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 				itemsList.add(docDetail);
 				fillDetailGridData(itemsList);
 				setMeasurementUnitComponent();
-				productSubwindow.close();
+				closeWindow(productSubwindow);
 			} else {
 				ViewHelper.showNotification("El producto no tiene unidad de medida configurada",
 						Notification.Type.ERROR_MESSAGE);
@@ -1036,7 +1075,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	 * 
 	 * @param detailList
 	 */
-	private void fillDetailGridData(List<DocumentDetail> detailList) {
+	private void fillDetailGridData(Set<DocumentDetail> detailList) {
 		try {
 			dataProvider = new ListDataProvider<>(detailList);
 			filterDataProv = dataProvider.withConfigurableFilter();
@@ -1411,7 +1450,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 					cbDocumentStatus.setValue(document.getStatus());
 					Set<DocumentDetail> detailSet = document.getDetails();
 
-					itemsList = new ArrayList<>();
+					itemsList = new HashSet();
 					for (Iterator<DocumentDetail> iterator = detailSet.iterator(); iterator.hasNext();) {
 						itemsList.add(iterator.next());
 					}
@@ -1702,6 +1741,13 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			NumberField txtPrice = new NumberField();
 			NumberField txtTax = new NumberField();
 			txtTax.setReadOnly(true);
+			txtPrice.addShortcutListener(new ShortcutListener("Shortcut Name", ShortcutAction.KeyCode.ENTER, null) {
+				@Override
+				public void handleAction(Object sender, Object target) {
+					log.info("handleAction");
+				}
+			});
+			;
 			List<MeasurementUnitProduct> priceList = measurementUnitProductBll.select(mu, product);
 			if (priceList.size() > 0) {
 				pricexMU = priceList.get(0);
@@ -1743,6 +1789,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	private void updatePrice(MeasurementUnitProduct muProduct, Double price) {
 		String strLog = "[setPrice] ";
 		try {
+			log.info(strLog + "price:" + price);
 			if (price != null && !price.equals(0.0) && muProduct != null) {
 				MeasurementUnitProduct entity = null;
 				MeasurementUnitProduct.Builder muProductBuilder = MeasurementUnitProduct.builder(muProduct);
