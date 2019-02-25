@@ -313,7 +313,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 		layout.addComponents(txtDocNumFilter);
 
-		return ViewHelper.buildPanel("Buscar por", layout);
+		return ViewHelper.buildPanel("", layout);
 	}
 
 	/**
@@ -649,12 +649,6 @@ public class InvoiceLayout extends VerticalLayout implements View {
 						}
 					}
 
-					/*
-					 * } else { if (transactionType.equals(ETransactionType.SALIDA) && qty >
-					 * currentDetail.getProduct().getStock()) { ViewHelper.
-					 * showNotification("Cantidad ingresada es mayor al stock del producto",
-					 * Notification.Type.ERROR_MESSAGE); } }
-					 ****/
 					correct = true;
 
 				} else {
@@ -911,8 +905,14 @@ public class InvoiceLayout extends VerticalLayout implements View {
 								Notification.Type.ERROR_MESSAGE);
 					} else {
 						try {
-							// Construir panel de lotes
-							buildLotWindow(docDetail);
+							if (transactionType.equals(ETransactionType.ENTRADA)) {
+								// Construir panel de lotes
+								buildLotWindow(docDetail);
+							} else if (transactionType.equals(ETransactionType.SALIDA)) {
+								// Obtener lote más reciente
+								Lot lastLot = lotBll.getLastLotByProduct(product);
+								selectLot(docDetail, lastLot);
+							}
 
 						} catch (Exception e) {
 							log.error(strLog + "[Exception]" + "Error al cargar lotes del producto. Exception: "
@@ -1056,7 +1056,6 @@ public class InvoiceLayout extends VerticalLayout implements View {
 						ViewHelper.showNotification("El lote no tiene un stock productos: " + selectedLot.getQuantity(),
 								Notification.Type.ERROR_MESSAGE);
 					} else {
-
 						if (transactionType.equals(ETransactionType.ENTRADA)) {
 							detail.setQuantity(String.valueOf(lot.getQuantity()));
 							detail.setMeasurementUnit(lot.getMeasurementUnit());
@@ -1072,9 +1071,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			} else {
 				ViewHelper.showNotification("No ha seleccionado lote", Notification.Type.ERROR_MESSAGE);
 			}
-		} catch (
-
-		Exception e) {
+		} catch (Exception e) {
 			log.error(strLog + "[Exception]" + e.getMessage());
 		}
 
@@ -1142,6 +1139,9 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		String character = "|";
 
 		if (!cbDocumentType.getSelectedItem().isPresent()) {
+			if (!message.isEmpty()) {
+				message = message.concat(character);
+			}
 			message = "El tipo de factura es obligatorio";
 		}
 		if (txtPerson.getValue() == null || txtPerson.getValue().isEmpty()) {
@@ -1210,8 +1210,15 @@ public class InvoiceLayout extends VerticalLayout implements View {
 				// Crear objeto de inventario
 				InventoryTransaction.Builder invBuilder = InventoryTransaction.builder();
 
+				MeasurementUnitProduct muProduct = selectMuXProduct(detail.getMeasurementUnit(), detail.getProduct());
 				// Se actualiza stock en el movimiento de inventario
-				Double stock = lotLayout.getTotalStock();
+				Double stock = 0.0;
+				if (transactionType.equals(ETransactionType.ENTRADA)) {
+					stock = lotLayout.getTotalStock();
+				} else {
+					stock = muProduct.getStock();
+				}
+
 				Double initialStock = stock != null ? stock : 0;
 				log.info(strLog + "initialStock:" + initialStock);
 				Double finalStock = 0.0;
@@ -1288,7 +1295,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 					log.info(strLog + "lot saved:" + product);
 
 					// Actualizar precio del producto
-					updatePrice(selectMuXProduct(detail.getMeasurementUnit(), detail.getProduct()), detail.getPrice());
+					updatePrice(muProduct, detail.getPrice());
 
 					closeWindow(cashChangeWindow);
 				} catch (ModelValidationException ex) {
@@ -1692,7 +1699,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 						document.getPerson().getMobile() != null ? document.getPerson().getMobile() : "");
 				parameters.put(Commons.PARAM_CASH, document.getPayValue() != null ? document.getPayValue() : 0.0);
 				parameters.put(Commons.PARAM_CHANGE,
-						document.getPayValue() != null ? document.getTotalValue() - document.getPayValue() : 0.0);
+						document.getPayValue() != null ? document.getPayValue() - document.getTotalValue() : 0.0);
 			}
 		} catch (Exception e) {
 

@@ -177,6 +177,7 @@ public class CashChangeLayout extends VerticalLayout implements View {
 
 	@Transactional(rollbackFor = Exception.class)
 	private void saveButtonAction() {
+		String strLog = "[saveButtonAction]";
 		log.info("saveButtonAction:" + user);
 
 		// Guardar Usuario
@@ -189,15 +190,15 @@ public class CashChangeLayout extends VerticalLayout implements View {
 			}
 
 		} catch (ModelValidationException ex) {
-			log.error(ex);
+			log.error(strLog + "[ModelValidationException]" + ex);
 			ViewHelper.showNotification(ex.getMessage(), Notification.Type.ERROR_MESSAGE);
 		} catch (HibernateException ex) {
-			log.error(ex);
+			log.error(strLog + "[HibernateException]" + ex);
 			userBll.rollback();
 			ViewHelper.showNotification("Los datos no pudieron ser salvados, contacte al administrador del sistema",
 					Notification.Type.ERROR_MESSAGE);
 		} catch (Exception ex) {
-			log.error(ex);
+			log.error(strLog + "[Exception]" + ex);
 			ViewHelper.showNotification("Se presentó un error, por favor contacte al adminisrador del sistema",
 					Notification.Type.ERROR_MESSAGE);
 		}

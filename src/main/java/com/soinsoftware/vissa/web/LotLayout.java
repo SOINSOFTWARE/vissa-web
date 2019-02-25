@@ -379,10 +379,16 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 			String character = "|";
 
 			if (!cbMeasurementUnit.getSelectedItem().isPresent()) {
+				if (!message.isEmpty()) {
+					message = message.concat(character);
+				}
 				message = "La unidad de medida es obligatoria";
 			}
 			if (!cbWarehouse.getSelectedItem().isPresent()) {
-				message = "La bodega es obligatoria";
+				if (!message.isEmpty()) {
+					message = message.concat(character);
+				}
+				message = message.concat("La bodega es obligatoria");
 			}
 			if (txtQuantity.getValue() == null || txtQuantity.getValue().isEmpty()) {
 				if (!message.isEmpty()) {
