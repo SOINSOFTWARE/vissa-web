@@ -63,7 +63,6 @@ import com.soinsoftware.vissa.util.PermissionUtil;
 import com.soinsoftware.vissa.util.ViewHelper;
 import com.vaadin.data.Binder;
 import com.vaadin.data.Binder.Binding;
-import com.vaadin.data.provider.ConfigurableFilterDataProvider;
 import com.vaadin.data.provider.ListDataProvider;
 import com.vaadin.data.provider.Query;
 import com.vaadin.event.ShortcutAction;
@@ -73,7 +72,6 @@ import com.vaadin.navigator.ViewChangeListener.ViewChangeEvent;
 import com.vaadin.server.FileResource;
 import com.vaadin.server.FontAwesome;
 import com.vaadin.server.Page;
-import com.vaadin.server.SerializablePredicate;
 import com.vaadin.server.VaadinService;
 import com.vaadin.shared.ui.datefield.DateTimeResolution;
 import com.vaadin.ui.Alignment;
@@ -84,6 +82,7 @@ import com.vaadin.ui.DateTimeField;
 import com.vaadin.ui.Embedded;
 import com.vaadin.ui.Grid;
 import com.vaadin.ui.Grid.Column;
+import com.vaadin.ui.Grid.SelectionMode;
 import com.vaadin.ui.HorizontalLayout;
 import com.vaadin.ui.Label;
 import com.vaadin.ui.Notification;
@@ -140,10 +139,12 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	private Product selectedProduct = null;
 	private Lot selectedLot = null;
 	private Document document;
-	private Set<DocumentDetail> itemsList = null;
+	private List<DocumentDetail> itemsList = null;
+
 	private ProductLayout productLayout = null;
 	private LotLayout lotLayout = null;
 	private PersonLayout personLayout = null;
+
 	private DocumentType documentType;
 
 	private PdfGenerator pdfGenerator = null;
@@ -153,17 +154,15 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	private ETransactionType transactionType;
 
 	private ListDataProvider<DocumentDetail> dataProvider;
-	private ConfigurableFilterDataProvider<DocumentDetail, Void, SerializablePredicate<DocumentDetail>> filterDataProv;
+
 	private Column<?, ?> columnQuantity;
 	private Column<?, ?> columnSubtotal;
-	private Column<DocumentDetail, String> columnCode;
+
 	private Column<DocumentDetail, String> columnTax;
 	private Column<DocumentDetail, String> columnPrice;
 	private Column<DocumentDetail, String> columnDiscount;
 	private Column<DocumentDetail, MeasurementUnit> columnUM;
 	private FooterRow footer;
-
-	private boolean withoutLot;
 
 	private PermissionUtil permissionUtil;
 
@@ -180,6 +179,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	private Button searchPersonBtn;
 	private CashChangeLayout cashChangeLayout;
 	private Window cashChangeWindow;
+	private int pos;
 
 	public InvoiceLayout() throws IOException {
 		super();
@@ -196,7 +196,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		measurementUnitProductBll = MeasurementUnitProductBll.getInstance();
 		lotBll = LotBll.getInstance();
 		document = new Document();
-		itemsList = new HashSet<DocumentDetail>();
+		itemsList = new ArrayList<DocumentDetail>();
 		transactionType = ETransactionType.valueOf(CommonsUtil.TRANSACTION_TYPE);
 		company = companyBll.selectAll().get(0);
 
@@ -313,7 +313,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 		layout.addComponents(txtDocNumFilter);
 
-		return ViewHelper.buildPanel(null, layout);
+		return ViewHelper.buildPanel("Buscar por", layout);
 	}
 
 	/**
@@ -469,11 +469,14 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		VerticalLayout layout = ViewHelper.buildVerticalLayout(true, true);
 
 		HorizontalLayout buttonlayout = ViewHelper.buildHorizontalLayout(false, false);
-		addProductBtn = new Button("Agregar producto", FontAwesome.PLUS);
+		addProductBtn = new Button("Agregar ítem", FontAwesome.PLUS);
 		addProductBtn.addStyleName(ValoTheme.BUTTON_TINY);
-		addProductBtn.addClickListener(e -> buildProductWindow());
+		addProductBtn.addClickListener(e -> {
+			itemsList.add(new DocumentDetail());
+			fillDetailGridData(itemsList);
+		});
 
-		deleteProductBtn = new Button("Eliminar producto", FontAwesome.ERASER);
+		deleteProductBtn = new Button("Eliminar ítem", FontAwesome.ERASER);
 		deleteProductBtn.addStyleName(ValoTheme.BUTTON_TINY);
 		deleteProductBtn.addClickListener(e -> deleteItemDetail());
 
@@ -484,16 +487,15 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		return ViewHelper.buildPanel("Productos", layout);
 	}
 
+	@SuppressWarnings("unchecked")
 	private Component builGridPanel() {
-		detailGrid = new Grid<>();
-		detailGrid.setSizeFull();
+		detailGrid = ViewHelper.buildGrid(SelectionMode.SINGLE);
 		detailGrid.setEnabled(true);
 
 		// columns
 		TextField txtCode = new TextField();
-		columnCode = detailGrid.addColumn(DocumentDetail::getCode).setCaption("Código").setEditorComponent(txtCode,
+		detailGrid.addColumn(DocumentDetail::getCode).setCaption("Código").setEditorComponent(txtCode,
 				DocumentDetail::setCode);
-
 
 		detailGrid.addColumn(documentDetail -> {
 			if (documentDetail.getProduct() != null) {
@@ -529,22 +531,34 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			}
 		}).setCaption("Subtotal");
 
+		detailGrid.getEditor().addOpenListener(e -> {
+			log.info("CURRENT DETAIL-" + CommonsUtil.CURRENT_DOCUMENT_DETAIL);
+			detailGrid.getSelectionModel().deselectAll();
+		});
+
 		// Evento de enter
 		txtCode.addShortcutListener(new ShortcutListener("Shortcut Name", ShortcutAction.KeyCode.ENTER, null) {
-			/**
-			 * 
-			 */
+
 			private static final long serialVersionUID = -5916648926624995228L;
 
 			@Override
 			public void handleAction(Object sender, Object target) {
-				searchProduct(txtCode.getValue());
+				try {
+					if (((TextField) target).equals(txtCode)) {
+						dataProvider.refreshAll();
+						searchProduct(txtCode.getValue());
+					}
+				} catch (Exception e) {
+					log.error("[ShortcutListener][handleAction][Exception] " + e.getMessage());
+				}
 			}
 		});
+
 		txtQuantity.setMaxLength(100);
 		txtQuantity.setRequiredIndicatorVisible(true);
 
 		txtQuantity.addBlurListener(e -> changeQuantity(txtQuantity.getValue()));
+		txtQuantity.addValueChangeListener(e -> changeQuantity(txtQuantity.getValue()));
 		footer = detailGrid.prependFooterRow();
 		if (columnDiscount != null) {
 			footer.getCell(columnDiscount).setHtml("<b>Total IVA:</b>");
@@ -554,6 +568,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		footer.getCell(columnQuantity).setHtml("<b>Total:</b>");
 
 		detailGrid.getEditor().setEnabled(true);
+
 		detailGrid.getEditor().addSaveListener(e -> changeQuantity(txtQuantity.getValue()));
 
 		initializeGrid();
@@ -566,7 +581,15 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	}
 
 	private void initializeGrid() {
-		itemsList.add(new DocumentDetail());
+		int i = 0;
+		while (i < 6) {
+			DocumentDetail docDetail = new DocumentDetail();
+			docDetail.setIndex(i);
+			itemsList.add(docDetail);
+			i++;
+		}
+
+		log.info(itemsList);
 		dataProvider = new ListDataProvider<>(itemsList);
 		detailGrid.setDataProvider(dataProvider);
 	}
@@ -574,10 +597,12 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	private void searchProduct(String code) {
 		String strLog = "[searchProduct] ";
 		try {
-			log.info(strLog + "[parameters] code: " + code);
-			Product product = productBll.select(code);
-			selectProduct(product);
-
+			if (code != null && !code.isEmpty()) {
+				selectedProduct = null;
+				log.info(strLog + "[parameters] code: " + code);
+				Product product = productBll.select(code);
+				selectProduct(product);
+			}
 		} catch (Exception e) {
 			log.error(strLog + "[Exception]" + e.getMessage());
 		}
@@ -670,6 +695,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 					return 0.0;
 				}
 			}).sum());
+
 			txtTotal.setValue(total);
 			return "<b>" + total + "</b>";
 		} catch (Exception e) {
@@ -692,7 +718,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			log.info(strLog + "[parameters]" + detailDataProv);
 			String totalIVA = String.valueOf(detailDataProv.fetch(new Query<>()).mapToDouble(documentDetail -> {
 				if (documentDetail.getTax() != null) {
-					return documentDetail.getTax();
+					return documentDetail.getTaxValue();
 				} else {
 					return 0.0;
 				}
@@ -730,7 +756,6 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 		HorizontalLayout buttonLayout = ViewHelper.buildHorizontalLayout(true, true);
 		buttonLayout.addComponents(backBtn, selectBtn);
-		Panel buttonPanel = ViewHelper.buildPanel(null, buttonLayout);
 
 		try {
 
@@ -821,9 +846,8 @@ public class InvoiceLayout extends VerticalLayout implements View {
 				}
 			}
 		} catch (NumberFormatException nfe) {
-			ViewHelper.showNotification("Campo plazo inválido", Notification.TYPE_ERROR_MESSAGE);
+			ViewHelper.showNotification("Campo plazo inválido", Notification.Type.ERROR_MESSAGE);
 		}
-
 	}
 
 	/**
@@ -832,25 +856,11 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	private void buildProductWindow() {
 		selectedProduct = null;
 		selectedLot = null;
-		withoutLot = false;
 
 		productSubwindow = ViewHelper.buildSubwindow("75%", null);
 		productSubwindow.setCaption("Productos");
 
 		VerticalLayout subContent = ViewHelper.buildVerticalLayout(true, true);
-
-		// Panel de botones
-		Button backBtn = new Button("Cancelar", FontAwesome.BACKWARD);
-		backBtn.addStyleName("mystyle-btn");
-		backBtn.addClickListener(e -> closeWindow(productSubwindow));
-
-		Button selectBtn = new Button("Seleccionar", FontAwesome.CHECK);
-		selectBtn.addStyleName("mystyle-btn");
-		selectBtn.addClickListener(e -> selectProduct(null));
-
-		HorizontalLayout buttonLayout = ViewHelper.buildHorizontalLayout(true, true);
-		buttonLayout.addComponents(backBtn, selectBtn);
-		Panel buttonPanel = ViewHelper.buildPanel(null, buttonLayout);
 
 		try {
 			productLayout = new ProductLayout(true);
@@ -879,31 +889,31 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	private void selectProduct(Product product) {
 		String strLog = "[selectProduct]";
 		try {
+			pos = -1;
+			selectedLot = null;
 			selectedProduct = product != null ? product : productLayout.getSelected();
 
-			if (selectedProduct != null) {
-
-				DocumentDetail docDetail = DocumentDetail.builder().product(selectedProduct).build();
+			if (product != null) {
+				pos = itemsList.indexOf(CommonsUtil.CURRENT_DOCUMENT_DETAIL);
+				DocumentDetail docDetail = DocumentDetail.builder(CommonsUtil.CURRENT_DOCUMENT_DETAIL).product(product)
+						.build();
+				CommonsUtil.CURRENT_DOCUMENT_DETAIL.setIndex(pos);
+				detailGrid.getSelectionModel().select(docDetail);
+				detailGrid.focus();
 
 				if (itemsList.contains(docDetail)) {
 					ViewHelper.showNotification("Este producto ya está agregado a la factura",
-							Notification.Type.WARNING_MESSAGE);
+							Notification.Type.ERROR_MESSAGE);
 				} else {
-					if (selectedProduct.getSalePrice() == null || selectedProduct.getSalePrice().equals("0")) {
-						ViewHelper.showNotification("El producto no tiene precio configurado",
-								Notification.Type.WARNING_MESSAGE);
-					} else if (transactionType.equals(ETransactionType.SALIDA)
-							&& (selectedProduct.getStock() == null || selectedProduct.getStock() == 0)) {
+					if (transactionType.equals(ETransactionType.SALIDA)
+							&& (product.getStock() == null || product.getStock().equals(0.0))) {
 						ViewHelper.showNotification("El producto no tiene stock disponible",
-								Notification.Type.WARNING_MESSAGE);
+								Notification.Type.ERROR_MESSAGE);
 					} else {
 						try {
-
-							// ---Panel de lotes
-							log.info("selectedLot:" + selectedLot + ", withoutLot:" + withoutLot);
-							// if (selectedLot == null && !withoutLot) {
+							// Construir panel de lotes
 							buildLotWindow(docDetail);
-							// }
+
 						} catch (Exception e) {
 							log.error(strLog + "[Exception]" + "Error al cargar lotes del producto. Exception: "
 									+ e.getMessage());
@@ -912,9 +922,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 					}
 				}
 
-			} else
-
-			{
+			} else {
 				ViewHelper.showNotification("No ha seleccionado un producto", Notification.Type.WARNING_MESSAGE);
 			}
 		} catch (Exception e) {
@@ -933,11 +941,13 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			// Setear unidad de medida por defecto para item
 			List<MeasurementUnit> muList = measurementUnitProductBll.selectMuByProduct(docDetail.getProduct());
 			if (muList.size() > 0) {
+				docDetail.setCode(docDetail.getProduct().getCode());
 				docDetail.setMeasurementUnitList(muList);
 				MeasurementUnit mu = muList.get(0);
 				docDetail.setMeasurementUnit(mu);
 				// Setear el precio e impuesto
-				MeasurementUnitProduct priceXMu = selectPriceXMU(mu, selectedProduct);
+				MeasurementUnitProduct priceXMu = selectMuXProduct(mu, docDetail.getProduct());
+				setPriceComponent(priceXMu);
 				docDetail.setMeasurementUnitProduct(priceXMu);
 
 				if (transactionType.equals(ETransactionType.ENTRADA)) {
@@ -948,7 +958,8 @@ public class InvoiceLayout extends VerticalLayout implements View {
 					docDetail.setTax(priceXMu.getSaleTax());
 				}
 
-				itemsList.add(docDetail);
+				// Actualizar el item
+				itemsList.set(pos, docDetail);
 				fillDetailGridData(itemsList);
 				setMeasurementUnitComponent();
 				closeWindow(productSubwindow);
@@ -984,42 +995,38 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	private void buildLotWindow(DocumentDetail detail) {
 		String strLog = "[buildLotWindow]";
 		try {
-			withoutLot = false;
-
 			Product product = detail.getProduct();
-			lotSubwindow = ViewHelper.buildSubwindow("70%", "90%");
-			lotSubwindow.setCaption("Lotes del producto " + product.getName());
+			lotSubwindow = ViewHelper.buildSubwindow("70%", "95%");
+			lotSubwindow.setCaption("Lotes del producto " + product.getCode() + " - " + product.getName());
 
 			VerticalLayout subContent = ViewHelper.buildVerticalLayout(true, true);
 
-			// Panel de botones
-			Button backBtn = new Button("Cancelar", FontAwesome.BACKWARD);
-			backBtn.addStyleName("mystyle-btn");
-			backBtn.addClickListener(e -> selectLot(detail, null));
-
-			Button selectBtn = new Button("Seleccionar", FontAwesome.CHECK);
-			selectBtn.addStyleName("mystyle-btn");
-			selectBtn.addClickListener(e -> selectLot(detail, null));
-
-			HorizontalLayout buttonLayout = ViewHelper.buildHorizontalLayout(true, true);
-			buttonLayout.addComponents(backBtn, selectBtn);
-			Panel buttonPanel = ViewHelper.buildPanel(null, buttonLayout);
-
-			lotLayout = new LotLayout(selectedProduct, productLayout, transactionType);
+			lotLayout = new LotLayout(product, productLayout, transactionType);
 			lotLayout.setCaption("Lotes");
 			lotLayout.setMargin(false);
 			lotLayout.setSpacing(false);
-			lotLayout.lotGrid.addItemClickListener(listener -> {
+			lotLayout.getLotGrid().addItemClickListener(listener -> {
 				if (listener.getMouseEventDetails().isDoubleClick())
-					// pass the row/item that the user double clicked
-					// to method doStuff.
-					// doStuff(l.getItem());
 					selectLot(detail, listener.getItem());
 			});
 			subContent.addComponents(lotLayout);
 
 			lotSubwindow.setContent(subContent);
-			lotSubwindow.addCloseListener(e -> closeWindow(lotSubwindow));
+			lotSubwindow.addCloseListener(e -> {
+				if (selectedLot == null) {
+					if (CommonsUtil.CURRENT_DOCUMENT_DETAIL.getProduct() != null) {
+						CommonsUtil.CURRENT_DOCUMENT_DETAIL
+								.setCode(CommonsUtil.CURRENT_DOCUMENT_DETAIL.getProduct().getCode());
+						itemsList.set(pos, CommonsUtil.CURRENT_DOCUMENT_DETAIL);
+					} else {
+						// itemsList.set(pos, null);
+					}
+
+					fillDetailGridData(itemsList);
+					closeWindow(lotSubwindow);
+				}
+			});
+
 			getUI().addWindow(lotSubwindow);
 		} catch (Exception e) {
 			log.error(strLog + "[Exception]" + e.getMessage());
@@ -1033,38 +1040,41 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		String strLog = "[selectLot]";
 		try {
 
-			log.info(strLog + "[parameters]" + detail);
+			log.info(strLog + "[parameters] detail: " + detail + ", lot: " + lot);
 
 			// Lote seleccionado en la grid
+			// selectedProduct = detail.getProduct();
 			selectedLot = lot != null ? lot : lotLayout.getSelected();
 
-			log.info(strLog + "selectedLot:" + selectedLot);
+			// log.info(strLog + "selectedLot:" + selectedLot);
 
-			if (selectedLot != null) {
-
-				if (selectedLot.getQuantity() <= 0) {
-					ViewHelper.showNotification("El lote no tiene un stock productos: " + selectedLot.getQuantity(),
-							Notification.Type.ERROR_MESSAGE);
+			if (lot != null) {
+				if (transactionType.equals(ETransactionType.ENTRADA) && !lot.isNew()) {
+					ViewHelper.showNotification("Debe escoger un nuevo lote ", Notification.Type.ERROR_MESSAGE);
 				} else {
-					// Se agrega el producto al detail de la factura
-					addItemToDetail(detail);
+					if (transactionType.equals(ETransactionType.SALIDA) && lot.getQuantity() <= 0) {
+						ViewHelper.showNotification("El lote no tiene un stock productos: " + selectedLot.getQuantity(),
+								Notification.Type.ERROR_MESSAGE);
+					} else {
 
-					// Se asocia el lote al registro del detail
-					addLotToDetail(detail);
-					closeWindow(lotSubwindow);
+						if (transactionType.equals(ETransactionType.ENTRADA)) {
+							detail.setQuantity(String.valueOf(lot.getQuantity()));
+							detail.setMeasurementUnit(lot.getMeasurementUnit());
+						}
+						// Se agrega el item al detail de la factura
+						addItemToDetail(detail);
+
+						// Se asocia el lote al registro del detail
+						addLotToDetail(detail);
+						closeWindow(lotSubwindow);
+					}
 				}
 			} else {
 				ViewHelper.showNotification("No ha seleccionado lote", Notification.Type.ERROR_MESSAGE);
-				/*
-				 * ConfirmDialog.show(Page.getCurrent().getUI(), "Confirmar",
-				 * "No ha seleccionado un lote. Desea continuar", "Si", "No", e -> { if
-				 * (e.isConfirmed()) { selectedLot = null; withoutLot = true;
-				 * closeWindow(lotSubwindow);
-				 * 
-				 * } });
-				 */
 			}
-		} catch (Exception e) {
+		} catch (
+
+		Exception e) {
 			log.error(strLog + "[Exception]" + e.getMessage());
 		}
 
@@ -1075,11 +1085,12 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	 * 
 	 * @param detailList
 	 */
-	private void fillDetailGridData(Set<DocumentDetail> detailList) {
+	private void fillDetailGridData(List<DocumentDetail> detailList) {
 		try {
+			itemsList = detailList;
 			dataProvider = new ListDataProvider<>(detailList);
-			filterDataProv = dataProvider.withConfigurableFilter();
-			detailGrid.setDataProvider(filterDataProv);
+
+			detailGrid.setDataProvider(dataProvider);
 
 			dataProvider.addDataProviderListener(
 					event -> footer.getCell(columnSubtotal).setHtml(calculateTotal(dataProvider)));
@@ -1113,7 +1124,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 									&& paymentType.getCode().equals(EPaymemtType.PAID.getName())) {
 								buildCashChangeWindow();
 							} else {
-								saveInvoiceDetail(documentEntity);
+								saveInvoice(documentEntity);
 							}
 						}
 					});
@@ -1168,132 +1179,131 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	 * 
 	 * @param document
 	 */
-	public void saveInvoiceDetail(Document document) {
-		String strLog = "[saveInvoiceDetail] ";
+	public void saveInvoice(Document document) {
+		String strLog = "[saveInvoice] ";
 		Document documentEntity = saveInvoiceHeader(document);
 		log.info(strLog + "Document saved:" + documentEntity);
 
 		if (documentEntity != null) {
 			boolean hasErrors = false;
 			for (DocumentDetail detail : documentEntity.getDetails()) {
-				if (detail.getQuantity() == null || detail.getQuantity().isEmpty()) {
-					ViewHelper.showNotification("Cantidad no ingresada", Notification.Type.ERROR_MESSAGE);
-					hasErrors = true;
-					documentBll.rollback();
-					break;
-				} else {
-					// Guardar Detail
-					DocumentDetail.Builder detailBuilder = DocumentDetail.builder();
 
-					// Detail sin relacion al documento
-					DocumentDetail detailTmp = detailBuilder.product(detail.getProduct()).quantity(detail.getQuantity())
-							.description(detail.getDescription()).subtotal(detail.getSubtotal())
-							.measurementUnit(detail.getMeasurementUnit()).price(detail.getPrice()).tax(detail.getTax())
-							.discount(detail.getDiscount()).build();
+				DocumentDetail.Builder detailBuilder = DocumentDetail.builder();
 
-					// Relacion detail con lote. Se busca DetailLot a partir del Detail
-					DocumentDetailLot detailLot = detailLotMap.get(detailTmp);
+				// Detail sin relacion al documento
+				DocumentDetail detailTmp = detailBuilder.product(detail.getProduct()).quantity(detail.getQuantity())
+						.description(detail.getDescription()).subtotal(detail.getSubtotal())
+						.measurementUnit(detail.getMeasurementUnit()).price(detail.getPrice()).tax(detail.getTax())
+						.discount(detail.getDiscount()).build();
 
-					// Detail con relacion al documento
-					detailTmp = detailBuilder.document(documentEntity).build();
+				// Relacion detail con lote. Se busca DetailLot a partir del Detail
+				DocumentDetailLot detailLot = detailLotMap.get(detailTmp);
 
-					// Se actualiza el detail del objeto DetailLot
-					if (detailLot != null) {
-						detailLot = DocumentDetailLot.builder(detailLot).documentDetail(detail).build();
-					}
+				// Detail con relacion al documento
+				detailTmp = detailBuilder.document(documentEntity).build();
 
-					// Guardar inventario
-					InventoryTransaction.Builder invBuilder = InventoryTransaction.builder();
-
-					// Se actualiza stock en el movimiento de inventario
-					Double stock = lotLayout.getTotalStock();
-					Double initialStock = stock != null ? stock : 0;
-					log.info(strLog + "initialStock:" + initialStock);
-					Double finalStock = 0.0;
-					Double quantity = Double.parseDouble(detail.getQuantity());
-					log.info(strLog + "quantity:" + quantity);
-
-					if (transactionType.equals(ETransactionType.ENTRADA)) {
-						finalStock = initialStock != 0 ? initialStock + quantity : quantity;
-					} else if (transactionType.equals(ETransactionType.SALIDA)) {
-						finalStock = initialStock != 0 ? initialStock - quantity : quantity;
-					}
-					log.info(strLog + "finalStock:" + finalStock);
-					InventoryTransaction inventoryTransaction = invBuilder.product(detail.getProduct())
-							.transactionType(transactionType).initialStock(initialStock).quantity(quantity)
-							.finalStock(finalStock).document(documentEntity).build();
-
-					// Actualizar stock total del producto
-					Product product = productBll.select(detail.getProduct().getCode());
-					product.setStock(finalStock);
-					product.setStockDate(new Date());
-
-					// Actualizar lotes del producto
-					/*
-					 * List<Lot> lotList = lotBll.select(detail.getProduct()); Lot lot = null; if
-					 * (lotList.size() > 0) { lot = lotList.get(0); log.info(strLog +
-					 * "Lote más pronto a vencer:" + lot.getExpirationDate());
-					 * 
-					 * Double newLotStock = 0.0; if
-					 * (transactionType.equals(ETransactionType.ENTRADA)) { newLotStock =
-					 * lot.getQuantity() + quantity; } else if
-					 * (transactionType.equals(ETransactionType.SALIDA)) { newLotStock =
-					 * lot.getQuantity() - quantity; } lot.setQuantity(newLotStock); }
-					 */
-
-					log.info(strLog + "Lote a actualizar stock:" + selectedLot);
-
-					Double newLotStock = 0.0;
-					Lot lotTmp = selectedLot;
-					if (transactionType.equals(ETransactionType.ENTRADA)) {
-						newLotStock = lotTmp.getQuantity() + quantity;
-					} else if (transactionType.equals(ETransactionType.SALIDA)) {
-						newLotStock = lotTmp.getQuantity() - quantity;
-					}
-					log.info(strLog + "newLotStock: " + newLotStock);
-					lotTmp.setQuantity(newLotStock);
-
-					try {
-						// Guardar relación item factura con lote
-						if (detailLot != null) {
-							detailLotBll.save(detailLot, false);
-						}
-						log.info(strLog + "detailLot saved:" + detailLot);
-
-						// Guardar movimiento de inventario
-						inventoryBll.save(inventoryTransaction, false);
-						log.info(strLog + "inventoryTransaction saved:" + inventoryTransaction);
-
-						// Actualizar stock producto
-						productBll.save(product, false);
-						log.info("product saved:" + product);
-
-						// Actualizar stock de lote
-						if (lotTmp != null) {
-							lotBll.save(lotTmp, false);
-						}
-						log.info(strLog + "lot saved:" + product);
-
-						// Actualizar precio del producto
-						updatePrice(detailTmp.getMeasurementUnitProduct(), detailTmp.getPrice());
-
-						closeWindow(cashChangeWindow);
-					} catch (ModelValidationException ex) {
-						hasErrors = true;
-						documentEntity = null;
-						log.error(strLog + "[ModelValidationException]" + ex);
-						ViewHelper.showNotification(ex.getMessage(), Notification.Type.ERROR_MESSAGE);
-					} catch (HibernateException ex) {
-						hasErrors = true;
-						documentEntity = null;
-						log.error(strLog + "[HibernateException]" + ex);
-						ViewHelper.showNotification(
-								"Los datos no pudieron ser salvados, contacte al administrador del sistema",
-								Notification.Type.ERROR_MESSAGE);
-					}
-
+				// Se actualiza el detail del objeto DetailLot
+				if (detailLot != null) {
+					detailLot = DocumentDetailLot.builder(detailLot).documentDetail(detail).build();
 				}
 
+				// Crear objeto de inventario
+				InventoryTransaction.Builder invBuilder = InventoryTransaction.builder();
+
+				// Se actualiza stock en el movimiento de inventario
+				Double stock = lotLayout.getTotalStock();
+				Double initialStock = stock != null ? stock : 0;
+				log.info(strLog + "initialStock:" + initialStock);
+				Double finalStock = 0.0;
+				Double quantity = Double.parseDouble(detail.getQuantity());
+				log.info(strLog + "quantity:" + quantity);
+
+				if (transactionType.equals(ETransactionType.ENTRADA)) {
+					finalStock = initialStock != 0 ? initialStock + quantity : quantity;
+				} else if (transactionType.equals(ETransactionType.SALIDA)) {
+					finalStock = initialStock != 0 ? initialStock - quantity : quantity;
+				}
+				log.info(strLog + "finalStock:" + finalStock);
+
+				// Actualizar cantidad y stock final de detailLot
+				detailLot.setQuantity(quantity);
+				detailLot.setFinalStockLot(finalStock);
+
+				// Movimiento de inventario
+				InventoryTransaction inventoryTransaction = invBuilder.product(detail.getProduct())
+						.transactionType(transactionType).initialStock(initialStock).quantity(quantity)
+						.finalStock(finalStock).document(documentEntity).build();
+
+				// Actualizar stock total del producto
+				Product product = productBll.select(detail.getProduct().getCode());
+				product.setStock(finalStock);
+				product.setStockDate(new Date());
+
+				// Actualizar lotes del producto
+				/*
+				 * List<Lot> lotList = lotBll.select(detail.getProduct()); Lot lot = null; if
+				 * (lotList.size() > 0) { lot = lotList.get(0); log.info(strLog +
+				 * "Lote más pronto a vencer:" + lot.getExpirationDate());
+				 * 
+				 * Double newLotStock = 0.0; if
+				 * (transactionType.equals(ETransactionType.ENTRADA)) { newLotStock =
+				 * lot.getQuantity() + quantity; } else if
+				 * (transactionType.equals(ETransactionType.SALIDA)) { newLotStock =
+				 * lot.getQuantity() - quantity; } lot.setQuantity(newLotStock); }
+				 */
+
+				log.info(strLog + "Lote a actualizar stock:" + selectedLot);
+
+				Double newLotStock = 0.0;
+				Lot lotTmp = detailLot.getLot();
+				if (transactionType.equals(ETransactionType.ENTRADA)) {
+					newLotStock = lotTmp.getQuantity() + quantity;
+				} else if (transactionType.equals(ETransactionType.SALIDA)) {
+					newLotStock = lotTmp.getQuantity() - quantity;
+				}
+				log.info(strLog + "newLotStock: " + newLotStock);
+				lotTmp.setQuantity(newLotStock);
+				lotTmp.setNew(false);
+
+				try {
+					// Guardar relación item factura con lote
+					if (detailLot != null) {
+						detailLotBll.save(detailLot, false);
+					}
+					log.info(strLog + "detailLot saved:" + detailLot);
+
+					// Guardar movimiento de inventario
+					inventoryBll.save(inventoryTransaction, false);
+					log.info(strLog + "inventoryTransaction saved:" + inventoryTransaction);
+
+					// Actualizar stock producto
+					productBll.save(product, false);
+					log.info("product saved:" + product);
+
+					// Actualizar stock de lote
+					if (transactionType.equals(ETransactionType.SALIDA)) {
+						lotBll.save(lotTmp, false);
+					}
+
+					log.info(strLog + "lot saved:" + product);
+
+					// Actualizar precio del producto
+					updatePrice(selectMuXProduct(detail.getMeasurementUnit(), detail.getProduct()), detail.getPrice());
+
+					closeWindow(cashChangeWindow);
+				} catch (ModelValidationException ex) {
+					hasErrors = true;
+					documentEntity = null;
+					log.error(strLog + "[ModelValidationException]" + ex);
+					ViewHelper.showNotification(ex.getMessage(), Notification.Type.ERROR_MESSAGE);
+				} catch (HibernateException ex) {
+					hasErrors = true;
+					documentEntity = null;
+					log.error(strLog + "[HibernateException]" + ex);
+					ViewHelper.showNotification(
+							"Los datos no pudieron ser salvados, contacte al administrador del sistema",
+							Notification.Type.ERROR_MESSAGE);
+				}
 			}
 
 			if (!hasErrors) {
@@ -1323,45 +1333,62 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	private Document saveInvoiceHeader(Document documentEntity) {
 		String strLog = "[saveInvoiceHeader]";
 		Document documentSaved = null;
-
+		boolean hasErrors = false;
 		try {
 			log.info(strLog + "[parameters] documentEntity: " + documentEntity);
-			Document.Builder docBuilder = null;
-			DocumentStatus documentStatus = null;
-			if (documentEntity == null || documentEntity.getCode() == null) {
-				docBuilder = Document.builder();
-				documentStatus = docStatusBll.select("Registrada").get(0);
-			} else {
-				documentStatus = documentEntity.getStatus();
-				docBuilder = Document.builder(documentEntity);
-			}
-
-			Date docDate = DateUtil.localDateTimeToDate(dtfDocumentDate.getValue());
-			Date expirationDate = dtfExpirationDate.getValue() != null
-					? DateUtil.localDateTimeToDate(dtfExpirationDate.getValue())
-					: null;
-
-			Double total = txtTotal.getValue() != null ? Double.parseDouble(txtTotal.getValue()) : 0;
-			Double totalIVA = txtTotalTax.getValue() != null ? Double.parseDouble(txtTotalTax.getValue()) : 0;
 
 			// Setear el detalle de items a la factura
 			Set<DocumentDetail> details = detailGrid.getDataProvider().fetch(new Query<>()).collect(Collectors.toSet());
 
-			documentEntity = docBuilder.code(txtDocNumber.getValue())
-					.reference(txtReference.getValue() != null ? txtReference.getValue() : "")
-					.documentType(cbDocumentType.getValue()).resolution(txtResolution.getValue()).person(selectedPerson)
-					.documentDate(docDate).paymentMethod(cbPaymentMethod.getValue()).paymentType(paymentType)
-					.paymentTerm(txtPaymentTerm.getValue()).expirationDate(expirationDate).totalValue(total)
-					.totalValueNoTax(totalIVA).status(documentStatus).salesman(user.getPerson()).payValue(payValue)
-					.details(details).build();
+			Set<DocumentDetail> detailsTmp = new HashSet<>();
+			for (DocumentDetail detail : details) {
+				if (detail.getProduct() != null) {
+					if (detail.getQuantity() == null || detail.getQuantity().isEmpty()) {
+						hasErrors = true;
+						ViewHelper.showNotification("Cantidad no ingresada para producto: " + detail.getCode(),
+								Notification.Type.ERROR_MESSAGE);
+						break;
+					} else {
+						detailsTmp.add(detail);
+					}
+				}
+			}
 
-			// persistir documento
-			documentBll.save(documentEntity, false);
-			documentSaved = documentBll.select(documentEntity.getCode(), documentEntity.getDocumentType());
+			if (!hasErrors) {
+				Document.Builder docBuilder = null;
+				DocumentStatus documentStatus = null;
+				if (documentEntity == null || documentEntity.getCode() == null) {
+					docBuilder = Document.builder();
+					documentStatus = docStatusBll.select("Registrada").get(0);
+				} else {
+					documentStatus = documentEntity.getStatus();
+					docBuilder = Document.builder(documentEntity);
+				}
 
-			// afterSave("");
+				Date docDate = DateUtil.localDateTimeToDate(dtfDocumentDate.getValue());
+				Date expirationDate = dtfExpirationDate.getValue() != null
+						? DateUtil.localDateTimeToDate(dtfExpirationDate.getValue())
+						: null;
+
+				Double total = txtTotal.getValue() != null ? Double.parseDouble(txtTotal.getValue()) : 0;
+				Double totalIVA = txtTotalTax.getValue() != null ? Double.parseDouble(txtTotalTax.getValue()) : 0;
+
+				documentEntity = docBuilder.code(txtDocNumber.getValue())
+						.reference(txtReference.getValue() != null ? txtReference.getValue() : "")
+						.documentType(cbDocumentType.getValue()).resolution(txtResolution.getValue())
+						.person(selectedPerson).documentDate(docDate).paymentMethod(cbPaymentMethod.getValue())
+						.paymentType(paymentType).paymentTerm(txtPaymentTerm.getValue()).expirationDate(expirationDate)
+						.totalValue(total).totalValueNoTax(totalIVA).status(documentStatus).salesman(user.getPerson())
+						.payValue(payValue).details(detailsTmp).build();
+
+				// Persistir documento
+				documentBll.save(documentEntity, false);
+				// Consultar el documento guardado
+				documentSaved = documentBll.select(documentEntity.getCode(), documentEntity.getDocumentType());
+			}
 		} catch (ModelValidationException ex) {
 			log.error(strLog + "[ModelValidationException]" + ex);
+			documentBll.rollback();
 			ViewHelper.showNotification(ex.getMessage(), Notification.Type.ERROR_MESSAGE);
 		} catch (HibernateException ex) {
 			log.error(strLog + "[HibernateException]" + ex);
@@ -1450,7 +1477,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 					cbDocumentStatus.setValue(document.getStatus());
 					Set<DocumentDetail> detailSet = document.getDetails();
 
-					itemsList = new HashSet();
+					itemsList = new ArrayList<>();
 					for (Iterator<DocumentDetail> iterator = detailSet.iterator(); iterator.hasNext();) {
 						itemsList.add(iterator.next());
 					}
@@ -1716,8 +1743,12 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		ListDataProvider<MeasurementUnit> measurementDataProv = new ListDataProvider<>(muList);
 		cbMeasurementUnit.setDataProvider(measurementDataProv);
 		cbMeasurementUnit.setItemCaptionGenerator(MeasurementUnit::getName);
-		cbMeasurementUnit
-				.addValueChangeListener(e -> selectPriceXMU(cbMeasurementUnit.getSelectedItem().get(), product));
+		cbMeasurementUnit.addValueChangeListener(e -> {
+			MeasurementUnitProduct muProduct = selectMuXProduct(
+					cbMeasurementUnit.getSelectedItem().isPresent() ? cbMeasurementUnit.getSelectedItem().get() : null,
+					product);
+			setPriceComponent(muProduct);
+		});
 
 		Binder<DocumentDetail> binder = detailGrid.getEditor().getBinder();
 		Binding<DocumentDetail, MeasurementUnit> binding = binder.bind(cbMeasurementUnit,
@@ -1733,51 +1764,67 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	 * @param product
 	 * @return
 	 */
-	private MeasurementUnitProduct selectPriceXMU(MeasurementUnit mu, Product product) {
-		MeasurementUnitProduct pricexMU = null;
-		String strLog = "";
+	private MeasurementUnitProduct selectMuXProduct(MeasurementUnit mu, Product product) {
+		MeasurementUnitProduct muProduct = null;
+		String strLog = "[selectMuXProduct]";
 		try {
-			Binder<DocumentDetail> binder = detailGrid.getEditor().getBinder();
-			NumberField txtPrice = new NumberField();
-			NumberField txtTax = new NumberField();
-			txtTax.setReadOnly(true);
-			txtPrice.addShortcutListener(new ShortcutListener("Shortcut Name", ShortcutAction.KeyCode.ENTER, null) {
-				@Override
-				public void handleAction(Object sender, Object target) {
-					log.info("handleAction");
-				}
-			});
-			;
-			List<MeasurementUnitProduct> priceList = measurementUnitProductBll.select(mu, product);
-			if (priceList.size() > 0) {
-				pricexMU = priceList.get(0);
-				CommonsUtil.MEASUREMENT_UNIT_PRODUCT = pricexMU;
-				if (transactionType.equals(ETransactionType.ENTRADA)) {
-					txtPrice.setValue(pricexMU.getPurchasePrice());
-					txtTax.setValue(pricexMU.getPurchaseTax());
-					txtPrice.setReadOnly(false);
-				} else if (transactionType.equals(ETransactionType.SALIDA)) {
-					txtPrice.setValue(pricexMU.getSalePrice());
-					txtTax.setValue(pricexMU.getSaleTax());
-					txtPrice.setReadOnly(true);
+			if (mu != null) {
+
+				List<MeasurementUnitProduct> priceList = measurementUnitProductBll.select(mu, product);
+				if (priceList.size() > 0) {
+					muProduct = priceList.get(0);
 				}
 			}
-
-			// Binding de precio
-			Binding<DocumentDetail, String> priceBinding = binder.bind(txtPrice, DocumentDetail::getPriceStr,
-					DocumentDetail::setPriceStr);
-			columnPrice.setEditorBinding(priceBinding);
-
-			// Binding de impuesto
-			Binding<DocumentDetail, String> taxBinding = binder.bind(txtTax, DocumentDetail::getTaxStr,
-					DocumentDetail::setTaxStr);
-			columnTax.setEditorBinding(taxBinding);
-
 		} catch (Exception e) {
 			log.error(strLog + "[Exception]" + e.getMessage());
 
 		}
-		return pricexMU;
+		return muProduct;
+	}
+
+	/**
+	 * Metodo para seleccionar el precio para una UM
+	 * 
+	 * @param mus
+	 * @param product
+	 * @return
+	 */
+	private void setPriceComponent(MeasurementUnitProduct muProduct) {
+		String strLog = "[setPriceComponent]";
+		try {
+			if (muProduct != null) {
+				Binder<DocumentDetail> binder = detailGrid.getEditor().getBinder();
+				NumberField txtPrice = new NumberField();
+				NumberField txtTax = new NumberField();
+				txtTax.setReadOnly(true);
+
+				CommonsUtil.MEASUREMENT_UNIT_PRODUCT = muProduct;
+				if (transactionType.equals(ETransactionType.ENTRADA)) {
+					txtPrice.setValue(muProduct.getPurchasePrice());
+					txtTax.setValue(muProduct.getPurchaseTax());
+					txtPrice.setReadOnly(false);
+
+				} else if (transactionType.equals(ETransactionType.SALIDA)) {
+					txtPrice.setValue(muProduct.getSalePrice());
+					txtTax.setValue(muProduct.getSaleTax());
+					txtPrice.setReadOnly(true);
+				}
+
+				// Binding de precio
+				Binding<DocumentDetail, String> priceBinding = binder.bind(txtPrice, DocumentDetail::getPriceStr,
+						DocumentDetail::setPriceStr);
+				columnPrice.setEditorBinding(priceBinding);
+
+				// Binding de impuesto
+				Binding<DocumentDetail, String> taxBinding = binder.bind(txtTax, DocumentDetail::getTaxStr,
+						DocumentDetail::setTaxStr);
+				columnTax.setEditorBinding(taxBinding);
+			}
+
+		} catch (Exception e) {
+			log.error(strLog + "[Exception]" + e.getMessage());
+		}
+
 	}
 
 	/**
@@ -1787,9 +1834,9 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	 * @param price
 	 */
 	private void updatePrice(MeasurementUnitProduct muProduct, Double price) {
-		String strLog = "[setPrice] ";
+		String strLog = "[updatePrice] ";
 		try {
-			log.info(strLog + "price:" + price);
+			log.info(strLog + "[parameters] muProduct: " + muProduct + ", price: " + price);
 			if (price != null && !price.equals(0.0) && muProduct != null) {
 				MeasurementUnitProduct entity = null;
 				MeasurementUnitProduct.Builder muProductBuilder = MeasurementUnitProduct.builder(muProduct);

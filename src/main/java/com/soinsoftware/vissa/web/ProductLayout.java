@@ -783,4 +783,6 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		this.showConfirmMessage = showConfirmMessage;
 	}
 
+	
+
 }

@@ -183,7 +183,7 @@ public class CashChangeLayout extends VerticalLayout implements View {
 		try {
 			if (txtPaidAmount.getValue() != null && !txtPaidAmount.getValue().isEmpty()) {
 				invoiceLayout.setPayValue(Double.valueOf(txtPaidAmount.getValue()));
-				invoiceLayout.saveInvoiceDetail(invoiceLayout.getDocument());				
+				invoiceLayout.saveInvoice(invoiceLayout.getDocument());				
 			} else {
 				ViewHelper.showNotification("Ingrese el valor pagado", Notification.Type.WARNING_MESSAGE);
 			}
