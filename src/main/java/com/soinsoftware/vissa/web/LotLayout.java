@@ -355,13 +355,7 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 			List<MeasurementUnitProduct> muProductList = measurementUnitProductBll.select(measurementUnit);
 			for (MeasurementUnitProduct muProduct : muProductList) {
 				if (!muProduct.getMeasurementUnit().equals(measurementUnit)) {
-					MuEquivalence muEquivalence = muEquivalencesBll.select(measurementUnit,
-							muProduct.getMeasurementUnit());
-					Double sourceFactor = Double.parseDouble(muEquivalence.getMuSourceFactor());
-					Double targetFactor = Double.parseDouble(muEquivalence.getMuTargetFactor());
-					// Se calcula la equivalencia por la UM
-					Double stockByMU = (totalStock * sourceFactor) / targetFactor;
-					muProduct.setStock(stockByMU);
+					muProduct.setStock(convertMU(measurementUnit, muProduct.getMeasurementUnit()).getStock());
 					measurementUnitProductBll.save(muProduct);
 					log.info(strLog + "stock actuaizado para UM: " + muProduct);
 				}
@@ -369,6 +363,23 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 		} catch (Exception e) {
 			log.error(strLog + "[Exception]" + e.getMessage());
 		}
+	}
+
+	private MeasurementUnitProduct convertMU(MeasurementUnit muSource, MeasurementUnit muTarget) {
+		String strLog = "[convertMu]";
+		MeasurementUnitProduct muProduct = new MeasurementUnitProduct();
+		try {
+			MuEquivalence muEquivalence = muEquivalencesBll.select(muSource, muTarget);
+			Double sourceFactor = Double.parseDouble(muEquivalence.getMuSourceFactor());
+			Double targetFactor = Double.parseDouble(muEquivalence.getMuTargetFactor());
+			// Se calcula la equivalencia por la UM
+			Double muTargetStock = (totalStock * sourceFactor) / targetFactor;
+			muProduct.setStock(muTargetStock);
+
+		} catch (Exception e) {
+			log.error(strLog + "[Exception]" + e.getMessage());
+		}
+		return muProduct;
 	}
 
 	private String validateRequiredFields() {

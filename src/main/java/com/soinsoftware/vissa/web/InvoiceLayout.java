@@ -31,6 +31,7 @@ import com.soinsoftware.vissa.bll.DocumentTypeBll;
 import com.soinsoftware.vissa.bll.InventoryTransactionBll;
 import com.soinsoftware.vissa.bll.LotBll;
 import com.soinsoftware.vissa.bll.MeasurementUnitProductBll;
+import com.soinsoftware.vissa.bll.MuEquivalenceBll;
 import com.soinsoftware.vissa.bll.PaymentDocumentTypeBll;
 import com.soinsoftware.vissa.bll.PaymentMethodBll;
 import com.soinsoftware.vissa.bll.ProductBll;
@@ -49,6 +50,7 @@ import com.soinsoftware.vissa.model.InventoryTransaction;
 import com.soinsoftware.vissa.model.Lot;
 import com.soinsoftware.vissa.model.MeasurementUnit;
 import com.soinsoftware.vissa.model.MeasurementUnitProduct;
+import com.soinsoftware.vissa.model.MuEquivalence;
 import com.soinsoftware.vissa.model.PaymentDocumentType;
 import com.soinsoftware.vissa.model.PaymentMethod;
 import com.soinsoftware.vissa.model.PaymentType;
@@ -114,6 +116,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	private final CompanyBll companyBll;
 	private final PaymentDocumentTypeBll paymentDocumentTypeBll;
 	private final MeasurementUnitProductBll measurementUnitProductBll;
+	private final MuEquivalenceBll muEquivalencesBll;
 
 	// Components
 	private TextField txtDocNumFilter;
@@ -162,6 +165,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	private Column<DocumentDetail, String> columnPrice;
 	private Column<DocumentDetail, String> columnDiscount;
 	private Column<DocumentDetail, MeasurementUnit> columnUM;
+	private Column<DocumentDetail, MeasurementUnitProduct> columnUMProd;
 	private FooterRow footer;
 
 	private PermissionUtil permissionUtil;
@@ -194,6 +198,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		companyBll = CompanyBll.getInstance();
 		paymentDocumentTypeBll = PaymentDocumentTypeBll.getInstance();
 		measurementUnitProductBll = MeasurementUnitProductBll.getInstance();
+		muEquivalencesBll = MuEquivalenceBll.getInstance();
 		lotBll = LotBll.getInstance();
 		document = new Document();
 		itemsList = new ArrayList<DocumentDetail>();
@@ -218,7 +223,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			title = "Venta";
 		}
 		Label tittle = new Label(title);
-		tittle.addStyleName(ValoTheme.LABEL_H1);
+		tittle.addStyleName(ValoTheme.LABEL_H3);
 		addComponent(tittle);
 
 		// Crear el generador de facturas
@@ -306,8 +311,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	private Panel buildFilterPanel() {
 		HorizontalLayout layout = ViewHelper.buildHorizontalLayout(true, true);
 
-		txtDocNumFilter = new TextField("Número de factura");
-
+		txtDocNumFilter = new TextField("Buscar por N° de factura");
 		txtDocNumFilter.addValueChangeListener(e -> searchDocument(txtDocNumFilter.getValue()));
 		txtDocNumFilter.setStyleName(ValoTheme.TEXTFIELD_TINY);
 
@@ -339,18 +343,18 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			getNextDocumentNumber(cbDocumentType.getValue());
 		});
 
-		txtDocNumber = new TextField("Número de factura");
+		txtDocNumber = new TextField("N° de factura");
 		txtDocNumber.setReadOnly(true);
 		txtDocNumber.setStyleName(ValoTheme.TEXTFIELD_TINY);
+		txtDocNumber.setWidth("120px");
 
 		txtResolution = new TextField("Resolución de factura");
 		txtResolution.setStyleName(ValoTheme.TEXTFIELD_TINY);
 		txtResolution.setReadOnly(true);
 		txtResolution.setValue(company.getInvoiceResolution());
 
-		txtReference = new TextField("Referencia");
+		txtReference = new TextField("Referencia proveedor");
 		txtReference.setStyleName(ValoTheme.TEXTFIELD_TINY);
-		// txtReference.setWidth("40%");
 
 		String title = "";
 		if (transactionType.equals(ETransactionType.ENTRADA)) {
@@ -375,6 +379,17 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		dtfDocumentDate.setRequiredIndicatorVisible(true);
 		dtfDocumentDate.setWidth("184px");
 
+		cbDocumentStatus = new ComboBox<DocumentStatus>("Estado de la factura");
+		cbDocumentStatus.setEmptySelectionAllowed(false);
+		cbDocumentStatus.setEmptySelectionCaption("Seleccione");
+		ListDataProvider<DocumentStatus> docStatusDataProv = new ListDataProvider<>(docStatusBll.selectAll());
+		cbDocumentStatus.setDataProvider(docStatusDataProv);
+		cbDocumentStatus.setItemCaptionGenerator(DocumentStatus::getName);
+		cbDocumentStatus.setSelectedItem(docStatusBll.select("Nueva").get(0));
+		cbDocumentStatus.setStyleName(ValoTheme.COMBOBOX_TINY);
+		cbDocumentStatus.setReadOnly(true);
+		cbDocumentStatus.setWidth("150px");
+
 		cbPaymentType = new ComboBox<>("Forma de pago");
 		cbPaymentType.setEmptySelectionAllowed(false);
 		cbPaymentType.setEmptySelectionCaption("Seleccione");
@@ -384,6 +399,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		txtPaymentTerm = new TextField("Plazo en días");
 		txtPaymentTerm.setStyleName(ValoTheme.TEXTFIELD_TINY);
 		txtPaymentTerm.setReadOnly(true);
+		txtPaymentTerm.setWidth("120px");
 
 		cbPaymentType.addValueChangeListener(e -> {
 			if (cbPaymentType.getSelectedItem().get().getPaymentType().getCode()
@@ -394,11 +410,12 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			}
 		});
 
-		dtfExpirationDate = new DateTimeField("Fecha de Vencimiento");
+		dtfExpirationDate = new DateTimeField("Fecha de vencimiento");
 		dtfExpirationDate.setReadOnly(true);
 		dtfExpirationDate.setDateFormat(Commons.FORMAT_DATE_TIME);
 		dtfExpirationDate.setStyleName(ValoTheme.DATEFIELD_TINY);
 		dtfExpirationDate.setWidth("184px");
+		dtfExpirationDate.setReadOnly(true);
 
 		txtPaymentTerm.addValueChangeListener(e -> {
 			setExpirationDate(txtPaymentTerm.getValue());
@@ -413,16 +430,6 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		cbPaymentMethod.setItemCaptionGenerator(PaymentMethod::getName);
 		cbPaymentMethod.setStyleName(ValoTheme.COMBOBOX_TINY);
 
-		cbDocumentStatus = new ComboBox<DocumentStatus>("Estado de la factura");
-		cbDocumentStatus.setEmptySelectionAllowed(false);
-		cbDocumentStatus.setEmptySelectionCaption("Seleccione");
-		ListDataProvider<DocumentStatus> docStatusDataProv = new ListDataProvider<>(docStatusBll.selectAll());
-		cbDocumentStatus.setDataProvider(docStatusDataProv);
-		cbDocumentStatus.setItemCaptionGenerator(DocumentStatus::getName);
-		cbDocumentStatus.setSelectedItem(docStatusBll.select("Nueva").get(0));
-		cbDocumentStatus.setStyleName(ValoTheme.COMBOBOX_TINY);
-		cbDocumentStatus.setReadOnly(true);
-
 		txtTotal = new TextField("Total Factura");
 		txtTotal.setReadOnly(true);
 		txtTotal.setStyleName(ValoTheme.TEXTFIELD_TINY);
@@ -436,6 +443,8 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		headerLayout1.addComponents(cbDocumentType, txtDocNumber);
 		if (transactionType.equals(ETransactionType.SALIDA)) {
 			headerLayout1.addComponents(txtResolution);
+		} else {
+			headerLayout1.addComponents(txtReference);
 		}
 
 		if (transactionType.equals(ETransactionType.SALIDA)) {
@@ -444,17 +453,14 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			getNextDocumentNumber(docType);
 		}
 
-		headerLayout1.addComponents(txtReference, txtPerson, searchPersonBtn);
-
-		HorizontalLayout headerLayout2 = ViewHelper.buildHorizontalLayout(false, false);
-		headerLayout2.addComponents(dtfDocumentDate, cbPaymentType, txtPaymentTerm, dtfExpirationDate, cbPaymentMethod);
-
+		headerLayout1.addComponents(txtPerson, searchPersonBtn, dtfDocumentDate, cbDocumentStatus);
 		headerLayout1.setComponentAlignment(searchPersonBtn, Alignment.BOTTOM_CENTER);
 
-		HorizontalLayout headerLayout3 = ViewHelper.buildHorizontalLayout(false, false);
-		headerLayout3.addComponents(cbDocumentStatus, txtTotal, txtTotalTax);
+		HorizontalLayout headerLayout2 = ViewHelper.buildHorizontalLayout(false, false);
+		headerLayout2.addComponents(cbPaymentType, txtPaymentTerm, dtfExpirationDate, cbPaymentMethod, txtTotal,
+				txtTotalTax);
 
-		verticalLayout.addComponents(headerLayout1, headerLayout2, headerLayout3);
+		verticalLayout.addComponents(headerLayout1, headerLayout2);
 		verticalLayout.setWidth("100%");
 
 		return ViewHelper.buildPanel(null, verticalLayout);
@@ -507,6 +513,10 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 		// Columna Unidad de medida editable
 		columnUM = detailGrid.addColumn(DocumentDetail::getMeasurementUnit).setCaption("Unidad de medida");
+
+		// Columna Unidad de medida Product
+		columnUMProd = detailGrid.addColumn(DocumentDetail::getMeasurementUnitProduct).setCaption("Unidad de medida")
+				.setHidden(true);
 
 		// Columna Precio editable
 		columnPrice = detailGrid.addColumn(DocumentDetail::getPriceStr).setCaption("Precio");
@@ -631,19 +641,30 @@ public class InvoiceLayout extends VerticalLayout implements View {
 					DocumentDetailLot detailLot = detailLotMap.get(currentDetail);
 					log.info(strLog + "detailLot:" + detailLot);
 					if (detailLot != null) {
-						if (transactionType.equals(ETransactionType.SALIDA) && qty > detailLot.getInitialStockLot()) {
-							message = "Cantidad ingresada es mayor al stock del lote producto";
+						if (transactionType.equals(ETransactionType.SALIDA)
+								&& qty > currentDetail.getMeasurementUnitProduct().getStock()) {
+							message = "Cantidad ingresada es mayor al stock del producto";
 							throw new Exception(message);
 						} else {
-							Double finalStock = 0.0;
+							Double initialStockLot = 0.0;
+							if (transactionType.equals(ETransactionType.SALIDA) && !currentDetail.getMeasurementUnit()
+									.equals(detailLot.getLot().getMeasurementUnit())) {
+								initialStockLot = convertQuantityMU(detailLot.getInitialStockLot(),
+										currentDetail.getMeasurementUnit(), detailLot.getLot().getMeasurementUnit());
+								qty = convertQuantityMU(qty, currentDetail.getMeasurementUnit(),
+										detailLot.getLot().getMeasurementUnit());
+							}
+
+							Double finalStockLot = 0.0;
 							if (transactionType.equals(ETransactionType.ENTRADA)) {
-								finalStock = detailLot.getInitialStockLot() + qty;
+								finalStockLot = qty;
 							} else if (transactionType.equals(ETransactionType.SALIDA)) {
-								finalStock = detailLot.getInitialStockLot() - qty;
+								finalStockLot = initialStockLot - qty;
 							}
 							DocumentDetailLot detailLotTmp = DocumentDetailLot.builder(detailLot).quantity(qty)
-									.finalStockLot(finalStock).build();
-							log.info(strLog + "currentDetail again:" + currentDetail);
+									.finalStockLot(finalStockLot).build();
+
+							log.info(strLog + "currentDetail actualizado:" + currentDetail);
 							log.info(strLog + "detailLotTmp:" + detailLotTmp);
 							detailLotMap.put(currentDetail, detailLotTmp);
 						}
@@ -662,13 +683,31 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			message = "Formato de cantidad no valido";
 		} catch (Exception e) {
 			log.error(strLog + "[Exception]" + e.getMessage());
+			
 			message = e.getMessage();
+			e.printStackTrace();
 		} finally {
 			log.info("Correct: " + correct);
 			if (!correct && (message != null && !message.isEmpty())) {
 				ViewHelper.showNotification(message, Notification.Type.ERROR_MESSAGE);
 			}
 		}
+	}
+
+	private Double convertQuantityMU(Double quantity, MeasurementUnit muSource, MeasurementUnit muTarget) {
+		String strLog = "[convertQuantityMU]";
+		Double muTargetStock = 0.0;
+		try {
+			MuEquivalence muEquivalence = muEquivalencesBll.select(muSource, muTarget);
+			Double sourceFactor = Double.parseDouble(muEquivalence.getMuSourceFactor());
+			Double targetFactor = Double.parseDouble(muEquivalence.getMuTargetFactor());
+			// Se calcula la equivalencia por la UM
+			muTargetStock = (quantity * sourceFactor) / targetFactor;
+
+		} catch (Exception e) {
+			log.error(strLog + "[Exception]" + e.getMessage());
+		}
+		return muTargetStock;
 	}
 
 	/**
@@ -946,7 +985,8 @@ public class InvoiceLayout extends VerticalLayout implements View {
 				MeasurementUnit mu = muList.get(0);
 				docDetail.setMeasurementUnit(mu);
 				// Setear el precio e impuesto
-				MeasurementUnitProduct priceXMu = selectMuXProduct(mu, docDetail.getProduct());
+				MeasurementUnitProduct priceXMu = selectMuXProduct(docDetail.getMeasurementUnit(),
+						docDetail.getProduct());
 				setPriceComponent(priceXMu);
 				docDetail.setMeasurementUnitProduct(priceXMu);
 
@@ -981,10 +1021,16 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	 */
 
 	private void addLotToDetail(DocumentDetail docDetail) {
-		// Si hay lote, se asocia al registro de detail
+		// Se asocia el lote al registro de detail
 		if (selectedLot != null) {
+			// Para las compras el stock inicial del lote es 0, pq es nuevo
+			Double quantity = 0.0;
+
+			if (transactionType.equals(ETransactionType.SALIDA)) {
+				quantity = selectedLot.getQuantity();
+			}
 			DocumentDetailLot detailLot = DocumentDetailLot.builder().documentDetail(docDetail).lot(selectedLot)
-					.initialStockLot(selectedLot.getQuantity()).build();
+					.initialStockLot(quantity).build();
 			detailLotMap.put(docDetail, detailLot);
 		}
 	}
@@ -1193,8 +1239,9 @@ public class InvoiceLayout extends VerticalLayout implements View {
 				// Detail sin relacion al documento
 				DocumentDetail detailTmp = detailBuilder.product(detail.getProduct()).quantity(detail.getQuantity())
 						.description(detail.getDescription()).subtotal(detail.getSubtotal())
-						.measurementUnit(detail.getMeasurementUnit()).price(detail.getPrice()).tax(detail.getTax())
-						.discount(detail.getDiscount()).build();
+						.measurementUnit(detail.getMeasurementUnit())
+						.measurementUnitProduct(detail.getMeasurementUnitProduct()).price(detail.getPrice())
+						.tax(detail.getTax()).discount(detail.getDiscount()).build();
 
 				// Relacion detail con lote. Se busca DetailLot a partir del Detail
 				DocumentDetailLot detailLot = detailLotMap.get(detailTmp);
@@ -1207,36 +1254,59 @@ public class InvoiceLayout extends VerticalLayout implements View {
 					detailLot = DocumentDetailLot.builder(detailLot).documentDetail(detail).build();
 				}
 
-				// Crear objeto de inventario
-				InventoryTransaction.Builder invBuilder = InventoryTransaction.builder();
+				// Consultat UM x Product
+				MeasurementUnitProduct muProduct = detail.getMeasurementUnitProduct();
 
-				MeasurementUnitProduct muProduct = selectMuXProduct(detail.getMeasurementUnit(), detail.getProduct());
-				// Se actualiza stock en el movimiento de inventario
-				Double stock = 0.0;
-				if (transactionType.equals(ETransactionType.ENTRADA)) {
-					stock = lotLayout.getTotalStock();
-				} else {
-					stock = muProduct.getStock();
-				}
+				// El stock equivalente en la UM
+				Double initialStock = muProduct.getStock() != null ? muProduct.getStock() : 0;
+				log.info(strLog + "initialStock: " + initialStock);
 
-				Double initialStock = stock != null ? stock : 0;
-				log.info(strLog + "initialStock:" + initialStock);
-				Double finalStock = 0.0;
 				Double quantity = Double.parseDouble(detail.getQuantity());
 				log.info(strLog + "quantity:" + quantity);
 
+				Double finalStock = 0.0;
 				if (transactionType.equals(ETransactionType.ENTRADA)) {
-					finalStock = initialStock != 0 ? initialStock + quantity : quantity;
+					finalStock =  quantity;
 				} else if (transactionType.equals(ETransactionType.SALIDA)) {
 					finalStock = initialStock != 0 ? initialStock - quantity : quantity;
 				}
+
 				log.info(strLog + "finalStock:" + finalStock);
 
 				// Actualizar cantidad y stock final de detailLot
-				detailLot.setQuantity(quantity);
-				detailLot.setFinalStockLot(finalStock);
 
-				// Movimiento de inventario
+				log.info(strLog + "Lote a actualizar stock:" + selectedLot);
+				Lot lotTmp = detailLot.getLot();
+
+				Double initialStockLot = 0.0;
+				Double quantityLot = quantity;
+				if (transactionType.equals(ETransactionType.SALIDA)
+						&& !detail.getMeasurementUnit().equals(detailLot.getLot().getMeasurementUnit())) {// Si las UM
+																											// son
+																											// diferentes
+
+					initialStockLot = convertQuantityMU(detailLot.getInitialStockLot(), detail.getMeasurementUnit(),
+							lotTmp.getMeasurementUnit());
+					quantityLot = convertQuantityMU(quantityLot, detail.getMeasurementUnit(),
+							lotTmp.getMeasurementUnit());
+				}
+				detailLot.setQuantity(quantityLot);
+
+				Double finalStockLot = 0.0;
+				if (transactionType.equals(ETransactionType.ENTRADA)) {
+					finalStockLot = quantityLot;
+				} else if (transactionType.equals(ETransactionType.SALIDA)) {
+					finalStockLot = initialStockLot - quantityLot;
+				}
+
+				log.info(strLog + "finalStockLot:" + finalStockLot);
+				detailLot.setFinalStockLot(finalStockLot);
+
+				lotTmp.setQuantity(detailLot.getFinalStockLot());
+				lotTmp.setNew(false);
+
+				// Crear objeto de inventario
+				InventoryTransaction.Builder invBuilder = InventoryTransaction.builder();
 				InventoryTransaction inventoryTransaction = invBuilder.product(detail.getProduct())
 						.transactionType(transactionType).initialStock(initialStock).quantity(quantity)
 						.finalStock(finalStock).document(documentEntity).build();
@@ -1245,32 +1315,6 @@ public class InvoiceLayout extends VerticalLayout implements View {
 				Product product = productBll.select(detail.getProduct().getCode());
 				product.setStock(finalStock);
 				product.setStockDate(new Date());
-
-				// Actualizar lotes del producto
-				/*
-				 * List<Lot> lotList = lotBll.select(detail.getProduct()); Lot lot = null; if
-				 * (lotList.size() > 0) { lot = lotList.get(0); log.info(strLog +
-				 * "Lote más pronto a vencer:" + lot.getExpirationDate());
-				 * 
-				 * Double newLotStock = 0.0; if
-				 * (transactionType.equals(ETransactionType.ENTRADA)) { newLotStock =
-				 * lot.getQuantity() + quantity; } else if
-				 * (transactionType.equals(ETransactionType.SALIDA)) { newLotStock =
-				 * lot.getQuantity() - quantity; } lot.setQuantity(newLotStock); }
-				 */
-
-				log.info(strLog + "Lote a actualizar stock:" + selectedLot);
-
-				Double newLotStock = 0.0;
-				Lot lotTmp = detailLot.getLot();
-				if (transactionType.equals(ETransactionType.ENTRADA)) {
-					newLotStock = lotTmp.getQuantity() + quantity;
-				} else if (transactionType.equals(ETransactionType.SALIDA)) {
-					newLotStock = lotTmp.getQuantity() - quantity;
-				}
-				log.info(strLog + "newLotStock: " + newLotStock);
-				lotTmp.setQuantity(newLotStock);
-				lotTmp.setNew(false);
 
 				try {
 					// Guardar relación item factura con lote
@@ -1826,6 +1870,13 @@ public class InvoiceLayout extends VerticalLayout implements View {
 				Binding<DocumentDetail, String> taxBinding = binder.bind(txtTax, DocumentDetail::getTaxStr,
 						DocumentDetail::setTaxStr);
 				columnTax.setEditorBinding(taxBinding);
+
+				// Binding de MU product
+				ComboBox<MeasurementUnitProduct> cbMeasurementUnitProduct = new ComboBox<>();
+				cbMeasurementUnitProduct.setValue(muProduct);
+				Binding<DocumentDetail, MeasurementUnitProduct> muProductBinding = binder.bind(cbMeasurementUnitProduct,
+						DocumentDetail::getMeasurementUnitProduct, DocumentDetail::setMeasurementUnitProduct);
+				columnUMProd.setEditorBinding(muProductBinding);
 			}
 
 		} catch (Exception e) {
