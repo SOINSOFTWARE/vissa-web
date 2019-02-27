@@ -203,9 +203,9 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		priceGrid.addColumn(MeasurementUnitProduct::getPurchaseTaxStr).setCaption("% Impuesto compra")
 				.setEditorComponent(txtPurchaseTax, MeasurementUnitProduct::setPurchaseTaxStr);
 
-		NumberField txtUtility = new NumberField();
-		priceGrid.addColumn(MeasurementUnitProduct::getUtilityStr).setCaption("Utilidad ($)")
-				.setEditorComponent(txtUtility, MeasurementUnitProduct::setUtilityStr);
+		NumberField txtUtilityPrc = new NumberField();
+		priceGrid.addColumn(MeasurementUnitProduct::getUtilityPrcStr).setCaption("% Utilidad")
+				.setEditorComponent(txtUtilityPrc, MeasurementUnitProduct::setUtilityPrcStr);
 
 		priceGrid.addColumn(MeasurementUnitProduct::getSalePrice).setCaption("Precio de venta");
 		NumberField txtSaleTax = new NumberField();
@@ -216,15 +216,6 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 
 		priceGrid.getEditor().setEnabled(true);
 
-		/*
-		 * txtPurchasePrice.addValueChangeListener(e -> { updateSalePrice(); });
-		 * txtPurchaseTax.addValueChangeListener(e -> { updateSalePrice(); });
-		 * 
-		 * txtUtility.addValueChangeListener(e -> { updateSalePrice(); });
-		 * 
-		 * txtSalePrice.addValueChangeListener(e -> { updateSalePriceWithTax(); });
-		 * txtSaleTax.addValueChangeListener(e -> { updateSalePriceWithTax(); });
-		 */
 		layout.addComponents(newPriceBtn, priceGrid);
 
 		fillPriceGridData(product);
@@ -782,7 +773,5 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 	public void setShowConfirmMessage(boolean showConfirmMessage) {
 		this.showConfirmMessage = showConfirmMessage;
 	}
-
-	
 
 }

@@ -647,7 +647,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 							throw new Exception(message);
 						} else {
 							Double initialStockLot = 0.0;
-							// Si la UM del item es diferente a la del lote
+							// Si la UM del item es diferente a la del lote, se convierte
 							if (transactionType.equals(ETransactionType.SALIDA) && !currentDetail.getMeasurementUnit()
 									.equals(detailLot.getLot().getMeasurementUnit())) {
 								qty = convertMU(qty, currentDetail.getMeasurementUnit(),
@@ -702,7 +702,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 				Double sourceFactor = Double.parseDouble(muEquivalence.getMuSourceFactor());
 				Double targetFactor = Double.parseDouble(muEquivalence.getMuTargetFactor());
 				// Se calcula la equivalencia por la UM
-				muTargetStock = (quantity * sourceFactor) / targetFactor;
+				muTargetStock = (quantity * sourceFactor) * targetFactor;
 			}
 
 		} catch (Exception e) {
@@ -1260,22 +1260,27 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 				// El stock equivalente en la UM
 				Double initialStock = muProduct.getStock() != null ? muProduct.getStock() : 0;
-				log.info(strLog + "initialStock: " + initialStock);
+				log.info(strLog + "initialStock ingresado: " + initialStock);
 
 				Double quantity = Double.parseDouble(detail.getQuantity());
-				log.info(strLog + "quantity:" + quantity);
+				log.info(strLog + "quantity ingresado:" + quantity);
 
-				Double finalStockMU = 0.0;
+				 Double finalStockMU = initialStock - quantity;
+				 
 				// Si la UM es diferente a la UM principal se debe buscar la Equivalencia
 				if (!detail.getMeasurementUnit().equals(detail.getProduct().getMeasurementUnit())) {
 					initialStock = convertMU(initialStock, detail.getMeasurementUnit(),
 							detail.getProduct().getMeasurementUnit());
 					quantity = convertMU(quantity, detail.getMeasurementUnit(),
 							detail.getProduct().getMeasurementUnit());
-				}else {
-					finalStockMU = initialStock - quantity;
-				}
+				} 
+					
+				
 
+				log.info(strLog + "initialStock del producto en UM pral. : " + initialStock);
+				log.info(strLog + "quantity del producto en UM pral. :" + quantity);
+				log.info(strLog + "finalStockMU :" + finalStockMU);
+				
 				Double finalStock = 0.0;
 				if (transactionType.equals(ETransactionType.ENTRADA)) {
 					finalStock = quantity;
@@ -1300,17 +1305,17 @@ public class InvoiceLayout extends VerticalLayout implements View {
 							lotTmp.getMeasurementUnit());
 
 				}
-			//	detailLot.setQuantity(quantityLot);
+				// detailLot.setQuantity(quantityLot);
 
 				Double finalStockLot = 0.0;
 				if (transactionType.equals(ETransactionType.ENTRADA)) {
 					finalStockLot = quantityLot;
 				} else if (transactionType.equals(ETransactionType.SALIDA)) {
-					finalStockLot = initialStockLot - quantityLot;
+					finalStockLot = lotTmp.getQuantity() - quantityLot;
 				}
 
 				log.info(strLog + "finalStockLot:" + finalStockLot);
-			//	detailLot.setFinalStockLot(finalStockLot);
+				// detailLot.setFinalStockLot(finalStockLot);
 
 				lotTmp.setQuantity(detailLot.getFinalStockLot());
 				lotTmp.setNew(false);
@@ -1348,13 +1353,12 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 					log.info(strLog + "lot saved:" + product);
 
-				
 					// Actualizar precio del producto
 					muProduct.setStock(finalStockMU);
 					updatePrice(muProduct, detail.getPrice());
-					
-					//Actualizar stock de cada UM asociada al producto
-					updateStockByMU(detail.getProduct(),muProduct);
+
+					// Actualizar stock de cada UM asociada al producto
+					updateStockByMU(detail.getProduct(), muProduct);
 
 					closeWindow(cashChangeWindow);
 				} catch (ModelValidationException ex) {
@@ -1909,11 +1913,12 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	private void updateStockByMU(Product product, MeasurementUnitProduct paramMuProduct) {
 		String strLog = "[updateStockByMU] ";
 		try {
-			
+
 			List<MeasurementUnitProduct> muProductList = measurementUnitProductBll.select(product);
 			for (MeasurementUnitProduct muProductObj : muProductList) {
 				if (!muProductObj.getMeasurementUnit().equals(paramMuProduct.getMeasurementUnit())) {
-					Double newStock = convertMU(paramMuProduct.getStock(), paramMuProduct.getMeasurementUnit(), muProductObj.getMeasurementUnit());
+					Double newStock = convertMU(paramMuProduct.getStock(), paramMuProduct.getMeasurementUnit(),
+							muProductObj.getMeasurementUnit());
 					muProductObj.setStock(newStock);
 				} else {
 					muProductObj.setStock(paramMuProduct.getStock());
