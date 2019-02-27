@@ -267,19 +267,26 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 
 	@Override
 	protected void fillGridData() {
+		String strLog = "[fillGridData]";
+		try {
+			if (product != null) {
+				dataProvider = new ListDataProvider<>(lotBll.select(product));
+			} else if (warehouse != null) {
+				dataProvider = new ListDataProvider<>(lotBll.select(warehouse));
+			}
+			if (dataProvider != null) {
+				filterLotDataProvider = dataProvider.withConfigurableFilter();
+				lotGrid.setDataProvider(filterLotDataProvider);
+			}
+			if (dataProvider != null) {
+				dataProvider.addDataProviderListener(
+						event -> footer.getCell(columnQuantity).setHtml(calculateTotalQuantity(dataProvider)));
+				refreshGrid();
+			}
 
-		if (product != null) {
-			dataProvider = new ListDataProvider<>(lotBll.select(product));
-		} else if (warehouse != null) {
-			dataProvider = new ListDataProvider<>(lotBll.select(warehouse));
+		} catch (Exception e) {
+			log.error(strLog + "[Exception]" + e.getMessage());
 		}
-		if (dataProvider != null) {
-			filterLotDataProvider = dataProvider.withConfigurableFilter();
-			lotGrid.setDataProvider(filterLotDataProvider);
-		}
-		dataProvider.addDataProviderListener(
-				event -> footer.getCell(columnQuantity).setHtml(calculateTotalQuantity(dataProvider)));
-		refreshGrid();
 	}
 
 	private void fillMeasurementUnit() {
@@ -381,7 +388,7 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 				Double sourceFactor = Double.parseDouble(muEquivalence.getMuSourceFactor());
 				Double targetFactor = Double.parseDouble(muEquivalence.getMuTargetFactor());
 				// Se calcula la equivalencia por la UM
-				stock = (quantity * sourceFactor) / targetFactor;
+				stock = (quantity * sourceFactor) * targetFactor;
 			} else {
 				String msg = " No hay equivalencias configuradas para las UM : " + muSource + " y " + muTarget;
 				log.info(strLog + msg);
@@ -450,7 +457,9 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 	}
 
 	private void refreshGrid() {
-		dataProvider.setFilter(lot -> filterGrid(lot));
+		if (dataProvider != null) {
+			dataProvider.setFilter(lot -> filterGrid(lot));
+		}
 	}
 
 	private boolean filterGrid(Lot lot) {

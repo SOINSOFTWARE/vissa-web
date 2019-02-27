@@ -611,9 +611,14 @@ public class InvoiceLayout extends VerticalLayout implements View {
 				selectedProduct = null;
 				log.info(strLog + "[parameters] code: " + code);
 				Product product = productBll.select(code);
-				selectProduct(product);
+				if (product != null) {
+					selectProduct(product);
+				} else {
+					buildProductWindow(product);
+				}
 			}
 		} catch (Exception e) {
+			e.printStackTrace();
 			log.error(strLog + "[Exception]" + e.getMessage());
 		}
 	}
@@ -887,7 +892,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	/**
 	 * Metodo que construye la venta para buscar productos
 	 */
-	private void buildProductWindow() {
+	private void buildProductWindow(Product product) {
 		selectedProduct = null;
 		selectedLot = null;
 
@@ -1265,22 +1270,20 @@ public class InvoiceLayout extends VerticalLayout implements View {
 				Double quantity = Double.parseDouble(detail.getQuantity());
 				log.info(strLog + "quantity ingresado:" + quantity);
 
-				 Double finalStockMU = initialStock - quantity;
-				 
+				Double finalStockMU = initialStock - quantity;
+
 				// Si la UM es diferente a la UM principal se debe buscar la Equivalencia
 				if (!detail.getMeasurementUnit().equals(detail.getProduct().getMeasurementUnit())) {
 					initialStock = convertMU(initialStock, detail.getMeasurementUnit(),
 							detail.getProduct().getMeasurementUnit());
 					quantity = convertMU(quantity, detail.getMeasurementUnit(),
 							detail.getProduct().getMeasurementUnit());
-				} 
-					
-				
+				}
 
 				log.info(strLog + "initialStock del producto en UM pral. : " + initialStock);
 				log.info(strLog + "quantity del producto en UM pral. :" + quantity);
 				log.info(strLog + "finalStockMU :" + finalStockMU);
-				
+
 				Double finalStock = 0.0;
 				if (transactionType.equals(ETransactionType.ENTRADA)) {
 					finalStock = quantity;
@@ -1305,7 +1308,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 							lotTmp.getMeasurementUnit());
 
 				}
-				// detailLot.setQuantity(quantityLot);
+				detailLot.setQuantity(quantityLot);
 
 				Double finalStockLot = 0.0;
 				if (transactionType.equals(ETransactionType.ENTRADA)) {
@@ -1315,7 +1318,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 				}
 
 				log.info(strLog + "finalStockLot:" + finalStockLot);
-				// detailLot.setFinalStockLot(finalStockLot);
+				 detailLot.setFinalStockLot(finalStockLot);
 
 				lotTmp.setQuantity(detailLot.getFinalStockLot());
 				lotTmp.setNew(false);
@@ -1923,7 +1926,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 				} else {
 					muProductObj.setStock(paramMuProduct.getStock());
 				}
-				measurementUnitProductBll.save(muProductObj);
+				measurementUnitProductBll.save(muProductObj, false);
 
 				log.info(strLog + " stock actualizado para UM: " + paramMuProduct);
 			}

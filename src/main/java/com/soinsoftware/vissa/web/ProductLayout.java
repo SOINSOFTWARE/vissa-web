@@ -92,6 +92,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 	private TextField txtStockDate;
 
 	private boolean listMode;
+	private String mode;
 	private TableSequence tableSequence;
 
 	private ConfigurableFilterDataProvider<Product, Void, SerializablePredicate<Product>> filterProductDataProvider;
@@ -111,6 +112,21 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		tableSequenceBll = TableSequenceBll.getInstance();
 		if (listMode) {
 			addListTab();
+		}
+	}
+
+	public ProductLayout(String mode, Product product) throws IOException {
+		super("Productos", KEY_PRODUCTS);
+		productBll = ProductBll.getInstance();
+		categoryBll = ProductCategoryBll.getInstance();
+		typeBll = ProductTypeBll.getInstance();
+		measurementUnitBll = MeasurementUnitBll.getInstance();
+		measurementUnitProductBll = MeasurementUnitProductBll.getInstance();
+		tableSequenceBll = TableSequenceBll.getInstance();
+		this.mode = mode;
+		if (mode.equals("new")) {
+			addListTab();
+			showEditionTab(product, "", null);
 		}
 	}
 
@@ -162,6 +178,13 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		productGrid.addColumn(Product::getName).setCaption("Nombre");
 		productGrid.addColumn(Product::getSalePrice).setCaption("Precio de venta");
 		productGrid.addColumn(Product::getStock).setCaption("Stock");
+		productGrid.addColumn(product -> {
+			if (product != null && product.getMeasurementUnit() != null) {
+				return product.getMeasurementUnit().getName();
+			} else {
+				return "";
+			}
+		}).setCaption("Stock");
 
 		layout.addComponent(ViewHelper.buildPanel(null, productGrid));
 		fillGridData();
