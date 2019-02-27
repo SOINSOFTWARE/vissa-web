@@ -230,6 +230,7 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 		cbMeasurementUnit.setRequiredIndicatorVisible(true);
 		fillMeasurementUnit();
 		cbMeasurementUnit.setItemCaptionGenerator(MeasurementUnit::getName);
+		cbMeasurementUnit.setValue(entity != null ? entity.getMeasurementUnit() : null);
 
 		Button muNewBtn = new Button("Nueva unidad de medida");
 		muNewBtn.addStyleNames(ValoTheme.BUTTON_LINK, ValoTheme.BUTTON_TINY);
@@ -294,7 +295,7 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 		try {
 			String message = validateRequiredFields();
 			if (!message.isEmpty()) {
-				throw new Exception(message);
+				ViewHelper.showNotification(message, Notification.Type.ERROR_MESSAGE);
 			} else {
 				Lot.Builder lotBuilder = null;
 				if (entity == null) {
@@ -352,34 +353,45 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 	private void updateStockByMU(MeasurementUnit measurementUnit) {
 		String strLog = "[updateStockByMU] ";
 		try {
-			List<MeasurementUnitProduct> muProductList = measurementUnitProductBll.select(measurementUnit);
+			List<MeasurementUnitProduct> muProductList = measurementUnitProductBll.select(product);
 			for (MeasurementUnitProduct muProduct : muProductList) {
 				if (!muProduct.getMeasurementUnit().equals(measurementUnit)) {
-					muProduct.setStock(convertMU(measurementUnit, muProduct.getMeasurementUnit()).getStock());
-					measurementUnitProductBll.save(muProduct);
-					log.info(strLog + "stock actuaizado para UM: " + muProduct);
+					Double newStock = convertMU(totalStock, measurementUnit, muProduct.getMeasurementUnit());
+					muProduct.setStock(newStock);
+
+				} else {
+					muProduct.setStock(totalStock);
 				}
+				measurementUnitProductBll.save(muProduct);
+
+				log.info(strLog + " stock actuaizado para UM: " + muProduct);
 			}
 		} catch (Exception e) {
 			log.error(strLog + "[Exception]" + e.getMessage());
 		}
 	}
 
-	private MeasurementUnitProduct convertMU(MeasurementUnit muSource, MeasurementUnit muTarget) {
+	private Double convertMU(Double quantity, MeasurementUnit muSource, MeasurementUnit muTarget) {
 		String strLog = "[convertMu]";
-		MeasurementUnitProduct muProduct = new MeasurementUnitProduct();
+		Double stock = 0.0;
 		try {
+
 			MuEquivalence muEquivalence = muEquivalencesBll.select(muSource, muTarget);
-			Double sourceFactor = Double.parseDouble(muEquivalence.getMuSourceFactor());
-			Double targetFactor = Double.parseDouble(muEquivalence.getMuTargetFactor());
-			// Se calcula la equivalencia por la UM
-			Double muTargetStock = (totalStock * sourceFactor) / targetFactor;
-			muProduct.setStock(muTargetStock);
+			if (muEquivalence != null) {
+				Double sourceFactor = Double.parseDouble(muEquivalence.getMuSourceFactor());
+				Double targetFactor = Double.parseDouble(muEquivalence.getMuTargetFactor());
+				// Se calcula la equivalencia por la UM
+				stock = (quantity * sourceFactor) / targetFactor;
+			} else {
+				String msg = " No hay equivalencias configuradas para las UM : " + muSource + " y " + muTarget;
+				log.info(strLog + msg);
+				ViewHelper.showNotification(msg, Notification.Type.ERROR_MESSAGE);
+			}
 
 		} catch (Exception e) {
 			log.error(strLog + "[Exception]" + e.getMessage());
 		}
-		return muProduct;
+		return stock;
 	}
 
 	private String validateRequiredFields() {

@@ -647,11 +647,10 @@ public class InvoiceLayout extends VerticalLayout implements View {
 							throw new Exception(message);
 						} else {
 							Double initialStockLot = 0.0;
+							// Si la UM del item es diferente a la del lote
 							if (transactionType.equals(ETransactionType.SALIDA) && !currentDetail.getMeasurementUnit()
 									.equals(detailLot.getLot().getMeasurementUnit())) {
-								initialStockLot = convertQuantityMU(detailLot.getInitialStockLot(),
-										currentDetail.getMeasurementUnit(), detailLot.getLot().getMeasurementUnit());
-								qty = convertQuantityMU(qty, currentDetail.getMeasurementUnit(),
+								qty = convertMU(qty, currentDetail.getMeasurementUnit(),
 										detailLot.getLot().getMeasurementUnit());
 							}
 
@@ -659,7 +658,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 							if (transactionType.equals(ETransactionType.ENTRADA)) {
 								finalStockLot = qty;
 							} else if (transactionType.equals(ETransactionType.SALIDA)) {
-								finalStockLot = initialStockLot - qty;
+								finalStockLot = detailLot.getInitialStockLot() - qty;
 							}
 							DocumentDetailLot detailLotTmp = DocumentDetailLot.builder(detailLot).quantity(qty)
 									.finalStockLot(finalStockLot).build();
@@ -683,7 +682,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			message = "Formato de cantidad no valido";
 		} catch (Exception e) {
 			log.error(strLog + "[Exception]" + e.getMessage());
-			
+
 			message = e.getMessage();
 			e.printStackTrace();
 		} finally {
@@ -694,15 +693,17 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		}
 	}
 
-	private Double convertQuantityMU(Double quantity, MeasurementUnit muSource, MeasurementUnit muTarget) {
+	private Double convertMU(Double quantity, MeasurementUnit muSource, MeasurementUnit muTarget) {
 		String strLog = "[convertQuantityMU]";
 		Double muTargetStock = 0.0;
 		try {
 			MuEquivalence muEquivalence = muEquivalencesBll.select(muSource, muTarget);
-			Double sourceFactor = Double.parseDouble(muEquivalence.getMuSourceFactor());
-			Double targetFactor = Double.parseDouble(muEquivalence.getMuTargetFactor());
-			// Se calcula la equivalencia por la UM
-			muTargetStock = (quantity * sourceFactor) / targetFactor;
+			if (muEquivalence != null) {
+				Double sourceFactor = Double.parseDouble(muEquivalence.getMuSourceFactor());
+				Double targetFactor = Double.parseDouble(muEquivalence.getMuTargetFactor());
+				// Se calcula la equivalencia por la UM
+				muTargetStock = (quantity * sourceFactor) / targetFactor;
+			}
 
 		} catch (Exception e) {
 			log.error(strLog + "[Exception]" + e.getMessage());
@@ -949,7 +950,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 								buildLotWindow(docDetail);
 							} else if (transactionType.equals(ETransactionType.SALIDA)) {
 								// Obtener lote más reciente
-								Lot lastLot = lotBll.getLastLotByProduct(product);
+								Lot lastLot = lotBll.getLastLotWithStockByProduct(product);
 								selectLot(docDetail, lastLot);
 							}
 
@@ -1264,9 +1265,20 @@ public class InvoiceLayout extends VerticalLayout implements View {
 				Double quantity = Double.parseDouble(detail.getQuantity());
 				log.info(strLog + "quantity:" + quantity);
 
+				Double finalStockMU = 0.0;
+				// Si la UM es diferente a la UM principal se debe buscar la Equivalencia
+				if (!detail.getMeasurementUnit().equals(detail.getProduct().getMeasurementUnit())) {
+					initialStock = convertMU(initialStock, detail.getMeasurementUnit(),
+							detail.getProduct().getMeasurementUnit());
+					quantity = convertMU(quantity, detail.getMeasurementUnit(),
+							detail.getProduct().getMeasurementUnit());
+				}else {
+					finalStockMU = initialStock - quantity;
+				}
+
 				Double finalStock = 0.0;
 				if (transactionType.equals(ETransactionType.ENTRADA)) {
-					finalStock =  quantity;
+					finalStock = quantity;
 				} else if (transactionType.equals(ETransactionType.SALIDA)) {
 					finalStock = initialStock != 0 ? initialStock - quantity : quantity;
 				}
@@ -1274,23 +1286,21 @@ public class InvoiceLayout extends VerticalLayout implements View {
 				log.info(strLog + "finalStock:" + finalStock);
 
 				// Actualizar cantidad y stock final de detailLot
-
-				log.info(strLog + "Lote a actualizar stock:" + selectedLot);
+				log.info(strLog + "Lote a actualizar stock:" + detailLot.getLot());
 				Lot lotTmp = detailLot.getLot();
 
 				Double initialStockLot = 0.0;
 				Double quantityLot = quantity;
-				if (transactionType.equals(ETransactionType.SALIDA)
-						&& !detail.getMeasurementUnit().equals(detailLot.getLot().getMeasurementUnit())) {// Si las UM
-																											// son
-																											// diferentes
 
-					initialStockLot = convertQuantityMU(detailLot.getInitialStockLot(), detail.getMeasurementUnit(),
+				// Si la UM del producto es diferente a la del lote
+				if (transactionType.equals(ETransactionType.SALIDA)
+						&& !detail.getMeasurementUnit().equals(detailLot.getLot().getMeasurementUnit())) {
+
+					initialStockLot = convertMU(detailLot.getInitialStockLot(), detail.getMeasurementUnit(),
 							lotTmp.getMeasurementUnit());
-					quantityLot = convertQuantityMU(quantityLot, detail.getMeasurementUnit(),
-							lotTmp.getMeasurementUnit());
+
 				}
-				detailLot.setQuantity(quantityLot);
+			//	detailLot.setQuantity(quantityLot);
 
 				Double finalStockLot = 0.0;
 				if (transactionType.equals(ETransactionType.ENTRADA)) {
@@ -1300,7 +1310,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 				}
 
 				log.info(strLog + "finalStockLot:" + finalStockLot);
-				detailLot.setFinalStockLot(finalStockLot);
+			//	detailLot.setFinalStockLot(finalStockLot);
 
 				lotTmp.setQuantity(detailLot.getFinalStockLot());
 				lotTmp.setNew(false);
@@ -1338,8 +1348,13 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 					log.info(strLog + "lot saved:" + product);
 
+				
 					// Actualizar precio del producto
+					muProduct.setStock(finalStockMU);
 					updatePrice(muProduct, detail.getPrice());
+					
+					//Actualizar stock de cada UM asociada al producto
+					updateStockByMU(detail.getProduct(),muProduct);
 
 					closeWindow(cashChangeWindow);
 				} catch (ModelValidationException ex) {
@@ -1486,6 +1501,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			// cbPaymentType.clear();
 			cbDocumentStatus.setSelectedItem(docStatusBll.select("Nueva").get(0));
 			itemsList.clear();
+			initializeGrid();
 			detailGrid.getDataProvider().refreshAll();
 			txtDocNumFilter.clear();
 			getNextDocumentNumber(cbDocumentType.getSelectedItem().get());
@@ -1883,6 +1899,32 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			log.error(strLog + "[Exception]" + e.getMessage());
 		}
 
+	}
+
+	/**
+	 * Actualizar equivalencia de stock por cada Unidad de Medida del producto
+	 * 
+	 * @param measurementUnit
+	 */
+	private void updateStockByMU(Product product, MeasurementUnitProduct paramMuProduct) {
+		String strLog = "[updateStockByMU] ";
+		try {
+			
+			List<MeasurementUnitProduct> muProductList = measurementUnitProductBll.select(product);
+			for (MeasurementUnitProduct muProductObj : muProductList) {
+				if (!muProductObj.getMeasurementUnit().equals(paramMuProduct.getMeasurementUnit())) {
+					Double newStock = convertMU(paramMuProduct.getStock(), paramMuProduct.getMeasurementUnit(), muProductObj.getMeasurementUnit());
+					muProductObj.setStock(newStock);
+				} else {
+					muProductObj.setStock(paramMuProduct.getStock());
+				}
+				measurementUnitProductBll.save(muProductObj);
+
+				log.info(strLog + " stock actualizado para UM: " + paramMuProduct);
+			}
+		} catch (Exception e) {
+			log.error(strLog + "[Exception]" + e.getMessage());
+		}
 	}
 
 	/**
