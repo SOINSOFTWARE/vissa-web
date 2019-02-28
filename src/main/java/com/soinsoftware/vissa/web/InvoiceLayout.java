@@ -486,7 +486,14 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		deleteProductBtn.addStyleName(ValoTheme.BUTTON_TINY);
 		deleteProductBtn.addClickListener(e -> deleteItemDetail());
 
+		Button newProductBtn = new Button("Crear producto", FontAwesome.PLUS);
+		newProductBtn.addStyleName(ValoTheme.BUTTON_TINY);
+		newProductBtn.addClickListener(e -> buildProductWindow(null));
+
 		buttonlayout.addComponents(addProductBtn, deleteProductBtn);
+		if (transactionType.equals(ETransactionType.ENTRADA)) {
+			buttonlayout.addComponent(newProductBtn);
+		}
 
 		layout.addComponents(buttonlayout, builGridPanel());
 
@@ -503,13 +510,14 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		detailGrid.addColumn(DocumentDetail::getCode).setCaption("Código").setEditorComponent(txtCode,
 				DocumentDetail::setCode);
 
+		TextField txtName = new TextField();
 		detailGrid.addColumn(documentDetail -> {
 			if (documentDetail.getProduct() != null) {
 				return documentDetail.getProduct().getName();
 			} else {
-				return null;
+				return "";
 			}
-		}).setCaption("Nombre");
+		}).setCaption("Nombre").setEditorComponent(txtName, DocumentDetail::setName);
 
 		// Columna Unidad de medida editable
 		columnUM = detailGrid.addColumn(DocumentDetail::getMeasurementUnit).setCaption("Unidad de medida");
@@ -556,7 +564,25 @@ public class InvoiceLayout extends VerticalLayout implements View {
 				try {
 					if (((TextField) target).equals(txtCode)) {
 						dataProvider.refreshAll();
-						searchProduct(txtCode.getValue());
+						searchProduct(txtCode.getValue(), txtName.getValue());
+					}
+				} catch (Exception e) {
+					log.error("[ShortcutListener][handleAction][Exception] " + e.getMessage());
+				}
+			}
+		});
+
+		// Evento de enter
+		txtName.addShortcutListener(new ShortcutListener("Shortcut Name", ShortcutAction.KeyCode.ENTER, null) {
+
+			private static final long serialVersionUID = -5916648926624995228L;
+
+			@Override
+			public void handleAction(Object sender, Object target) {
+				try {
+					if (((TextField) target).equals(txtCode)) {
+						dataProvider.refreshAll();
+						searchProduct(txtCode.getValue(), txtCode.getValue());
 					}
 				} catch (Exception e) {
 					log.error("[ShortcutListener][handleAction][Exception] " + e.getMessage());
@@ -604,7 +630,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		detailGrid.setDataProvider(dataProvider);
 	}
 
-	private void searchProduct(String code) {
+	private void searchProduct(String code, String name) {
 		String strLog = "[searchProduct] ";
 		try {
 			if (code != null && !code.isEmpty()) {
@@ -1318,7 +1344,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 				}
 
 				log.info(strLog + "finalStockLot:" + finalStockLot);
-				 detailLot.setFinalStockLot(finalStockLot);
+				detailLot.setFinalStockLot(finalStockLot);
 
 				lotTmp.setQuantity(detailLot.getFinalStockLot());
 				lotTmp.setNew(false);

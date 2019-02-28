@@ -251,7 +251,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 	protected Component buildEditionComponent(Product product) {
 		// Cosultar consecutivo de productos
 
-		VerticalLayout layout = ViewHelper.buildVerticalLayout(false, true);
+		VerticalLayout layout = ViewHelper.buildVerticalLayout(false, false);
 		/// 1. Informacion producto
 		txtCode = new TextField("Código del producto");
 		txtCode.setWidth("50%");
@@ -350,20 +350,22 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		});
 		// ----------------------------------------------------------------------------------
 
-		final FormLayout form = new FormLayout();
-		form.setMargin(true);
-		form.setCaption("Datos del producto");
-		form.setCaptionAsHtml(true);
+		HorizontalLayout formLayout = ViewHelper.buildHorizontalLayout(false, false);
+
+		final FormLayout form = ViewHelper.buildForm("", false, false);
 		form.setSizeFull();
 		form.setWidth("50%");
 		form.addStyleName(ValoTheme.FORMLAYOUT_LIGHT);
 
-		/**
-		 * form.addComponents(txtCode, txtName, txtDescription, cbCategory,
-		 * cbMeasurementUnit, txtEan, txtPurchasePrice, txtPurchaseTax, txtUtility,
-		 * txtSalePrice, txtSaleTax, txtSalePriceWithTax, txtStock, txtStockDate);
-		 */
-		form.addComponents(txtCode, txtName, txtDescription, cbCategory, txtBrand, txtStock, txtStockDate);
+		final FormLayout form2 = ViewHelper.buildForm("", false, false);
+		form2.setSizeFull();
+		form2.setWidth("50%");
+		form2.addStyleName(ValoTheme.FORMLAYOUT_LIGHT);
+
+		form.addComponents(txtCode, txtName, cbCategory);
+		form2.addComponents(txtBrand, txtStock);
+
+		formLayout.addComponents(form, form2);
 
 		// Panel de UM y precios
 		Panel pricePanel = buildPriceGridPanel(product);
@@ -379,10 +381,13 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 
 		} catch (IOException e) {
 			log.error("Error al cargar lotes del producto. Exception: " + e);
-
 		}
 
-		layout.addComponents(form, pricePanel, lotPanel);
+		layout.addComponents(formLayout, pricePanel);
+		
+		if (!listMode) {
+			layout.addComponents(lotPanel);
+		}
 		return layout;
 	}
 
@@ -649,7 +654,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 				savePriceProduct(product);
 				if (showConfirmMessage) {
 					showConfirmMessage = true;
-					ViewHelper.showNotification("Producto guardado con éxito", Notification.Type.WARNING_MESSAGE);
+					afterSave("Producto guardado con éxito");
 				}
 				// Actualizar consecutivo de producto
 				tableSequenceBll.save(tableSequence);
@@ -775,9 +780,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 	private void addItemPriceGrid() {
 		MeasurementUnitProduct muProduct = new MeasurementUnitProduct();
 		priceProductList.add(muProduct);
-
-		priceGrid.select(muProduct);
-
+		priceGrid.focus();
 		refreshPriceGrid();
 	}
 
