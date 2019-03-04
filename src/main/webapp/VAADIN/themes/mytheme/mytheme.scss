@@ -108,10 +108,17 @@
 }
 
 .v-label-h1 {
-	font-size: 1.4em;
-	
+	font-size: 1.4em;	
 }
 
+.v-textfield-tiny {
+	text-transform: uppercase;
+}
+
+.v-filterselect-tiny {
+	text-transform: uppercase;
+	font-size: 12px;
+}
 
 
 }

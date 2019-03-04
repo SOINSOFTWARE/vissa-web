@@ -256,12 +256,14 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		txtCode = new TextField("Código del producto");
 		txtCode.setWidth("50%");
 		txtCode.setReadOnly(true);
+		txtCode.addStyleName(ValoTheme.COMBOBOX_TINY);
 		txtCode.setValue(tableSequence != null ? String.valueOf(tableSequence.getSequence()) : "");
 
 		txtName = new TextField("Nombre del producto");
 		txtName.setWidth("50%");
 		txtName.focus();
 		txtName.setRequiredIndicatorVisible(true);
+		txtName.addStyleName(ValoTheme.TEXTFIELD_TINY);
 
 		txtDescription = new TextField("Descripción");
 		txtDescription.setWidth("50%");
@@ -269,15 +271,18 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		cbCategory = new ComboBox<>("Categoría");
 		cbCategory.setEmptySelectionCaption("Seleccione");
 		cbCategory.setWidth("50%");
-		cbCategory.setEmptySelectionAllowed(true);
+		cbCategory.setEmptySelectionAllowed(false);
+		cbCategory.addStyleName(ValoTheme.COMBOBOX_TINY);
 		ListDataProvider<ProductCategory> categoryDataProv = new ListDataProvider<>(categoryBll.selectAll());
 		cbCategory.setDataProvider(categoryDataProv);
 		cbCategory.setItemCaptionGenerator(ProductCategory::getName);
+		cbCategory.setRequiredIndicatorVisible(true);;
 
 		cbType = new ComboBox<>("Tipo de producto");
 		cbType.setEmptySelectionCaption("Seleccione");
 		cbType.setWidth("50%");
 		cbType.setEmptySelectionAllowed(true);
+		cbType.addStyleName(ValoTheme.COMBOBOX_TINY);
 		ListDataProvider<ProductType> typeDataProv = new ListDataProvider<>(typeBll.selectAll());
 		cbType.setDataProvider(typeDataProv);
 		cbType.setItemCaptionGenerator(ProductType::getName);
@@ -287,12 +292,14 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		cbMeasurementUnit.setWidth("50%");
 		cbMeasurementUnit.setDescription("Unidad de medida");
 		cbMeasurementUnit.setEmptySelectionAllowed(true);
+		cbMeasurementUnit.addStyleName(ValoTheme.COMBOBOX_TINY);
 		ListDataProvider<MeasurementUnit> measurementDataProv = new ListDataProvider<>(measurementUnitBll.selectAll());
 		cbMeasurementUnit.setDataProvider(measurementDataProv);
 		cbMeasurementUnit.setItemCaptionGenerator(MeasurementUnit::getName);
 
 		txtBrand = new TextField("Marca");
 		txtBrand.setWidth("50%");
+		txtBrand.addStyleName(ValoTheme.TEXTFIELD_TINY);
 
 		txtEan = new TextField("EAN");
 		txtEan.setWidth("50%");
@@ -323,6 +330,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		// Product Stock
 		txtStock = new NumberField("Stock");
 		txtStock.setWidth("50%");
+		txtStock.addStyleName(ValoTheme.TEXTFIELD_TINY);
 
 		txtStockDate = new TextField("Fecha actualización Stock");
 		txtStockDate.setWidth("55%");
@@ -589,22 +597,15 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 				message = message.concat("El nombre obligatorio");
 			}
 		}
-		if (txtPurchasePrice.getValue() == null) {
+		
+		if (!cbMeasurementUnit.getSelectedItem().isPresent()) {
 			if (!message.isEmpty()) {
 				message = message.concat(character);
 			} else {
-				message = message.concat("El precio de compra es obligatorio");
+				message = message.concat("La unidad de medida es obligatoria");
 			}
 		}
-
-		if (txtUtility.getValue() == null) {
-			if (!message.isEmpty()) {
-				message = message.concat(character);
-			} else {
-				message = message.concat("La utilidad es obligatoria");
-			}
-		}
-
+	
 		return message;
 	}
 

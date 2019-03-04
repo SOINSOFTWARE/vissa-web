@@ -15143,3 +15143,12 @@ div.v-layout.v-horizontal.v-widget {
 .mytheme .v-label-h1 {
 	font-size: 1.4em;
 }
+
+.mytheme .v-textfield-tiny {
+	text-transform: uppercase;
+}
+
+.mytheme .v-filterselect-tiny {
+	text-transform: uppercase;
+	font-size: 12px;
+}
