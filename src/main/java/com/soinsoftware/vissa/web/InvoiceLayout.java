@@ -511,6 +511,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 				DocumentDetail::setCode);
 
 		TextField txtName = new TextField();
+		//txtName.setStyleName(ValoTheme.TEXTFIELD_TINY);
 		detailGrid.addColumn(documentDetail -> {
 			if (documentDetail.getProduct() != null) {
 				return documentDetail.getProduct().getName();
@@ -575,14 +576,19 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		// Evento de enter
 		txtName.addShortcutListener(new ShortcutListener("Shortcut Name", ShortcutAction.KeyCode.ENTER, null) {
 
-			private static final long serialVersionUID = -5916648926624995228L;
+			
+
+			/**
+			 * 
+			 */
+			private static final long serialVersionUID = 6441523733731956234L;
 
 			@Override
 			public void handleAction(Object sender, Object target) {
 				try {
-					if (((TextField) target).equals(txtCode)) {
+					if (((TextField) target).equals(txtName)) {
 						dataProvider.refreshAll();
-						searchProduct(txtCode.getValue(), txtCode.getValue());
+						searchProduct(txtCode.getValue(), txtName.getValue());
 					}
 				} catch (Exception e) {
 					log.error("[ShortcutListener][handleAction][Exception] " + e.getMessage());
@@ -606,7 +612,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 		detailGrid.getEditor().setEnabled(true);
 
-		detailGrid.getEditor().addSaveListener(e -> changeQuantity(txtQuantity.getValue()));
+	//	detailGrid.getEditor().addSaveListener(e -> changeQuantity(txtQuantity.getValue()));
 
 		initializeGrid();
 
@@ -643,6 +649,11 @@ public class InvoiceLayout extends VerticalLayout implements View {
 				} else {
 					buildProductWindow(product);
 				}
+			}
+
+			if (name != null && !name.isEmpty()) {
+				List<Product> products = productBll.selectByName(name);
+				log.info("size:" + products.size());
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -1318,8 +1329,6 @@ public class InvoiceLayout extends VerticalLayout implements View {
 				initialStock = muProduct.getStock() != null ? muProduct.getStock() : 0;
 				log.info(strLog + "initialStock total en UM pral. : " + initialStock);
 
-				
-
 				// Para las compras la cantidad es la misma del lote, y esta cant ya se agregó
 				// al crear el lote
 				if (transactionType.equals(ETransactionType.ENTRADA)) {
@@ -1395,28 +1404,25 @@ public class InvoiceLayout extends VerticalLayout implements View {
 					inventoryBll.save(inventoryTransaction, false);
 					log.info(strLog + "inventoryTransaction saved:" + inventoryTransaction);
 
-
 					if (transactionType.equals(ETransactionType.SALIDA)) {
 
-						//Actualizar stock producto
+						// Actualizar stock producto
 						productBll.save(product, false);
 						log.info("product saved:" + product);
-						
-						//Actualizar stock de lote
+
+						// Actualizar stock de lote
 						lotBll.save(lotTmp, false);
 						log.info(strLog + "lot saved:" + lotTmp);
-						
+
 						// Actualizar el stock para la UM escogida
 						muProduct.setStock(finalStockMU);
 
-						//Actualizar precio del producto
+						// Actualizar precio del producto
 						updatePrice(muProduct, detail.getPrice());
 
-						//Actualizar stock de cada UM asociada al producto
+						// Actualizar stock de cada UM asociada al producto
 						updateStockByMU(detail.getProduct(), muProduct);
-					}					
-
-					
+					}
 
 					closeWindow(cashChangeWindow);
 				} catch (ModelValidationException ex) {
