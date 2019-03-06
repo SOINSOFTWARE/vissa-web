@@ -30,6 +30,7 @@ import com.soinsoftware.vissa.model.ProductCategory;
 import com.soinsoftware.vissa.model.ProductType;
 import com.soinsoftware.vissa.model.TableSequence;
 import com.soinsoftware.vissa.util.DateUtil;
+import com.soinsoftware.vissa.util.EModeLayout;
 import com.soinsoftware.vissa.util.ViewHelper;
 import com.vaadin.data.provider.ConfigurableFilterDataProvider;
 import com.vaadin.data.provider.ListDataProvider;
@@ -91,26 +92,27 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 	private NumberField txtStock;
 	private TextField txtStockDate;
 
-	private boolean listMode;
-	private String mode;
 	private TableSequence tableSequence;
 
 	private ConfigurableFilterDataProvider<Product, Void, SerializablePredicate<Product>> filterProductDataProvider;
 	private ListDataProvider<MeasurementUnitProduct> dataProviderProdMeasurement;
 	private List<MeasurementUnitProduct> priceProductList;
 	private Product product;
+	private List<Product> productList;
 	private boolean showConfirmMessage = true;
+	EModeLayout mode = EModeLayout.ALL;
 
-	public ProductLayout(boolean list) throws IOException {
+	public ProductLayout(EModeLayout mode, List<Product> productList) throws IOException {
 		super("Productos", KEY_PRODUCTS);
-		listMode = list;
 		productBll = ProductBll.getInstance();
 		categoryBll = ProductCategoryBll.getInstance();
 		typeBll = ProductTypeBll.getInstance();
 		measurementUnitBll = MeasurementUnitBll.getInstance();
 		measurementUnitProductBll = MeasurementUnitProductBll.getInstance();
 		tableSequenceBll = TableSequenceBll.getInstance();
-		if (listMode) {
+		this.mode = mode;
+		this.productList = productList;
+		if (mode.equals(EModeLayout.LIST)) {
 			addListTab();
 		}
 	}
@@ -123,7 +125,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		measurementUnitBll = MeasurementUnitBll.getInstance();
 		measurementUnitProductBll = MeasurementUnitProductBll.getInstance();
 		tableSequenceBll = TableSequenceBll.getInstance();
-		this.mode = mode;
+
 		if (mode.equals("new")) {
 			addListTab();
 			showEditionTab(product, "", null);
@@ -138,17 +140,14 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		measurementUnitBll = MeasurementUnitBll.getInstance();
 		measurementUnitProductBll = MeasurementUnitProductBll.getInstance();
 		tableSequenceBll = TableSequenceBll.getInstance();
-		if (listMode) {
-			addListTab();
-		}
-		listMode = false;
+
 	}
 
 	@Override
 	protected AbstractOrderedLayout buildListView() {
 		VerticalLayout layout = ViewHelper.buildVerticalLayout(false, false);
 		Panel buttonPanel = null;
-		if (listMode) {
+		if (mode.equals(EModeLayout.LIST)) {
 			buttonPanel = buildButtonPanelListMode();
 		} else {
 			buttonPanel = buildButtonPanelForLists();
@@ -276,7 +275,8 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		ListDataProvider<ProductCategory> categoryDataProv = new ListDataProvider<>(categoryBll.selectAll());
 		cbCategory.setDataProvider(categoryDataProv);
 		cbCategory.setItemCaptionGenerator(ProductCategory::getName);
-		cbCategory.setRequiredIndicatorVisible(true);;
+		cbCategory.setRequiredIndicatorVisible(true);
+		;
 
 		cbType = new ComboBox<>("Tipo de producto");
 		cbType.setEmptySelectionCaption("Seleccione");
@@ -392,8 +392,8 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		}
 
 		layout.addComponents(formLayout, pricePanel);
-		
-		if (!listMode) {
+
+		if (!mode.equals(EModeLayout.LIST)) {
 			layout.addComponents(lotPanel);
 		}
 		return layout;
@@ -534,7 +534,10 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		String strLog = "[fillGridData]";
 
 		try {
-			ListDataProvider<Product> dataProvider = new ListDataProvider<>(productBll.selectAll(false));
+			if (productList == null) {
+				productList = productBll.selectAll(false);
+			}
+			ListDataProvider<Product> dataProvider = new ListDataProvider<>(productList);
 			filterProductDataProvider = dataProvider.withConfigurableFilter();
 			productGrid.setDataProvider(filterProductDataProvider);
 		} catch (Exception e) {
@@ -597,7 +600,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 				message = message.concat("El nombre obligatorio");
 			}
 		}
-		
+
 		if (!cbMeasurementUnit.getSelectedItem().isPresent()) {
 			if (!message.isEmpty()) {
 				message = message.concat(character);
@@ -605,7 +608,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 				message = message.concat("La unidad de medida es obligatoria");
 			}
 		}
-	
+
 		return message;
 	}
 
@@ -799,6 +802,14 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 
 	public void setShowConfirmMessage(boolean showConfirmMessage) {
 		this.showConfirmMessage = showConfirmMessage;
+	}
+
+	public Grid<Product> getProductGrid() {
+		return productGrid;
+	}
+
+	public void setProductGrid(Grid<Product> productGrid) {
+		this.productGrid = productGrid;
 	}
 
 }

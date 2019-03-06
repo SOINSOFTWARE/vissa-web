@@ -61,6 +61,7 @@ import com.soinsoftware.vissa.model.Role;
 import com.soinsoftware.vissa.model.User;
 import com.soinsoftware.vissa.util.Commons;
 import com.soinsoftware.vissa.util.DateUtil;
+import com.soinsoftware.vissa.util.EModeLayout;
 import com.soinsoftware.vissa.util.PermissionUtil;
 import com.soinsoftware.vissa.util.ViewHelper;
 import com.vaadin.data.Binder;
@@ -158,7 +159,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 	private ListDataProvider<DocumentDetail> dataProvider;
 
-	private Column<?, ?> columnQuantity;
+	private Column<DocumentDetail, String> columnQuantity;
 	private Column<?, ?> columnSubtotal;
 
 	private Column<DocumentDetail, String> columnTax;
@@ -511,7 +512,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 				DocumentDetail::setCode);
 
 		TextField txtName = new TextField();
-		//txtName.setStyleName(ValoTheme.TEXTFIELD_TINY);
+		txtName.setStyleName(ValoTheme.TEXTFIELD_TINY);
 		detailGrid.addColumn(documentDetail -> {
 			if (documentDetail.getProduct() != null) {
 				return documentDetail.getProduct().getName();
@@ -556,37 +557,14 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		});
 
 		// Evento de enter
-		txtCode.addShortcutListener(new ShortcutListener("Shortcut Name", ShortcutAction.KeyCode.ENTER, null) {
-
-			private static final long serialVersionUID = -5916648926624995228L;
-
-			@Override
-			public void handleAction(Object sender, Object target) {
-				try {
-					if (((TextField) target).equals(txtCode)) {
-						dataProvider.refreshAll();
-						searchProduct(txtCode.getValue(), txtName.getValue());
-					}
-				} catch (Exception e) {
-					log.error("[ShortcutListener][handleAction][Exception] " + e.getMessage());
-				}
-			}
-		});
-
-		// Evento de enter
 		txtName.addShortcutListener(new ShortcutListener("Shortcut Name", ShortcutAction.KeyCode.ENTER, null) {
 
-			
-
-			/**
-			 * 
-			 */
 			private static final long serialVersionUID = 6441523733731956234L;
 
 			@Override
 			public void handleAction(Object sender, Object target) {
 				try {
-					if (((TextField) target).equals(txtName)) {
+					if (((TextField) target).equals(txtCode) || ((TextField) target).equals(txtName)) {
 						dataProvider.refreshAll();
 						searchProduct(txtCode.getValue(), txtName.getValue());
 					}
@@ -597,11 +575,15 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		});
 
 		txtQuantity.setMaxLength(100);
-		txtQuantity.setRequiredIndicatorVisible(true);
+		txtQuantity.setReadOnly(false);
+		if (transactionType.equals(ETransactionType.ENTRADA)) {
+			txtQuantity.setReadOnly(true);
+		}
 
 		txtQuantity.addBlurListener(e -> changeQuantity(txtQuantity.getValue()));
-		// txtQuantity.addValueChangeListener(e ->
-		// changeQuantity(txtQuantity.getValue()));
+		 txtQuantity.addValueChangeListener(e ->
+		 changeQuantity(txtQuantity.getValue()));
+
 		footer = detailGrid.prependFooterRow();
 		if (columnDiscount != null) {
 			footer.getCell(columnDiscount).setHtml("<b>Total IVA:</b>");
@@ -612,7 +594,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 		detailGrid.getEditor().setEnabled(true);
 
-	//	detailGrid.getEditor().addSaveListener(e -> changeQuantity(txtQuantity.getValue()));
+		detailGrid.getEditor().addSaveListener(e -> changeQuantity(txtQuantity.getValue()));
 
 		initializeGrid();
 
@@ -639,21 +621,28 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 	private void searchProduct(String code, String name) {
 		String strLog = "[searchProduct] ";
+		List<Product> products = null;
 		try {
+			log.info(strLog + "[parameters] code: " + code + ", name: " + name);
+
 			if (code != null && !code.isEmpty()) {
 				selectedProduct = null;
-				log.info(strLog + "[parameters] code: " + code);
 				Product product = productBll.select(code);
 				if (product != null) {
 					selectProduct(product);
 				} else {
-					buildProductWindow(product);
+					buildProductWindow(products);
 				}
 			}
-
 			if (name != null && !name.isEmpty()) {
-				List<Product> products = productBll.selectByName(name);
-				log.info("size:" + products.size());
+				products = productBll.selectByName(name);
+				int size = products.size();
+				log.info(strLog + "Cantidad de productos consultados: " + size);
+				if (size == 1) {
+					selectProduct(products.get(0));
+				} else {
+					buildProductWindow(products);
+				}
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -931,7 +920,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	/**
 	 * Metodo que construye la venta para buscar productos
 	 */
-	private void buildProductWindow(Product product) {
+	private void buildProductWindow(List<Product> productList) {
 		selectedProduct = null;
 		selectedLot = null;
 
@@ -941,9 +930,9 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		VerticalLayout subContent = ViewHelper.buildVerticalLayout(true, true);
 
 		try {
-			productLayout = new ProductLayout(true);
+			productLayout = new ProductLayout(EModeLayout.LIST, productList);
 
-			productLayout.productGrid.addItemClickListener(listener -> {
+			productLayout.getProductGrid().addItemClickListener(listener -> {
 				if (listener.getMouseEventDetails().isDoubleClick())
 					// pass the row/item that the user double clicked
 					// to method doStuff.
@@ -1046,7 +1035,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 				// Actualizar el item
 				itemsList.set(pos, docDetail);
 				fillDetailGridData(itemsList);
-				setMeasurementUnitComponent();
+				buildMeasurementUnitComponent();
 				closeWindow(productSubwindow);
 			} else {
 				ViewHelper.showNotification("El producto no tiene unidad de medida configurada",
@@ -1869,7 +1858,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		this.document = document;
 	}
 
-	private void setMeasurementUnitComponent() {
+	private void buildMeasurementUnitComponent() {
 		Product product = selectedProduct != null ? selectedProduct : CommonsUtil.CURRENT_DOCUMENT_DETAIL.getProduct();
 		ComboBox<MeasurementUnit> cbMeasurementUnit = new ComboBox<>();
 
@@ -1880,15 +1869,32 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		cbMeasurementUnit.setItemCaptionGenerator(MeasurementUnit::getName);
 		cbMeasurementUnit.addValueChangeListener(e -> {
 			MeasurementUnitProduct muProduct = selectMuXProduct(
-					cbMeasurementUnit.getSelectedItem().isPresent() ? cbMeasurementUnit.getSelectedItem().get() : null,
-					product);
+					cbMeasurementUnit.getSelectedItem().isPresent() ? e.getValue() : null, product);
 			setPriceComponent(muProduct);
+			String qty = CommonsUtil.CURRENT_DOCUMENT_DETAIL.getQuantity();
+			if (qty != null && !qty.isEmpty()) {
+				setQuantityComponent(Double.parseDouble(qty), e.getOldValue(), e.getValue());
+			}
+
 		});
 
 		Binder<DocumentDetail> binder = detailGrid.getEditor().getBinder();
 		Binding<DocumentDetail, MeasurementUnit> binding = binder.bind(cbMeasurementUnit,
 				DocumentDetail::getMeasurementUnit, DocumentDetail::setMeasurementUnit);
 		columnUM.setEditorBinding(binding);
+
+	}
+
+	private void setQuantityComponent(Double value, MeasurementUnit sourceMU, MeasurementUnit targetMU) {
+		// Binding de cantidad
+
+		NumberField txtQuantity = new NumberField();
+		Double newQty = convertMU(value, sourceMU, targetMU);
+		txtQuantity.setValue(newQty);
+		Binder<DocumentDetail> binder = detailGrid.getEditor().getBinder();
+		Binding<DocumentDetail, String> quantityBinding = binder.bind(txtQuantity, DocumentDetail::getQuantity,
+				DocumentDetail::setQuantity);
+		columnQuantity.setEditorBinding(quantityBinding);
 
 	}
 
@@ -1955,12 +1961,13 @@ public class InvoiceLayout extends VerticalLayout implements View {
 						DocumentDetail::setTaxStr);
 				columnTax.setEditorBinding(taxBinding);
 
-				// Binding de MU product
+				// Binding de MU X producto
 				ComboBox<MeasurementUnitProduct> cbMeasurementUnitProduct = new ComboBox<>();
 				cbMeasurementUnitProduct.setValue(muProduct);
 				Binding<DocumentDetail, MeasurementUnitProduct> muProductBinding = binder.bind(cbMeasurementUnitProduct,
 						DocumentDetail::getMeasurementUnitProduct, DocumentDetail::setMeasurementUnitProduct);
 				columnUMProd.setEditorBinding(muProductBinding);
+
 			}
 
 		} catch (Exception e) {

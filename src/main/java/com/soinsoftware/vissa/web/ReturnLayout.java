@@ -58,6 +58,7 @@ import com.soinsoftware.vissa.model.Role;
 import com.soinsoftware.vissa.model.User;
 import com.soinsoftware.vissa.util.Commons;
 import com.soinsoftware.vissa.util.DateUtil;
+import com.soinsoftware.vissa.util.EModeLayout;
 import com.soinsoftware.vissa.util.PermissionUtil;
 import com.soinsoftware.vissa.util.ViewHelper;
 import com.vaadin.data.Binder;
@@ -831,7 +832,7 @@ public class ReturnLayout extends VerticalLayout implements View {
 		Panel buttonPanel = ViewHelper.buildPanel(null, buttonLayout);
 
 		try {
-			productLayout = new ProductLayout(true);
+			productLayout = new ProductLayout(EModeLayout.LIST, null);
 
 			productLayout.productGrid.addItemClickListener(listener -> {
 				if (listener.getMouseEventDetails().isDoubleClick())
