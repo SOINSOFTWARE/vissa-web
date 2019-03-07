@@ -90,6 +90,7 @@ import com.vaadin.ui.HorizontalLayout;
 import com.vaadin.ui.Label;
 import com.vaadin.ui.Notification;
 import com.vaadin.ui.Panel;
+import com.vaadin.ui.PopupView;
 import com.vaadin.ui.TextField;
 import com.vaadin.ui.VerticalLayout;
 import com.vaadin.ui.Window;
@@ -258,6 +259,22 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		this.setMargin(false);
 		this.setSpacing(false);
 
+		VerticalLayout popupContent = new VerticalLayout();
+	//	popupContent.addComponent(new TextField("Textfield"));
+		//popupContent.addComponent(new Button("Button"));
+		// PopupView popup = new PopupView("Pop it up", popupContent);
+		// popup.setPopupVisible(true);
+		Window w = new Window("Recordatorios");
+		w.setContent(popupContent);
+		w.setPosition(1050, 3);
+		w.setWidth("20%");
+		w.setHeight("25%");
+		getUI().addWindow(w);
+		
+		
+		log.info(w.getPositionX() + "/" + w.getPositionY() + " / " + getUI().getWidth() + " / "
+				+ getUI().getWidthUnits().ordinal()+ " / " + layout.getWidth());
+
 	}
 
 	/**
@@ -272,7 +289,15 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		if (permissionUtil.canEdit(Commons.MENU_NAME)) {
 			Button newBtn = new Button("Nuevo", FontAwesome.SAVE);
 			newBtn.addStyleName("mystyle-btn");
-			newBtn.addClickListener(e -> cleanButtonAction());
+			// newBtn.addClickListener(e -> cleanButtonAction());
+			newBtn.addClickListener(e -> {
+				VerticalLayout popupContent = new VerticalLayout();
+				popupContent.addComponent(new TextField("Textfield"));
+				popupContent.addComponent(new Button("Button"));
+				PopupView popup = new PopupView("Pop it up", popupContent);
+				popup.setPopupVisible(true);
+				layout.addComponent(popup);
+			});
 			layout.addComponents(newBtn);
 
 			Button saveBtn = new Button("Guardar", FontAwesome.SAVE);
@@ -581,8 +606,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		}
 
 		txtQuantity.addBlurListener(e -> changeQuantity(txtQuantity.getValue()));
-		 txtQuantity.addValueChangeListener(e ->
-		 changeQuantity(txtQuantity.getValue()));
+		txtQuantity.addValueChangeListener(e -> changeQuantity(txtQuantity.getValue()));
 
 		footer = detailGrid.prependFooterRow();
 		if (columnDiscount != null) {
