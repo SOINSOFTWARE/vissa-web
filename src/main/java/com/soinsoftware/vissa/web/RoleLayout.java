@@ -148,16 +148,16 @@ public class RoleLayout extends AbstractEditableLayout<Role> {
 
 		Binder<Permission> binder = permissionGrid.getEditor().getBinder();
 		Binding<Permission, Boolean> doneBinding = binder.bind(checkView, Permission::canView, Permission::setView);
-		// permissionGrid.addColumn(Permission::canView).setCaption("Ver").setEditorBinding(doneBinding);
-		permissionGrid.addColumn(Permission::canView).setCaption("Ver")
-				.setEditorComponent(new CheckBox(), Permission::setView).setEditable(true);
+		 permissionGrid.addColumn(Permission::canView).setCaption("Ver").setEditorBinding(doneBinding);
+	//	permissionGrid.addColumn(Permission::canView).setCaption("Ver")
+		//		.setEditorComponent(new CheckBox(), Permission::setView).setEditable(true);
 
 		// permissionGrid.addColumn(Permission::canView).setCaption("Ver");
 		permissionGrid.addColumn(Permission::canEdit).setCaption("Editar");
 		permissionGrid.addColumn(Permission::canDelete).setCaption("Eliminar");
 		permissionGrid.getEditor().setEnabled(true);
 
-		layout.addComponents(checkView,ViewHelper.buildPanel(null, permissionGrid));
+		layout.addComponents(ViewHelper.buildPanel(null, permissionGrid));
 		fillPermissionGridData(role);
 		return ViewHelper.buildPanel("Permisos del rol " + role.getName(), layout);
 	}
