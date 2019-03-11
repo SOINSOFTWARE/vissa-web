@@ -17,6 +17,7 @@ import com.soinsoftware.vissa.model.Person;
 import com.soinsoftware.vissa.model.PersonType;
 import com.soinsoftware.vissa.model.User;
 import com.soinsoftware.vissa.util.Commons;
+import com.soinsoftware.vissa.util.ELayoutMode;
 import com.soinsoftware.vissa.util.PermissionUtil;
 import com.soinsoftware.vissa.util.ViewHelper;
 import com.vaadin.annotations.Theme;
@@ -67,6 +68,7 @@ public class VissaUI extends UI {
 	private static final long serialVersionUID = 7412593442523938389L;
 	private static final Logger log = Logger.getLogger(VissaUI.class);
 	protected static final String KEY_PRODUCTS = "Productos";
+	protected static final String KEY_LOTS = "Lotes";
 	protected static final String KEY_COMPANY_DATA = "companyData";
 	protected static final String KEY_INVENTORY = "Inventario";
 	protected static final String KEY_INVENTORY_MOV = "Movimientos";
@@ -88,6 +90,7 @@ public class VissaUI extends UI {
 	protected static final String KEY_ADMINISTRATION = "Administración";
 	protected static final String KEY_USERS = "Usuarios";
 	protected static final String KEY_ROLES = "Roles";
+	protected static final String KEY_MENUS = "Menus";
 	protected static final String KEY_CONCILIATION = "Conciliaciones";
 	protected static final String KEY_SALESMAN_CONCILIATION = "Cuadre vendedor";
 	protected static final String KEY_ADMIN_CONCILIATION = "Cuadre administrador";
@@ -152,6 +155,10 @@ public class VissaUI extends UI {
 			if (permissionUtil.canView(KEY_PRODUCTS)) {
 				treeData.addItem(KEY_INVENTORY, KEY_PRODUCTS);
 			}
+			if (permissionUtil.canView(KEY_LOTS)) {
+				Commons.LAYOUT_MODE = ELayoutMode.REPORT;
+				treeData.addItem(KEY_INVENTORY, KEY_LOTS);
+			}
 			if (permissionUtil.canView(KEY_WAREHOUSE)) {
 				treeData.addItem(KEY_INVENTORY, KEY_WAREHOUSE);
 			}
@@ -193,6 +200,7 @@ public class VissaUI extends UI {
 
 		if (permissionUtil.canView(KEY_ADMINISTRATION)) {
 			treeData.addItem(null, KEY_ADMINISTRATION);
+
 			if (permissionUtil.canView(KEY_USERS)) {
 				treeData.addItem(KEY_ADMINISTRATION, KEY_USERS);
 			}
@@ -336,6 +344,7 @@ public class VissaUI extends UI {
 		navigator.addView(KEY_SALE_INVOICES, InvoiceLayout.class);
 		navigator.addView(KEY_CUSTOMER, PersonLayout.class);
 		navigator.addView(KEY_INVENTORY_MOV, InventoryLayout.class);
+		navigator.addView(KEY_LOTS, LotLayout.class);
 		navigator.addView(KEY_WAREHOUSE, WarehouseLayout.class);
 		navigator.addView(KEY_SALES_REPORT, InvoiceReportLayout.class);
 		navigator.addView(KEY_PURCHASES_REPORT, InvoiceReportLayout.class);
