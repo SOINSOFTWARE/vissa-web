@@ -1,6 +1,6 @@
 package com.soinsoftware.vissa.web;
 
-import static com.soinsoftware.vissa.web.VissaUI.KEY_PRODUCTS;
+import static com.soinsoftware.vissa.web.VissaUI.KEY_LOTS;
 
 import java.io.IOException;
 import java.util.Date;
@@ -24,7 +24,10 @@ import com.soinsoftware.vissa.model.Product;
 import com.soinsoftware.vissa.model.Warehouse;
 import com.soinsoftware.vissa.util.Commons;
 import com.soinsoftware.vissa.util.DateUtil;
+import com.soinsoftware.vissa.util.ELayoutMode;
 import com.soinsoftware.vissa.util.ViewHelper;
+import com.vaadin.addon.pagination.Pagination;
+import com.vaadin.addon.pagination.PaginationResource;
 import com.vaadin.data.provider.ConfigurableFilterDataProvider;
 import com.vaadin.data.provider.ListDataProvider;
 import com.vaadin.data.provider.Query;
@@ -71,6 +74,7 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 	private NumberField txtQuantity;
 	private ComboBox<Warehouse> cbWarehouse;
 	private ComboBox<MeasurementUnit> cbMeasurementUnit;
+	private TextField txtProductNameFilter;
 
 	private Product product;
 	private Warehouse warehouse;
@@ -89,10 +93,11 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 	private ConfigurableFilterDataProvider<Lot, Void, SerializablePredicate<Lot>> filterLotDataProvider;
 	private ListDataProvider<Lot> dataProvider = null;
 	private ListDataProvider<MeasurementUnit> measurementDataProv;
+	ELayoutMode modeLayout;
 
 	public LotLayout(Product product, ProductLayout productLayout, ETransactionType transactionType)
 			throws IOException {
-		super("Lotes", KEY_PRODUCTS);
+		super("Lotes", KEY_LOTS);
 		this.product = product;
 		this.productLayout = productLayout;
 		this.transactionType = transactionType;
@@ -105,7 +110,7 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 	}
 
 	public LotLayout(Warehouse warehouse) throws IOException {
-		super("Lotes", KEY_PRODUCTS);
+		super("Lotes", KEY_LOTS);
 		this.warehouse = warehouse;
 		lotBll = LotBll.getInstance();
 		productBll = ProductBll.getInstance();
@@ -115,6 +120,17 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 		addListTab();
 	}
 
+	public LotLayout() throws IOException {
+		super("Lotes", KEY_LOTS);
+
+		lotBll = LotBll.getInstance();
+		productBll = ProductBll.getInstance();
+		warehouseBll = WarehouseBll.getInstance();
+		measurementUnitProductBll = MeasurementUnitProductBll.getInstance();
+		muEquivalencesBll = MuEquivalenceBll.getInstance();
+
+	}
+
 	@Override
 	public AbstractOrderedLayout buildListView() {
 		VerticalLayout layout = ViewHelper.buildVerticalLayout(false, false);
@@ -122,9 +138,14 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 			Panel buttonPanel = buildButtonPanelForLists();
 			layout.addComponent(buttonPanel);
 		}
-		// Panel filterPanel = buildFilterPanel();
+		if (Commons.LAYOUT_MODE!=null  && Commons.LAYOUT_MODE.equals(ELayoutMode.REPORT)) {
+			Panel filterPanel = buildFilterPanel();
+			layout.addComponent(filterPanel);
+		}
 		Panel dataPanel = buildGridPanel();
 		layout.addComponent(dataPanel);
+		this.setSpacing(false);
+		this.setMargin(false);
 		return layout;
 	}
 
@@ -139,10 +160,18 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 
 	@Override
 	protected Panel buildGridPanel() {
-		if (listMode) {
 
-		}
 		lotGrid = ViewHelper.buildGrid(SelectionMode.SINGLE);
+
+		if (Commons.LAYOUT_MODE.equals(ELayoutMode.REPORT)) {
+			lotGrid.addColumn(lot -> {
+				if (lot != null && lot.getProduct() != null) {
+					return lot.getProduct().getName();
+				} else {
+					return null;
+				}
+			}).setCaption("Producto");
+		}
 
 		lotGrid.addColumn(Lot::getCode).setCaption("Código");
 		columnWarehouse = lotGrid.addColumn(lot -> {
@@ -168,11 +197,23 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 			}
 		}).setCaption("Fecha de vencimiento");
 
+		lotGrid.setStyleName(ValoTheme.TABLE_SMALL);
 		footer = lotGrid.prependFooterRow();
 		footer.getCell(columnWarehouse).setHtml("<b>Totat cantidad:</b>");
 		fillGridData();
-		refreshGrid();
+
+		// refreshGrid();
 		return ViewHelper.buildPanel(null, lotGrid);
+	}
+
+	private Panel buildFilterPanel() {
+		HorizontalLayout layout = ViewHelper.buildHorizontalLayout(false, true);
+		txtProductNameFilter = new TextField("Nombre producto");
+		txtProductNameFilter.setStyleName(ValoTheme.TEXTFIELD_TINY);
+		txtProductNameFilter.addValueChangeListener(e -> refreshGrid());
+
+		layout.addComponent(txtProductNameFilter);
+		return ViewHelper.buildPanel("Filtrar por", layout);
 	}
 
 	protected Panel buildButtonPanelForLists() {
@@ -273,10 +314,12 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 				dataProvider = new ListDataProvider<>(lotBll.select(product));
 			} else if (warehouse != null) {
 				dataProvider = new ListDataProvider<>(lotBll.select(warehouse));
+			} else {
+				dataProvider = new ListDataProvider<>(lotBll.selectAll(false));
 			}
+
 			if (dataProvider != null) {
-				filterLotDataProvider = dataProvider.withConfigurableFilter();
-				lotGrid.setDataProvider(filterLotDataProvider);
+				lotGrid.setDataProvider(dataProvider);
 			}
 			if (dataProvider != null) {
 				dataProvider.addDataProviderListener(
@@ -287,6 +330,15 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 		} catch (Exception e) {
 			log.error(strLog + "[Exception]" + e.getMessage());
 		}
+	}
+
+	private Pagination createPagination(long total, int page, int limit) {
+		final PaginationResource paginationResource = PaginationResource.newBuilder().setTotal(total).setPage(page)
+				.setLimit(limit).build();
+		final Pagination pagination = new Pagination(paginationResource);
+		pagination.setItemsPerPage(10, 20, 50, 100);
+
+		return pagination;
 	}
 
 	private void fillMeasurementUnit() {
@@ -468,6 +520,11 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 		try {
 
 			result = lot.getQuantity() > 0;
+
+			String productNameFilter = txtProductNameFilter.getValue().trim();
+			result = lot.getQuantity() > 0 && (productNameFilter != null && !productNameFilter.isEmpty()
+					? lot.getProduct().getName().contains(productNameFilter)
+					: true);
 
 		} catch (Exception e) {
 			log.error(strLog + "[Exception]" + e.getMessage());

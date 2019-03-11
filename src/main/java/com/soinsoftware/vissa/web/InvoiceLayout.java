@@ -61,7 +61,7 @@ import com.soinsoftware.vissa.model.Role;
 import com.soinsoftware.vissa.model.User;
 import com.soinsoftware.vissa.util.Commons;
 import com.soinsoftware.vissa.util.DateUtil;
-import com.soinsoftware.vissa.util.EModeLayout;
+import com.soinsoftware.vissa.util.ELayoutMode;
 import com.soinsoftware.vissa.util.PermissionUtil;
 import com.soinsoftware.vissa.util.ViewHelper;
 import com.vaadin.data.Binder;
@@ -260,8 +260,8 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		this.setSpacing(false);
 
 		VerticalLayout popupContent = new VerticalLayout();
-	//	popupContent.addComponent(new TextField("Textfield"));
-		//popupContent.addComponent(new Button("Button"));
+		// popupContent.addComponent(new TextField("Textfield"));
+		// popupContent.addComponent(new Button("Button"));
 		// PopupView popup = new PopupView("Pop it up", popupContent);
 		// popup.setPopupVisible(true);
 		Window w = new Window("Recordatorios");
@@ -270,10 +270,9 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		w.setWidth("20%");
 		w.setHeight("25%");
 		getUI().addWindow(w);
-		
-		
+
 		log.info(w.getPositionX() + "/" + w.getPositionY() + " / " + getUI().getWidth() + " / "
-				+ getUI().getWidthUnits().ordinal()+ " / " + layout.getWidth());
+				+ getUI().getWidthUnits().ordinal() + " / " + layout.getWidth());
 
 	}
 
@@ -289,15 +288,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		if (permissionUtil.canEdit(Commons.MENU_NAME)) {
 			Button newBtn = new Button("Nuevo", FontAwesome.SAVE);
 			newBtn.addStyleName("mystyle-btn");
-			// newBtn.addClickListener(e -> cleanButtonAction());
-			newBtn.addClickListener(e -> {
-				VerticalLayout popupContent = new VerticalLayout();
-				popupContent.addComponent(new TextField("Textfield"));
-				popupContent.addComponent(new Button("Button"));
-				PopupView popup = new PopupView("Pop it up", popupContent);
-				popup.setPopupVisible(true);
-				layout.addComponent(popup);
-			});
+			newBtn.addClickListener(e -> cleanButtonAction());
 			layout.addComponents(newBtn);
 
 			Button saveBtn = new Button("Guardar", FontAwesome.SAVE);
@@ -954,7 +945,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		VerticalLayout subContent = ViewHelper.buildVerticalLayout(true, true);
 
 		try {
-			productLayout = new ProductLayout(EModeLayout.LIST, productList);
+			productLayout = new ProductLayout(ELayoutMode.LIST, productList);
 
 			productLayout.getProductGrid().addItemClickListener(listener -> {
 				if (listener.getMouseEventDetails().isDoubleClick())
@@ -1576,15 +1567,17 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			txtDocNumFilter.clear();
 			txtReference.clear();
 			txtPerson.clear();
-			txtPaymentTerm.clear();
-			// cbDocumentType.clear();
+			txtPaymentTerm.clear();			
 			cbPaymentMethod.clear();
-			// cbPaymentType.clear();
+		//	cbPaymentType.clear();
 			cbDocumentStatus.setSelectedItem(docStatusBll.select("Nueva").get(0));
 			itemsList.clear();
 			initializeGrid();
 			detailGrid.getDataProvider().refreshAll();
 			txtDocNumFilter.clear();
+			txtTotal.clear();
+			txtTotalTax.clear();
+			dtfDocumentDate.setValue(LocalDateTime.now());
 			getNextDocumentNumber(cbDocumentType.getSelectedItem().get());
 			disableComponents(false);
 		} catch (Exception e) {

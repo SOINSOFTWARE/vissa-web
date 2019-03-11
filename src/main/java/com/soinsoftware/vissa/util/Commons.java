@@ -9,6 +9,7 @@ public class Commons {
 	public static String MENU_NAME;
 	public static String LOGIN;
 	public static String ROLE;
+	public static ELayoutMode LAYOUT_MODE ;
 
 	public static final String PARAM_COMPANY = "P_COMPANY";
 	public static final String PARAM_INVOICE_NUMBER = "P_INVOICE_NUMBER";

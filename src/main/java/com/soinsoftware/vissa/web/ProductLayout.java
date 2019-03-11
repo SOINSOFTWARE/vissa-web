@@ -30,7 +30,7 @@ import com.soinsoftware.vissa.model.ProductCategory;
 import com.soinsoftware.vissa.model.ProductType;
 import com.soinsoftware.vissa.model.TableSequence;
 import com.soinsoftware.vissa.util.DateUtil;
-import com.soinsoftware.vissa.util.EModeLayout;
+import com.soinsoftware.vissa.util.ELayoutMode;
 import com.soinsoftware.vissa.util.ViewHelper;
 import com.vaadin.data.provider.ConfigurableFilterDataProvider;
 import com.vaadin.data.provider.ListDataProvider;
@@ -100,9 +100,9 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 	private Product product;
 	private List<Product> productList;
 	private boolean showConfirmMessage = true;
-	EModeLayout mode = EModeLayout.ALL;
+	ELayoutMode mode = ELayoutMode.ALL;
 
-	public ProductLayout(EModeLayout mode, List<Product> productList) throws IOException {
+	public ProductLayout(ELayoutMode mode, List<Product> productList) throws IOException {
 		super("Productos", KEY_PRODUCTS);
 		productBll = ProductBll.getInstance();
 		categoryBll = ProductCategoryBll.getInstance();
@@ -112,7 +112,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		tableSequenceBll = TableSequenceBll.getInstance();
 		this.mode = mode;
 		this.productList = productList;
-		if (mode.equals(EModeLayout.LIST)) {
+		if (mode.equals(ELayoutMode.LIST)) {
 			addListTab();
 		}
 	}
@@ -147,7 +147,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 	protected AbstractOrderedLayout buildListView() {
 		VerticalLayout layout = ViewHelper.buildVerticalLayout(false, false);
 		Panel buttonPanel = null;
-		if (mode.equals(EModeLayout.LIST)) {
+		if (mode.equals(ELayoutMode.LIST)) {
 			buttonPanel = buildButtonPanelListMode();
 		} else {
 			buttonPanel = buildButtonPanelForLists();
@@ -393,7 +393,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 
 		layout.addComponents(formLayout, pricePanel);
 
-		if (!mode.equals(EModeLayout.LIST)) {
+		if (!mode.equals(ELayoutMode.LIST)) {
 			layout.addComponents(lotPanel);
 		}
 		return layout;
