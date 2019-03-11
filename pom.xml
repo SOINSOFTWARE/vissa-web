@@ -101,14 +101,26 @@
 			<scope>compile</scope>
 		</dependency>
 		<dependency>
-		    <groupId>org.eclipse.jdt.core.compiler</groupId>
-		    <artifactId>ecj</artifactId>
-		    <version>4.6.1</version>
-		</dependency>			
+			<groupId>org.eclipse.jdt.core.compiler</groupId>
+			<artifactId>ecj</artifactId>
+			<version>4.6.1</version>
+		</dependency>
+
+		<dependency>
+			<groupId>com.twilio.sdk</groupId>
+			<artifactId>twilio</artifactId>
+			<version>7.36.1</version>
+		</dependency>
+
+		<dependency>
+			<groupId>com.vaadin.addon</groupId>
+			<artifactId>pagination</artifactId>
+			<version>8.0.6</version>
+		</dependency>
 	</dependencies>
 
 	<build>
-	<finalName>vissa</finalName>
+		<finalName>vissa</finalName>
 		<plugins>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
@@ -162,7 +174,7 @@
 				<version>${jetty.plugin.version}</version>
 				<configuration>
 					<scanIntervalSeconds>2</scanIntervalSeconds>
-					<httpConnector>						
+					<httpConnector>
 						<port>8082</port>
 					</httpConnector>
 				</configuration>
