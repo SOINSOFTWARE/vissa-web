@@ -341,7 +341,9 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 	}
 
 	private void refreshGrid() {
-		dataProvider.setFilter(document -> filterGrid(document));
+		if (dataProvider != null) {
+			dataProvider.setFilter(document -> filterGrid(document));
+		}
 	}
 
 	private boolean filterGrid(Document document) {
