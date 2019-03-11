@@ -1685,8 +1685,10 @@ public class ReturnLayout extends VerticalLayout implements View {
 						itemsList.add(docDetail);
 
 						// Actualizar el stock del lote actualmente
-						detailLot.setInitialStockLot(detailLot.getLot().getQuantity());
-						detailLotMap.put(docDetail, detailLot);
+						if (detailLot != null) {
+							detailLot.setInitialStockLot(detailLot.getLot().getQuantity());
+							detailLotMap.put(docDetail, detailLot);
+						}
 					}
 					fillDetailGridData(itemsList);
 
@@ -1705,6 +1707,7 @@ public class ReturnLayout extends VerticalLayout implements View {
 
 		} catch (Exception e) {
 			log.error(strLog + "[Exception]" + e.getMessage());
+			e.printStackTrace();
 			ViewHelper.showNotification("Se presentó un error al consultar la factura",
 					Notification.Type.ERROR_MESSAGE);
 		}
