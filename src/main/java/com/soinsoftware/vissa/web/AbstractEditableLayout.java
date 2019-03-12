@@ -221,4 +221,10 @@ public abstract class AbstractEditableLayout<E> extends VerticalLayout implement
 	protected abstract E getSelected();
 
 	protected abstract void delete(E entity);
+
+	public TabSheet getTabSheet() {
+		return tabSheet;
+	}
+	
+	
 }

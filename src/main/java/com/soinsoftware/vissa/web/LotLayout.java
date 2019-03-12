@@ -10,6 +10,7 @@ import java.util.Set;
 import org.apache.log4j.Logger;
 import org.vaadin.ui.NumberField;
 
+import com.soinsoftware.vissa.bll.DocumentDetailLotBll;
 import com.soinsoftware.vissa.bll.LotBll;
 import com.soinsoftware.vissa.bll.MeasurementUnitProductBll;
 import com.soinsoftware.vissa.bll.MuEquivalenceBll;
@@ -29,15 +30,15 @@ import com.soinsoftware.vissa.util.ELayoutMode;
 import com.soinsoftware.vissa.util.ViewHelper;
 import com.vaadin.addon.pagination.Pagination;
 import com.vaadin.addon.pagination.PaginationResource;
-import com.vaadin.data.provider.ConfigurableFilterDataProvider;
 import com.vaadin.data.provider.ListDataProvider;
 import com.vaadin.data.provider.Query;
-import com.vaadin.server.SerializablePredicate;
 import com.vaadin.ui.AbstractOrderedLayout;
 import com.vaadin.ui.Button;
 import com.vaadin.ui.ComboBox;
 import com.vaadin.ui.Component;
+import com.vaadin.ui.DateField;
 import com.vaadin.ui.DateTimeField;
+import com.vaadin.ui.FormLayout;
 import com.vaadin.ui.Grid;
 import com.vaadin.ui.Grid.Column;
 import com.vaadin.ui.Grid.SelectionMode;
@@ -64,14 +65,15 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 	private final WarehouseBll warehouseBll;
 	private final MeasurementUnitProductBll measurementUnitProductBll;
 	private final MuEquivalenceBll muEquivalencesBll;
+	private final DocumentDetailLotBll documentDetailLotBll;
 
 	public Grid<Lot> lotGrid;
 	public Grid<DocumentDetailLot> detailLotGrid;
 
 	private TextField txtCode;
 	private TextField txtName;
-	private DateTimeField dtfFabricationDate;
-	private DateTimeField dtfExpirationDate;
+	private DateField dtFabricationDate;
+	private DateField dtExpirationDate;
 	private NumberField txtQuantity;
 	private ComboBox<Warehouse> cbWarehouse;
 	private ComboBox<MeasurementUnit> cbMeasurementUnit;
@@ -79,7 +81,6 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 
 	private Product product;
 	private Warehouse warehouse;
-	private boolean listMode;
 	private Double totalStock;
 	private ETransactionType transactionType;
 
@@ -91,7 +92,6 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 	private Window muProductSubwindow;
 	private MuProductLayout muProductLayout = null;
 
-	private ConfigurableFilterDataProvider<Lot, Void, SerializablePredicate<Lot>> filterLotDataProvider;
 	private ListDataProvider<Lot> dataProvider = null;
 	private ListDataProvider<MeasurementUnit> measurementDataProv;
 	ELayoutMode modeLayout;
@@ -107,6 +107,7 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 		warehouseBll = WarehouseBll.getInstance();
 		measurementUnitProductBll = MeasurementUnitProductBll.getInstance();
 		muEquivalencesBll = MuEquivalenceBll.getInstance();
+		documentDetailLotBll = DocumentDetailLotBll.getInstance();
 		addListTab();
 	}
 
@@ -118,6 +119,7 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 		warehouseBll = WarehouseBll.getInstance();
 		measurementUnitProductBll = MeasurementUnitProductBll.getInstance();
 		muEquivalencesBll = MuEquivalenceBll.getInstance();
+		documentDetailLotBll = DocumentDetailLotBll.getInstance();
 		addListTab();
 	}
 
@@ -129,7 +131,7 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 		warehouseBll = WarehouseBll.getInstance();
 		measurementUnitProductBll = MeasurementUnitProductBll.getInstance();
 		muEquivalencesBll = MuEquivalenceBll.getInstance();
-
+		documentDetailLotBll = DocumentDetailLotBll.getInstance();
 	}
 
 	@Override
@@ -153,9 +155,13 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 	@Override
 	protected AbstractOrderedLayout buildEditionView(Lot entity) {
 		VerticalLayout layout = ViewHelper.buildVerticalLayout(false, false);
-		Panel buttonPanel = buildButtonPanelForEdition(entity);
+		if (!Commons.LAYOUT_MODE.equals(ELayoutMode.REPORT)) {
+			Panel buttonPanel = buildButtonPanelForEdition(entity);
+			layout.addComponents(buttonPanel);
+		}
+
 		Component dataPanel = buildEditionComponent(entity);
-		layout.addComponents(buttonPanel, dataPanel);
+		layout.addComponents(dataPanel);
 		return layout;
 	}
 
@@ -204,17 +210,19 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 		fillGridData();
 
 		// refreshGrid();
-		lotGrid.addItemClickListener(listener -> {
-			if (listener.getMouseEventDetails().isDoubleClick())
-				// pass the row/item that the user double clicked
-				// to method doStuff.
-				// doStuff(l.getItem());
-				selectLot(listener.getItem());
-		});
+		if (Commons.LAYOUT_MODE.equals(ELayoutMode.REPORT)) {
+			lotGrid.addItemClickListener(listener -> {
+				if (listener.getMouseEventDetails().isDoubleClick())
+					// pass the row/item that the user double clicked
+					// to method doStuff.
+					// doStuff(l.getItem());
+					selectLot(listener.getItem());
+			});
+		}
 		return ViewHelper.buildPanel(null, lotGrid);
 	}
 
-	protected Panel buildDetailLotGridPanel() {
+	protected Panel buildDetailLotGridPanel(Lot lot) {
 
 		detailLotGrid = ViewHelper.buildGrid(SelectionMode.SINGLE);
 
@@ -222,7 +230,7 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 			if (detailLot != null && detailLot.getDocumentDetail() != null) {
 				return detailLot.getDocumentDetail().getDocument().getCode();
 			} else {
-				return null;
+				return "";
 			}
 		}).setCaption("Factura");
 
@@ -230,17 +238,17 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 			if (detailLot != null && detailLot.getDocumentDetail() != null) {
 				return detailLot.getDocumentDetail().getDocument().getDocumentDate();
 			} else {
-				return null;
+				return "";
 			}
 		}).setCaption("Fecha");
 
 		detailLotGrid.addColumn(detailLot -> {
-			if (detailLot != null && detailLot.getLot() != null) {
-				return detailLot.getDocumentDetail().getDocument().getDocumentDate();
+			if (detailLot != null && detailLot.getDocumentDetail() != null) {
+				return detailLot.getDocumentDetail().getDocument().getDocumentType().getName();
 			} else {
-				return null;
+				return "";
 			}
-		}).setCaption("Fecha");
+		}).setCaption("Factura");
 
 		detailLotGrid.addColumn(DocumentDetailLot::getInitialStockLot).setCaption("Stock inicial");
 		detailLotGrid.addColumn(DocumentDetailLot::getQuantity).setCaption("Cantidad");
@@ -248,9 +256,9 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 
 		detailLotGrid.setStyleName(ValoTheme.TABLE_SMALL);
 
-		fillGridData();
+		fillDetailLotGridData(lot);
 
-		return ViewHelper.buildPanel(null, detailLotGrid);
+		return ViewHelper.buildPanel("Movimientos del lote", detailLotGrid);
 	}
 
 	private Panel buildFilterPanel() {
@@ -284,8 +292,76 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 	protected Component buildEditionComponent(Lot entity) {
 		VerticalLayout layout = ViewHelper.buildVerticalLayout(false, false);
 
-		layout.addComponents(buildDetailLotGridPanel());
+		if (Commons.LAYOUT_MODE.equals(ELayoutMode.REPORT)) {
+			layout.addComponents(buildDetailLotGridPanel(entity));
+		} else {
+			Integer sequence = getLotSequence();
+			txtCode = new TextField("Código");
+			txtCode.setStyleName(ValoTheme.TEXTAREA_TINY);
+			txtCode.focus();
+			txtCode.setValue(entity != null ? entity.getCode() : sequence != null ? String.valueOf(sequence) : "");
+			txtCode.setRequiredIndicatorVisible(true);
+			txtCode.setReadOnly(true);
 
+			txtName = new TextField("Nombre");
+			txtName.setStyleName(ValoTheme.TEXTAREA_TINY);
+			txtName.setValue(entity != null ? entity.getName() : "");
+
+			dtFabricationDate = new DateField("Fecha de fabricación");
+			dtFabricationDate.setDateFormat(Commons.FORMAT_DATE);
+			dtFabricationDate.setStyleName(ValoTheme.DATEFIELD_TINY);
+			dtFabricationDate.setValue(entity != null ? DateUtil.dateToLocalDate(entity.getLotDate()) : null);
+
+			dtExpirationDate = new DateField("Fecha de vencimiento");
+			dtExpirationDate.setDateFormat(Commons.FORMAT_DATE);
+			dtExpirationDate.setStyleName(ValoTheme.DATEFIELD_TINY);
+			dtExpirationDate.setValue(entity != null ? DateUtil.dateToLocalDate(entity.getExpirationDate()) : null);
+
+			txtQuantity = new NumberField("Cantidad");
+			txtQuantity.setStyleName(ValoTheme.TEXTAREA_TINY);
+			txtQuantity.setRequiredIndicatorVisible(true);
+			txtQuantity.setValue(entity != null ? String.valueOf(entity.getQuantity()) : "");
+
+			cbMeasurementUnit = new ComboBox<>("Unidad de medida");
+			cbMeasurementUnit.setEmptySelectionCaption("Seleccione");
+			cbMeasurementUnit.setStyleName(ValoTheme.COMBOBOX_TINY);
+			cbMeasurementUnit.setEmptySelectionAllowed(false);
+			cbMeasurementUnit.setRequiredIndicatorVisible(true);
+			fillMeasurementUnit();
+			cbMeasurementUnit.setItemCaptionGenerator(MeasurementUnit::getName);
+			cbMeasurementUnit.setValue(entity != null ? entity.getMeasurementUnit() : null);
+
+			Button muNewBtn = new Button("Nueva unidad de medida");
+			muNewBtn.addStyleNames(ValoTheme.BUTTON_LINK, ValoTheme.BUTTON_TINY);
+			muNewBtn.addClickListener(e -> buildMuProductWindow(product));
+
+			cbWarehouse = new ComboBox<>("Bodega");
+			cbWarehouse.setEmptySelectionCaption("Seleccione");
+			cbWarehouse.setStyleName(ValoTheme.COMBOBOX_TINY);
+			cbWarehouse.setRequiredIndicatorVisible(true);
+			ListDataProvider<Warehouse> countryDataProv = new ListDataProvider<>(warehouseBll.selectAll());
+			cbWarehouse.setDataProvider(countryDataProv);
+			cbWarehouse.setItemCaptionGenerator(Warehouse::getName);
+			cbWarehouse.setValue(
+					entity == null && warehouse != null ? warehouse : entity != null ? entity.getWarehouse() : null);
+			if (warehouse != null) {
+				cbWarehouse.setReadOnly(true);
+			}
+
+			FormLayout form = new FormLayout();
+			form.setMargin(true);
+			form.setCaption("Datos del lote");
+			form.setCaptionAsHtml(true);
+			form.setSizeFull();
+			form.setWidth("50%");
+			form.addStyleName(ValoTheme.FORMLAYOUT_LIGHT);
+
+			form.addComponents(txtCode, txtName, dtFabricationDate, dtExpirationDate, txtQuantity, cbMeasurementUnit,
+					muNewBtn, cbWarehouse);
+
+			layout.addComponents(form);
+
+		}
 		return layout;
 	}
 
@@ -309,6 +385,18 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 						event -> footer.getCell(columnQuantity).setHtml(calculateTotalQuantity(dataProvider)));
 				refreshGrid();
 			}
+
+		} catch (Exception e) {
+			log.error(strLog + "[Exception]" + e.getMessage());
+		}
+	}
+
+	protected void fillDetailLotGridData(Lot lot) {
+		String strLog = "[fillDetailLotGridData]";
+		try {
+
+			ListDataProvider<DocumentDetailLot> dataProvider = new ListDataProvider<>(documentDetailLotBll.select(lot));
+			detailLotGrid.setDataProvider(dataProvider);
 
 		} catch (Exception e) {
 			log.error(strLog + "[Exception]" + e.getMessage());
@@ -354,8 +442,8 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 				Warehouse warehouse = cbWarehouse.getSelectedItem().isPresent() ? cbWarehouse.getSelectedItem().get()
 						: null;
 				entity = lotBuilder.code(txtCode.getValue()).name(txtName.getValue())
-						.lotDate(DateUtil.localDateTimeToDate(dtfFabricationDate.getValue()))
-						.expirationDate(DateUtil.localDateTimeToDate(dtfExpirationDate.getValue())).archived(false)
+						.lotDate(DateUtil.localDateToDate(dtFabricationDate.getValue()))
+						.expirationDate(DateUtil.localDateToDate(dtExpirationDate.getValue())).archived(false)
 						.quantity(Double.parseDouble(txtQuantity.getValue())).measurementUnit(measurementUnit)
 						.product(product).warehouse(warehouse).isNew(isNew).build();
 
@@ -605,6 +693,7 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 	private void selectLot(Lot lot) {
 		lotGrid.select(lot);
 		editButtonAction();
+
 	}
 
 	private void selectMuProduct(MeasurementUnitProduct muProduct) {

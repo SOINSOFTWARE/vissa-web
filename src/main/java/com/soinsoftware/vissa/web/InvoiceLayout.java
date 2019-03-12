@@ -1096,6 +1096,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 			VerticalLayout subContent = ViewHelper.buildVerticalLayout(true, true);
 
+			Commons.LAYOUT_MODE = ELayoutMode.LIST;
 			lotLayout = new LotLayout(product, productLayout, transactionType);
 			lotLayout.setCaption("Lotes");
 			lotLayout.setMargin(false);
