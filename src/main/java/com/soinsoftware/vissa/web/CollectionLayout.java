@@ -424,7 +424,7 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 		txFilterByCode = new TextField("Código");
 		txFilterByCode.addValueChangeListener(e -> refreshGrid());
 
-		txtFilterByPerson = new TextField(Commons.PERSON_TYPE);
+		txtFilterByPerson = new TextField("Persona");
 		txtFilterByPerson.addValueChangeListener(e -> refreshGrid());
 		txtFilterByPerson.setStyleName(ValoTheme.TEXTFIELD_TINY);
 		txtFilterByPerson.focus();
@@ -434,7 +434,7 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 		searchPersonBtn.setStyleName("icon-only");
 
 		dtfFilterIniDate = new DateTimeField("Fecha inicial");
-		dtfFilterIniDate.setResolution(DateTimeResolution.SECOND);
+		dtfFilterIniDate.setResolution(DateTimeResolution.SECOND);		
 		dtfFilterIniDate.setValue(DateUtil.getDefaultIniMonthDate());
 		dtfFilterIniDate.setDateFormat(Commons.FORMAT_DATE_TIME);
 		dtfFilterIniDate.setStyleName(ValoTheme.DATEFIELD_TINY);
@@ -479,8 +479,8 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 			Person personFilter = !txtFilterByPerson.isEmpty() ? personSelected : null;
 
 			result = personFilter != null ? collection.getDocument().getPerson().equals(personFilter)
-					: true && collection.getDocument().getDocumentDate().before(endDateFilter)
-							&& collection.getDocument().getDocumentDate().after(iniDateFilter)
+					: true && collection.getCollectionDate().before(endDateFilter)
+							&& collection.getCollectionDate().after(iniDateFilter)
 							&& collection.getFinalBalance().compareTo(BigDecimal.ZERO) == 1;
 
 		} catch (Exception e) {
@@ -661,7 +661,6 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 
 			Commons.PERSON_TYPE = PersonType.CUSTOMER.getName();
 			personLayout = new PersonLayout(true);
-			
 
 		} catch (IOException e) {
 			log.error("Error al cargar lista de personas. Exception:" + e);
