@@ -349,7 +349,7 @@ public class EgressLayout extends AbstractEditableLayout<Egress> {
 		boolean result = false;
 		try {
 			Date iniDateFilter = DateUtil.localDateTimeToDate(DateUtil.getDefaultIniDate());
-			Date endDateFilter = DateUtil.localDateTimeToDate(DateUtil.getDefaultEndDate());
+			Date endDateFilter = DateUtil.localDateTimeToDate(DateUtil.getDefaultEndDateTime());
 
 			log.info(strLog + " iniDateFilter: " + iniDateFilter + ", endDateFilter:" + endDateFilter);
 

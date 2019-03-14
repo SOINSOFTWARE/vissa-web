@@ -126,21 +126,39 @@ public class DateUtil {
 	}
 
 	/**
-	 * Retorna la fecha fin para reportes, hasta las 23:59:59
+	 * Retorna la fecha fin DateTime para reportes, hasta las 23:59:59
 	 * 
 	 * @return
 	 */
-	public static LocalDateTime getDefaultEndDate() {
+	public static LocalDateTime getDefaultEndDateTime() {
 		return LocalDateTime.now().withHour(23).withMinute(59).withSecond(59);
 	}
 
 	/**
-	 * Retorna la fecha inicial para reportes, hasta las 00:00:00
+	 * Retorna la fecha fin Date para reportes, hasta las 23:59:59
 	 * 
 	 * @return
 	 */
-	public static LocalDateTime getDefaultIniMonthDate() {
+	public static LocalDate getDefaultEndDate() {
+		return LocalDate.now();
+	}
+
+	/**
+	 * Retorna la fecha inicial DateTime para reportes, hasta las 00:00:00
+	 * 
+	 * @return
+	 */
+	public static LocalDateTime getDefaultIniMonthDateTime() {
 		return LocalDateTime.now().minusDays(30).withHour(0).withMinute(0).withSecond(0);
+	}
+
+	/**
+	 * Retorna la fecha Date inicial para reportes
+	 * 
+	 * @return
+	 */
+	public static LocalDate getDefaultIniMonthDate() {
+		return LocalDate.now().minusDays(30);
 	}
 
 	/**

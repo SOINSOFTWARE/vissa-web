@@ -296,7 +296,7 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 
 		dtfFilterEndDate = new DateTimeField("Fecha final");
 		dtfFilterEndDate.setResolution(DateTimeResolution.SECOND);
-		dtfFilterEndDate.setValue(DateUtil.getDefaultEndDate());
+		dtfFilterEndDate.setValue(DateUtil.getDefaultEndDateTime());
 		dtfFilterEndDate.setDateFormat(Commons.FORMAT_DATE_TIME);
 		dtfFilterEndDate.setStyleName(ValoTheme.DATEFIELD_TINY);
 		dtfFilterEndDate.setRequiredIndicatorVisible(true);

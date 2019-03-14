@@ -4,12 +4,13 @@ import static com.soinsoftware.vissa.web.VissaUI.KEY_COLLECTION;
 
 import java.io.IOException;
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.util.Date;
 import java.util.List;
 import java.util.Set;
 
 import org.apache.log4j.Logger;
+import org.joda.time.DateTime;
 import org.vaadin.ui.NumberField;
 
 import com.soinsoftware.vissa.bll.CollectionBll;
@@ -40,12 +41,12 @@ import com.vaadin.ui.AbstractOrderedLayout;
 import com.vaadin.ui.Alignment;
 import com.vaadin.ui.Button;
 import com.vaadin.ui.Component;
+import com.vaadin.ui.DateField;
 import com.vaadin.ui.DateTimeField;
 import com.vaadin.ui.FormLayout;
 import com.vaadin.ui.Grid;
 import com.vaadin.ui.Grid.Column;
 import com.vaadin.ui.Grid.SelectionMode;
-import com.vaadin.ui.components.grid.FooterRow;
 import com.vaadin.ui.HorizontalLayout;
 import com.vaadin.ui.Label;
 import com.vaadin.ui.Notification;
@@ -53,6 +54,7 @@ import com.vaadin.ui.Panel;
 import com.vaadin.ui.TextField;
 import com.vaadin.ui.VerticalLayout;
 import com.vaadin.ui.Window;
+import com.vaadin.ui.components.grid.FooterRow;
 import com.vaadin.ui.themes.ValoTheme;
 
 @SuppressWarnings("unchecked")
@@ -78,7 +80,7 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 	private TextField txtDocumentNumber;
 	private TextField txtDocumentDate;
 	private TextField txtPerson;
-	private DateTimeField dtfCollectionDate;
+	private DateField dtfCollectionDate;
 	private NumberField txtDocumentValue;
 	private NumberField txtInitialBalance;
 	private NumberField txtFee;
@@ -95,6 +97,7 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 	private Window personSubwindow;
 	private PersonLayout personLayout = null;
 	private User user;
+	private String loginRole;
 	private Person personSelected = null;
 	private Column<?, ?> totalColumn;
 	private Column<?, ?> feeColumn;
@@ -117,6 +120,7 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 	protected AbstractOrderedLayout buildListView() {
 
 		this.user = getSession().getAttribute(User.class);
+		this.loginRole = user.getRole().getName();
 
 		VerticalLayout layout = ViewHelper.buildVerticalLayout(false, false);
 		Panel buttonPanel = buildButtonPanelForLists();
@@ -196,10 +200,10 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 		VerticalLayout layout = ViewHelper.buildVerticalLayout(false, false);
 		FormLayout basicForm = ViewHelper.buildForm("", false, false);
 
-		dtfCollectionDate = new DateTimeField("Fecha");
+		dtfCollectionDate = new DateField("Fecha");
 		dtfCollectionDate.setStyleName(ValoTheme.DATEFIELD_TINY);
-		dtfCollectionDate.setDateFormat(Commons.FORMAT_DATE_TIME);
-		dtfCollectionDate.setValue(LocalDateTime.now());
+		dtfCollectionDate.setDateFormat(Commons.FORMAT_DATE);
+		dtfCollectionDate.setValue(LocalDate.now());
 		dtfCollectionDate.setWidth("50%");
 		dtfCollectionDate.setRequiredIndicatorVisible(true);
 
@@ -328,6 +332,13 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 			ViewHelper.showNotification(message, Notification.Type.ERROR_MESSAGE);
 		} else {
 			saveCollection(entity);
+			// Actualizar conciliación
+			try {
+				new CashConciliationLayout().saveDailyConciliation(user);
+			} catch (IOException e) {
+				log.error("Error al actualizar conciliación: " + e.getMessage());
+				e.printStackTrace();
+			}
 		}
 
 	}
@@ -342,7 +353,7 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 				collectionBuilder = Collection.builder(entity);
 			}
 
-			Date collectionDate = DateUtil.localDateTimeToDate(dtfCollectionDate.getValue());
+			Date collectionDate = DateUtil.localDateToDate(dtfCollectionDate.getValue());
 
 			entity = collectionBuilder.document(selectedDocument).collectionDate(collectionDate)
 					.initialBalance(NumericUtil.stringToBigDecimal(txtInitialBalance.getValue()))
@@ -350,6 +361,7 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 					.finalBalance(NumericUtil.stringToBigDecimal(txtFinalBalance.getValue())).archived(false).build();
 
 			save(collectionBll, entity, "Recaudo guardado");
+
 		} catch (Exception e) {
 			log.error(strLog + "[Exception]" + e.getMessage());
 			e.printStackTrace();
@@ -424,7 +436,7 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 		txFilterByCode = new TextField("Código");
 		txFilterByCode.addValueChangeListener(e -> refreshGrid());
 
-		txtFilterByPerson = new TextField("Persona");
+		txtFilterByPerson = new TextField("Cliente");
 		txtFilterByPerson.addValueChangeListener(e -> refreshGrid());
 		txtFilterByPerson.setStyleName(ValoTheme.TEXTFIELD_TINY);
 		txtFilterByPerson.focus();
@@ -434,16 +446,14 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 		searchPersonBtn.setStyleName("icon-only");
 
 		dtfFilterIniDate = new DateTimeField("Fecha inicial");
-		dtfFilterIniDate.setResolution(DateTimeResolution.SECOND);		
-		dtfFilterIniDate.setValue(DateUtil.getDefaultIniMonthDate());
+		dtfFilterIniDate.setValue(DateUtil.getDefaultIniMonthDateTime());
 		dtfFilterIniDate.setDateFormat(Commons.FORMAT_DATE_TIME);
 		dtfFilterIniDate.setStyleName(ValoTheme.DATEFIELD_TINY);
 		dtfFilterIniDate.setRequiredIndicatorVisible(true);
 		dtfFilterIniDate.addValueChangeListener(e -> refreshGrid());
 
 		dtfFilterEndDate = new DateTimeField("Fecha final");
-		dtfFilterEndDate.setResolution(DateTimeResolution.SECOND);
-		dtfFilterEndDate.setValue(DateUtil.getDefaultEndDate());
+		dtfFilterEndDate.setValue(DateUtil.getDefaultEndDateTime());
 		dtfFilterEndDate.setDateFormat(Commons.FORMAT_DATE_TIME);
 		dtfFilterEndDate.setStyleName(ValoTheme.DATEFIELD_TINY);
 		dtfFilterEndDate.setRequiredIndicatorVisible(true);
@@ -466,7 +476,7 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 
 			Date iniDateFilter = dtfFilterIniDate.getValue() != null
 					? DateUtil.localDateTimeToDate(dtfFilterIniDate.getValue())
-					: DateUtil.stringToDate("01-01-2000 00:00:00");
+					: DateUtil.stringToDate("01-01-2000");
 
 			Date endDateFilter = dtfFilterEndDate.getValue() != null
 					? DateUtil.localDateTimeToDate(dtfFilterEndDate.getValue())
@@ -605,7 +615,7 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 		boolean result = false;
 		try {
 			Date iniDateFilter = DateUtil.localDateTimeToDate(DateUtil.getDefaultIniDate());
-			Date endDateFilter = DateUtil.localDateTimeToDate(DateUtil.getDefaultEndDate());
+			Date endDateFilter = DateUtil.localDateTimeToDate(DateUtil.getDefaultEndDateTime());
 
 			log.info(strLog + " iniDateFilter: " + iniDateFilter + ", endDateFilter:" + endDateFilter);
 

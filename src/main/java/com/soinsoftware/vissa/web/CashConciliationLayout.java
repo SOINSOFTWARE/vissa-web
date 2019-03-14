@@ -110,7 +110,8 @@ public class CashConciliationLayout extends AbstractEditableLayout<CashConciliat
 	private User user;
 	private String loginRole;
 	private String employeeRole;
-	VerticalLayout detailLayout;
+	private VerticalLayout detailLayout;
+	private boolean autoSaved = false;
 
 	private ListDataProvider<Document> documentDataProvider;
 	private ListDataProvider<Collection> collectionDataProvider;
@@ -449,9 +450,9 @@ public class CashConciliationLayout extends AbstractEditableLayout<CashConciliat
 			txtBalance.setValue(String.valueOf(concil.getBalance()));
 		} else {
 			txtCashBase.setValue(0.0);
-		//	txtSupplierPayments.setValue(txtSupplierPayments);
-		//	txtCashRegisterBorrow.setValue(0.0);
-		//	txtBalance.setValue(0.0);
+			// txtSupplierPayments.setValue(txtSupplierPayments);
+			// txtCashRegisterBorrow.setValue(0.0);
+			// txtBalance.setValue(0.0);
 		}
 		setBalanceAdministrador();
 	}
@@ -494,11 +495,11 @@ public class CashConciliationLayout extends AbstractEditableLayout<CashConciliat
 
 			log.info(strLog + "txtTotalSale:" + txtTotalIngress.getDoubleValueDoNotThrow());
 			log.info(strLog + "txtTotalEgress:" + txtTotalEgress.getDoubleValueDoNotThrow());
-			
+
 			BigDecimal ingress = NumericUtil.stringToBigDecimal(txtTotalIngress.getValue());
 			BigDecimal egress = NumericUtil.stringToBigDecimal(txtTotalEgress.getValue());
 
-			//Ingresos - Egresos
+			// Ingresos - Egresos
 			txtTotalCash.setValue(String.valueOf(ingress.subtract(egress)));
 
 		} catch (Exception e) {
@@ -566,7 +567,8 @@ public class CashConciliationLayout extends AbstractEditableLayout<CashConciliat
 			entity = conciliationBuilder.person(selectedPerson).conciliationDate(concilitationDate)
 					.cashBase(NumericUtil.stringToBigDecimal(txtCashBase.getValue())).archived(false).build();
 
-			save(conciliationBll, entity, "");
+			// save(conciliationBll, entity, "");
+			conciliationBll.save(entity, false);
 
 			if (employeeRole.equals(ERole.ADMINISTRATOR.getName())) {
 				saveAdminConciliation(entity);
@@ -598,7 +600,12 @@ public class CashConciliationLayout extends AbstractEditableLayout<CashConciliat
 					.cashRegisterBorrow(NumericUtil.stringToBigDecimal(txtCashRegisterBorrow.getValue()))
 					.balance(NumericUtil.stringToBigDecimal(txtBalance.getValue())).archived(false).build();
 
-			save(conciliationBll, entity, "Cuadre de caja guardado");
+			if (autoSaved) {
+				conciliationBll.save(entity);
+			} else {
+				save(conciliationBll, entity, "Cuadre de caja guardado");
+			}
+			log.info("Cuadre caja administrador guardado");
 		} catch (Exception e) {
 			log.error(strLog + "[Exception]" + e.getMessage());
 			e.printStackTrace();
@@ -628,7 +635,12 @@ public class CashConciliationLayout extends AbstractEditableLayout<CashConciliat
 					.remnantSale(NumericUtil.stringToBigDecimal(txtRemnantSale.getValue()))
 					.remnantEgress(NumericUtil.stringToBigDecimal(txtRemnantEgress.getValue())).archived(false).build();
 
-			save(conciliationBll, entity, "Cuadre de caja guardado");
+			if (autoSaved) {
+				conciliationBll.save(entity);
+			} else {
+				save(conciliationBll, entity, "Cuadre de caja guardado");
+			}
+			log.info("Cuadre caja vendedor guardado");
 		} catch (Exception e) {
 			log.error(strLog + "[Exception]" + e.getMessage());
 			e.printStackTrace();
@@ -872,7 +884,7 @@ public class CashConciliationLayout extends AbstractEditableLayout<CashConciliat
 		}
 	}
 
-	private Double getSumDailyCollection() {
+	public Double getSumDailyCollection() {
 		String strLog = "[getSumDailyCollection]";
 		Double totalCollection = null;
 		try {
@@ -1003,7 +1015,7 @@ public class CashConciliationLayout extends AbstractEditableLayout<CashConciliat
 		boolean result = false;
 		try {
 			Date iniDateFilter = DateUtil.localDateTimeToDate(DateUtil.getDefaultIniDate());
-			Date endDateFilter = DateUtil.localDateTimeToDate(DateUtil.getDefaultEndDate());
+			Date endDateFilter = DateUtil.localDateTimeToDate(DateUtil.getDefaultEndDateTime());
 
 			log.info(strLog + " iniDateFilter: " + iniDateFilter + ", endDateFilter:" + endDateFilter);
 
@@ -1026,7 +1038,7 @@ public class CashConciliationLayout extends AbstractEditableLayout<CashConciliat
 		boolean result = false;
 		try {
 			Date iniDateFilter = DateUtil.localDateTimeToDate(DateUtil.getDefaultIniDate());
-			Date endDateFilter = DateUtil.localDateTimeToDate(DateUtil.getDefaultEndDate());
+			Date endDateFilter = DateUtil.localDateTimeToDate(DateUtil.getDefaultEndDateTime());
 
 			log.info(strLog + " iniDateFilter: " + iniDateFilter + ", endDateFilter:" + endDateFilter);
 
@@ -1048,7 +1060,7 @@ public class CashConciliationLayout extends AbstractEditableLayout<CashConciliat
 		boolean result = false;
 		try {
 			Date iniDateFilter = DateUtil.localDateTimeToDate(DateUtil.getDefaultIniDate());
-			Date endDateFilter = DateUtil.localDateTimeToDate(DateUtil.getDefaultEndDate());
+			Date endDateFilter = DateUtil.localDateTimeToDate(DateUtil.getDefaultEndDateTime());
 
 			log.info(strLog + " iniDateFilter: " + iniDateFilter + ", endDateFilter:" + endDateFilter);
 
@@ -1061,6 +1073,15 @@ public class CashConciliationLayout extends AbstractEditableLayout<CashConciliat
 
 		log.info(strLog + " result filterCollectiobByDate: " + result);
 		return result;
+	}
+
+	public void saveDailyConciliation(User user) {
+		this.user = user;
+		this.loginRole = user.getRole().getName();
+		this.employeeRole = user.getRole().getName();
+		this.autoSaved = true;
+		buildEditionComponent(null);
+		saveConciliation(null);
 	}
 
 }
