@@ -4,10 +4,12 @@ import static com.soinsoftware.vissa.web.VissaUI.KEY_EGRESS;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 import java.util.Set;
 
+import org.apache.commons.lang.time.DateUtils;
 import org.apache.log4j.Logger;
 import org.vaadin.ui.NumberField;
 
@@ -236,7 +238,10 @@ public class EgressLayout extends AbstractEditableLayout<Egress> {
 		if (!message.isEmpty()) {
 			ViewHelper.showNotification(message, Notification.Type.ERROR_MESSAGE);
 		} else {
+			// Guardar egreso (gasto)
 			saveEgress(entity);
+			// Actualizar conciliación (cuadre de caja) por día y empleado
+			saveConciliation();
 		}
 
 	}
@@ -251,9 +256,9 @@ public class EgressLayout extends AbstractEditableLayout<Egress> {
 				egressBuilder = Egress.builder(entity);
 			}
 
-			Date collectionDate = DateUtil.localDateTimeToDate(dtfEgressDate.getValue());
+			Date egressDate = DateUtil.localDateTimeToDate(dtfEgressDate.getValue());
 
-			entity = egressBuilder.egressDate(collectionDate).type(cbEgressType.getSelectedItem().get())
+			entity = egressBuilder.egressDate(egressDate).type(cbEgressType.getSelectedItem().get())
 					.name(txtEgressName.getValue()).description(taEgressDescription.getValue())
 					.value(NumericUtil.stringToBigDecimal(txtEgressValue.getValue())).person(selectedPerson)
 					.archived(false).build();
@@ -365,6 +370,22 @@ public class EgressLayout extends AbstractEditableLayout<Egress> {
 
 		log.info(strLog + " result filterDocumentByDate: " + result);
 		return result;
+	}
+
+	/*
+	 * 
+	 * Actualizar conciliación (cuadre de caja) por día y empleado
+	 */
+	private void saveConciliation() {
+		String strLog = "[saveConciliation] ";
+		try {
+			Date conciliationDate = DateUtil.localDateTimeToDate(dtfEgressDate.getValue());
+			conciliationDate = DateUtils.truncate(conciliationDate, Calendar.DATE);
+			new CashConciliationLayout().saveDailyConciliation(user, conciliationDate);
+		} catch (IOException e) {
+			log.error(strLog + "Error al actualizar conciliación: " + e.getMessage());
+			e.printStackTrace();
+		}
 	}
 
 }
