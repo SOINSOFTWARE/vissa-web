@@ -5,9 +5,11 @@ import static com.soinsoftware.vissa.web.VissaUI.KEY_EGRESS;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.Calendar;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.apache.commons.lang.time.DateUtils;
 import org.apache.log4j.Logger;
@@ -15,6 +17,7 @@ import org.vaadin.ui.NumberField;
 
 import com.soinsoftware.vissa.bll.EgressBll;
 import com.soinsoftware.vissa.bll.EgressTypeBll;
+import com.soinsoftware.vissa.model.Collection;
 import com.soinsoftware.vissa.model.Document;
 import com.soinsoftware.vissa.model.ERole;
 import com.soinsoftware.vissa.model.Egress;
@@ -227,6 +230,10 @@ public class EgressLayout extends AbstractEditableLayout<Egress> {
 		} else {
 			egressList = egressBll.select(selectedPerson);
 		}
+		
+		egressList = egressList.stream().sorted(Comparator.comparing(Egress::getEgressDate).reversed())
+				.collect(Collectors.toList());
+		
 		dataProvider = new ListDataProvider<>(egressList);
 		filterProductDataProvider = dataProvider.withConfigurableFilter();
 		egressGrid.setDataProvider(filterProductDataProvider);

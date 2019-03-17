@@ -6,9 +6,11 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Calendar;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.apache.commons.lang.time.DateUtils;
 import org.apache.log4j.Logger;
@@ -310,8 +312,12 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 	@Override
 	protected void fillGridData() {
 		List<Collection> collectionList = collectionBll.selectAll();
+		
+		collectionList = collectionList.stream().sorted(Comparator.comparing(Collection::getCollectionDate).reversed())
+				.collect(Collectors.toList());
 
 		collectionDataProvider = new ListDataProvider<>(collectionList);
+		
 
 		collectionGrid.setDataProvider(collectionDataProvider);
 		collectionDataProvider.addDataProviderListener(
@@ -671,11 +677,10 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 		Double finalBalance = 0.0;
 		try {
 			List<Collection> collections = collectionBll.select(selectedDocument);
-			int size = collections.size();
 			finalBalance = document.getTotalValue();
-			if (size > 0) {
-				// Obtener la última factura
-				Collection collection = collections.get(size - 1);
+			if (collections != null && !collections.isEmpty()) {
+				// Obtener la última factura, la lista está ordenada descendentemente
+				Collection collection = collections.get(0);
 				finalBalance = NumericUtil.bigDecimalToDouble((BigDecimal) collection.getFinalBalance());
 			}
 		} catch (Exception e) {
@@ -694,32 +699,28 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 
 		personSubwindow = ViewHelper.buildSubwindow("75%", null);
 		personSubwindow.setCaption("Personas");
+		personSubwindow.addCloseListener(e -> closeWindow(personSubwindow));
 
 		VerticalLayout subContent = ViewHelper.buildVerticalLayout(true, true);
-
-		// Panel de botones
-		Button backBtn = new Button("Cancelar", FontAwesome.BACKWARD);
-		backBtn.addStyleName("mystyle-btn");
-		backBtn.addClickListener(e -> closeWindow(personSubwindow));
-
-		Button selectBtn = new Button("Seleccionar", FontAwesome.CHECK);
-		selectBtn.addStyleName("mystyle-btn");
-		selectBtn.addClickListener(e -> selectPerson());
-
-		HorizontalLayout buttonLayout = ViewHelper.buildHorizontalLayout(true, true);
-		buttonLayout.addComponents(backBtn, selectBtn);
-		Panel buttonPanel = ViewHelper.buildPanel(null, buttonLayout);
 
 		try {
 
 			Commons.PERSON_TYPE = PersonType.CUSTOMER.getName();
 			personLayout = new PersonLayout(true);
 
+			personLayout.getGrid().addItemClickListener(listener -> {
+				if (listener.getMouseEventDetails().isDoubleClick())
+					// pass the row/item that the user double clicked
+					// to method doStuff.
+					// doStuff(l.getItem());
+					selectPerson(listener.getItem());
+			});
+
 		} catch (IOException e) {
 			log.error("Error al cargar lista de personas. Exception:" + e);
 		}
 		Panel personPanel = ViewHelper.buildPanel(null, personLayout);
-		subContent.addComponents(buttonPanel, personPanel);
+		subContent.addComponents(personPanel);
 
 		personSubwindow.setContent(subContent);
 		getUI().addWindow(personSubwindow);
@@ -729,8 +730,8 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 	/**
 	 * Método para seleccionar proveedor o cliente
 	 */
-	private void selectPerson() {
-		personSelected = personLayout.getSelected();
+	private void selectPerson(Person person) {
+		personSelected = person;
 
 		if (personSelected != null) {
 			txtFilterByPerson.setValue(personSelected.getName() + " " + personSelected.getLastName());

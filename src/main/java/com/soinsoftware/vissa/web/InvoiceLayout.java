@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -15,6 +16,7 @@ import java.util.stream.Collectors;
 
 import javax.persistence.PersistenceException;
 
+import org.apache.commons.lang.time.DateUtils;
 import org.apache.log4j.Logger;
 import org.hibernate.HibernateException;
 import org.springframework.transaction.annotation.Transactional;
@@ -1219,6 +1221,9 @@ public class InvoiceLayout extends VerticalLayout implements View {
 							} else {
 								saveInvoice(documentEntity);
 							}
+
+							// Actualizar conciliación (cuadre de caja) por día y empleado
+							saveConciliation();
 						}
 					});
 		}
@@ -1568,9 +1573,9 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			txtDocNumFilter.clear();
 			txtReference.clear();
 			txtPerson.clear();
-			txtPaymentTerm.clear();			
+			txtPaymentTerm.clear();
 			cbPaymentMethod.clear();
-		//	cbPaymentType.clear();
+			// cbPaymentType.clear();
 			cbDocumentStatus.setSelectedItem(docStatusBll.select("Nueva").get(0));
 			itemsList.clear();
 			initializeGrid();
@@ -2044,6 +2049,22 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			}
 		} catch (Exception e) {
 			log.error(strLog + "[Exception]" + e.getMessage());
+		}
+	}
+
+	/*
+	 * 
+	 * Actualizar conciliación (cuadre de caja) por día y empleado
+	 */
+	private void saveConciliation() {
+		String strLog = "[saveConciliation] ";
+		try {
+			Date conciliationDate = DateUtil.localDateTimeToDate(dtfDocumentDate.getValue());
+			conciliationDate = DateUtils.truncate(conciliationDate, Calendar.DATE);
+			new CashConciliationLayout().saveDailyConciliation(user, conciliationDate);
+		} catch (IOException e) {
+			log.error(strLog + "Error al actualizar conciliación: " + e.getMessage());
+			e.printStackTrace();
 		}
 	}
 

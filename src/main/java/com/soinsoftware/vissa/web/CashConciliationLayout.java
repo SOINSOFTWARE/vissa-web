@@ -164,7 +164,10 @@ public class CashConciliationLayout extends AbstractEditableLayout<CashConciliat
 	protected Panel buildGridPanel() {
 		VerticalLayout layout = ViewHelper.buildVerticalLayout(true, true);
 		concilicationGrid = ViewHelper.buildGrid(SelectionMode.SINGLE);
-		concilicationGrid.addColumn(CashConciliation::getConciliationDate).setCaption("Fecha");
+		concilicationGrid.addColumn(cashRegisterConciliation -> {
+			return DateUtil.dateToString(cashRegisterConciliation.getConciliationDate(), Commons.FORMAT_DATE);
+		}).setCaption("Fecha");
+
 		if (loginRole.equals(ERole.SUDO.getName()) || loginRole.equals(ERole.MANAGER.getName())) {
 			concilicationGrid.addColumn(cashRegisterConciliation -> {
 				if (cashRegisterConciliation.getPerson() != null) {
@@ -1079,6 +1082,7 @@ public class CashConciliationLayout extends AbstractEditableLayout<CashConciliat
 
 	/**
 	 * Guardar la conciliación de caja por dia y empleado
+	 * 
 	 * @param user
 	 * @param conciliationDate
 	 */

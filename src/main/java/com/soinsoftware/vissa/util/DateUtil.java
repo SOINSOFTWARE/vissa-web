@@ -77,6 +77,26 @@ public class DateUtil {
 	}
 
 	/**
+	 * Metodo para convertir una fecha Date a String indicando el formato
+	 * 
+	 * @param date
+	 * @return
+	 */
+	public static String dateToString(Date date, String format) {
+		String dateStr = null;
+		try {
+			if (date != null) {
+				SimpleDateFormat sdf = new SimpleDateFormat(format);
+				dateStr = sdf.format(date);
+			}
+		} catch (Exception e) {
+			log.error("Error al convertir Date " + date + " a String en formati: " + format);
+		}
+		return dateStr;
+
+	}
+
+	/**
 	 * Metodo para convertir un Strig a Date
 	 * 
 	 * @param date
