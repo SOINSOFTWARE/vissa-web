@@ -84,7 +84,6 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 	private Column<?, ?> personColumn;
 	private Column<?, ?> totalColumn;
 
-	private ConfigurableFilterDataProvider<Document, Void, SerializablePredicate<Document>> filterDataProvider;
 	private ListDataProvider<Document> dataProvider;
 
 	public InvoiceReportLayout() throws IOException {
@@ -188,6 +187,15 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 		footer.getCell(personColumn).setHtml("<b>Total:</b>");
 
 		layout.addComponent(ViewHelper.buildPanel(null, grid));
+		grid.addItemClickListener(listener -> {
+			if (listener.getMouseEventDetails().isDoubleClick()) {
+				// pass the row/item that the user double clicked
+				// to method doStuff.
+				// doStuff(l.getItem());
+				// selectPerson(listener.getItem());
+				grid.select(listener.getItem());
+			}
+		});
 		fillGridData();
 		if (!listMode) {
 			refreshGrid();
@@ -466,6 +474,14 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 			ViewHelper.showNotification("Seleccione un proveedor", Notification.Type.WARNING_MESSAGE);
 		}
 
+	}
+
+	public Grid<Document> getGrid() {
+		return grid;
+	}
+
+	public void setGrid(Grid<Document> grid) {
+		this.grid = grid;
 	}
 
 }

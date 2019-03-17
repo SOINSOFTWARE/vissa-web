@@ -4,13 +4,14 @@ import static com.soinsoftware.vissa.web.VissaUI.KEY_COLLECTION;
 
 import java.io.IOException;
 import java.math.BigDecimal;
-import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 import java.util.Set;
 
+import org.apache.commons.lang.time.DateUtils;
 import org.apache.log4j.Logger;
-import org.joda.time.DateTime;
 import org.vaadin.ui.NumberField;
 
 import com.soinsoftware.vissa.bll.CollectionBll;
@@ -31,17 +32,13 @@ import com.soinsoftware.vissa.util.Commons;
 import com.soinsoftware.vissa.util.DateUtil;
 import com.soinsoftware.vissa.util.NumericUtil;
 import com.soinsoftware.vissa.util.ViewHelper;
-import com.vaadin.data.provider.ConfigurableFilterDataProvider;
 import com.vaadin.data.provider.ListDataProvider;
 import com.vaadin.data.provider.Query;
 import com.vaadin.server.FontAwesome;
-import com.vaadin.server.SerializablePredicate;
-import com.vaadin.shared.ui.datefield.DateTimeResolution;
 import com.vaadin.ui.AbstractOrderedLayout;
 import com.vaadin.ui.Alignment;
 import com.vaadin.ui.Button;
 import com.vaadin.ui.Component;
-import com.vaadin.ui.DateField;
 import com.vaadin.ui.DateTimeField;
 import com.vaadin.ui.FormLayout;
 import com.vaadin.ui.Grid;
@@ -57,7 +54,7 @@ import com.vaadin.ui.Window;
 import com.vaadin.ui.components.grid.FooterRow;
 import com.vaadin.ui.themes.ValoTheme;
 
-@SuppressWarnings("unchecked")
+@SuppressWarnings({ "unchecked", "deprecation" })
 public class CollectionLayout extends AbstractEditableLayout<Collection> {
 
 	/**
@@ -80,7 +77,7 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 	private TextField txtDocumentNumber;
 	private TextField txtDocumentDate;
 	private TextField txtPerson;
-	private DateField dtfCollectionDate;
+	private DateTimeField dtfCollectionDate;
 	private NumberField txtDocumentValue;
 	private NumberField txtInitialBalance;
 	private NumberField txtFee;
@@ -97,7 +94,7 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 	private Window personSubwindow;
 	private PersonLayout personLayout = null;
 	private User user;
-	private String loginRole;
+
 	private Person personSelected = null;
 	private Column<?, ?> totalColumn;
 	private Column<?, ?> feeColumn;
@@ -105,7 +102,6 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 
 	private ListDataProvider<Document> documentDataProvider;
 	ListDataProvider<Collection> collectionDataProvider;
-	private ConfigurableFilterDataProvider<Collection, Void, SerializablePredicate<Collection>> filterProductDataProvider;
 
 	public CollectionLayout() throws IOException {
 		super("Recaudo", KEY_COLLECTION);
@@ -120,7 +116,6 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 	protected AbstractOrderedLayout buildListView() {
 
 		this.user = getSession().getAttribute(User.class);
-		this.loginRole = user.getRole().getName();
 
 		VerticalLayout layout = ViewHelper.buildVerticalLayout(false, false);
 		Panel buttonPanel = buildButtonPanelForLists();
@@ -193,17 +188,16 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 		return ViewHelper.buildPanel(null, layout);
 	}
 
-	@SuppressWarnings("deprecation")
 	@Override
 	protected Component buildEditionComponent(Collection collection) {
 
 		VerticalLayout layout = ViewHelper.buildVerticalLayout(false, false);
 		FormLayout basicForm = ViewHelper.buildForm("", false, false);
 
-		dtfCollectionDate = new DateField("Fecha");
+		dtfCollectionDate = new DateTimeField("Fecha");
 		dtfCollectionDate.setStyleName(ValoTheme.DATEFIELD_TINY);
-		dtfCollectionDate.setDateFormat(Commons.FORMAT_DATE);
-		dtfCollectionDate.setValue(LocalDate.now());
+		dtfCollectionDate.setDateFormat(Commons.FORMAT_DATE_TIME);
+		dtfCollectionDate.setValue(LocalDateTime.now());
 		dtfCollectionDate.setWidth("50%");
 		dtfCollectionDate.setRequiredIndicatorVisible(true);
 
@@ -245,7 +239,7 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 
 		// -------------------------------------------------------------------------
 		// Datos del recaudo
-		txtInitialBalance = new NumberField("Saldo inicial");
+		txtInitialBalance = new NumberField("Saldo");
 		txtInitialBalance.setStyleName(ValoTheme.TEXTFIELD_TINY);
 		txtInitialBalance.setWidth("50%");
 		txtInitialBalance.setRequiredIndicatorVisible(true);
@@ -331,16 +325,11 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 		if (!message.isEmpty()) {
 			ViewHelper.showNotification(message, Notification.Type.ERROR_MESSAGE);
 		} else {
+			// Guardar recaudo
 			saveCollection(entity);
-			// Actualizar conciliación
-			try {
-				new CashConciliationLayout().saveDailyConciliation(user);
-			} catch (IOException e) {
-				log.error("Error al actualizar conciliación: " + e.getMessage());
-				e.printStackTrace();
-			}
+			// Actualizar conciliación (cuadre de caja) por día y empleado
+			saveConciliation();
 		}
-
 	}
 
 	private void saveCollection(Collection entity) {
@@ -353,7 +342,7 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 				collectionBuilder = Collection.builder(entity);
 			}
 
-			Date collectionDate = DateUtil.localDateToDate(dtfCollectionDate.getValue());
+			Date collectionDate = DateUtil.localDateTimeToDate(dtfCollectionDate.getValue());
 
 			entity = collectionBuilder.document(selectedDocument).collectionDate(collectionDate)
 					.initialBalance(NumericUtil.stringToBigDecimal(txtInitialBalance.getValue()))
@@ -398,6 +387,22 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 
 	}
 
+	/*
+	 * 
+	 * Actualizar conciliación (cuadre de caja) por día y empleado
+	 */
+	private void saveConciliation() {
+		String strLog = "[saveConciliation] ";
+		try {
+			Date conciliationDate = DateUtil.localDateTimeToDate(dtfCollectionDate.getValue());
+			conciliationDate = DateUtils.truncate(conciliationDate, Calendar.DATE);
+			new CashConciliationLayout().saveDailyConciliation(user, conciliationDate);
+		} catch (IOException e) {
+			log.error(strLog + "Error al actualizar conciliación: " + e.getMessage());
+			e.printStackTrace();
+		}
+	}
+
 	@Override
 	public Collection getSelected() {
 		Collection conciliationObj = null;
@@ -428,7 +433,6 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 		return ViewHelper.buildPanel(null, layout);
 	}
 
-	@SuppressWarnings("deprecation")
 	private Panel buildFilterPanel() {
 		HorizontalLayout layout = ViewHelper.buildHorizontalLayout(true, true);
 		txFilterByName = new TextField("Nombre");
@@ -505,36 +509,32 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 	 * 
 	 * @param invoiceFilter
 	 */
-	@SuppressWarnings("deprecation")
+
 	private void builInvoiceWindow(String invoiceFilter) {
 
 		invoiceWindow = ViewHelper.buildSubwindow("75%", null);
 		invoiceWindow.setCaption("Facturas");
 
+		invoiceWindow.addCloseListener(e -> closeWindow(invoiceWindow));
 		VerticalLayout subContent = ViewHelper.buildVerticalLayout(true, true);
-
-		// Panel de botones
-		Button backBtn = new Button("Cancelar", FontAwesome.BACKWARD);
-		backBtn.addStyleName("mystyle-btn");
-		backBtn.addClickListener(e -> closeWindow(invoiceWindow));
-
-		Button selectBtn = new Button("Seleccionar", FontAwesome.CHECK);
-		selectBtn.addStyleName("mystyle-btn");
-		selectBtn.addClickListener(e -> selectDocument());
-
-		HorizontalLayout buttonLayout = ViewHelper.buildHorizontalLayout(true, true);
-		buttonLayout.addComponents(backBtn, selectBtn);
-		Panel buttonPanel = ViewHelper.buildPanel(null, buttonLayout);
 
 		try {
 			CommonsUtil.TRANSACTION_TYPE = ETransactionType.SALIDA.getName();
 			invoicListLayout = new InvoiceReportLayout(true);
 
+			invoicListLayout.getGrid().addItemClickListener(listener -> {
+				if (listener.getMouseEventDetails().isDoubleClick())
+					// pass the row/item that the user double clicked
+					// to method doStuff.
+					// doStuff(l.getItem());
+					selectDocument(listener.getItem());
+			});
+
 		} catch (IOException e) {
 			log.error("Error al cargar lista de facturas. Exception:" + e);
 		}
 		Panel invoicePanel = ViewHelper.buildPanel(null, invoicListLayout);
-		subContent.addComponents(buttonPanel, invoicePanel);
+		subContent.addComponents(invoicePanel);
 
 		invoiceWindow.setContent(subContent);
 		getUI().addWindow(invoiceWindow);
@@ -633,20 +633,63 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 		return result;
 	}
 
-	private void selectDocument() {
-		selectedDocument = invoicListLayout.getSelected();
-		if (selectedDocument != null) {
-			txtDocumentNumber.setValue(selectedDocument.getCode());
-			txtDocumentDate.setValue(DateUtil.dateToString(selectedDocument.getDocumentDate()));
-			txtDocumentValue.setValue(selectedDocument.getTotalValue());
-			txtPerson.setValue(selectedDocument.getPerson().getDocumentNumber() + " -  "
-					+ selectedDocument.getPerson().getName() + " " + selectedDocument.getPerson().getLastName());
+	/**
+	 * Metodo para seleccionar el documento al que se cargará el recaudo
+	 * 
+	 * @param document
+	 */
+	private void selectDocument(Document document) {
+		String strLog = "[selectDocument] ";
+		try {
+			log.info(strLog + "[parameters] " + document);
+			selectedDocument = document;
+			if (selectedDocument != null) {
+				txtDocumentNumber.setValue(selectedDocument.getCode());
+				txtDocumentDate.setValue(DateUtil.dateToString(selectedDocument.getDocumentDate()));
+				txtDocumentValue.setValue(selectedDocument.getTotalValue());
+				txtPerson.setValue(selectedDocument.getPerson().getDocumentNumber() + " -  "
+						+ selectedDocument.getPerson().getName() + " " + selectedDocument.getPerson().getLastName());
 
+				// Obtener los recaudos hechos a la factura para tomar el último saldo
+				txtInitialBalance.setValue(getBalaceDocument(selectedDocument));
+
+			}
+			invoiceWindow.close();
+		} catch (Exception e) {
+			log.error(strLog + "[Exception]" + e.getMessage());
 		}
-		invoiceWindow.close();
 	}
 
-	@SuppressWarnings("deprecation")
+	/**
+	 * Obtener el último saldo de una factura
+	 * 
+	 * @param document
+	 * @return
+	 */
+	private Double getBalaceDocument(Document document) {
+		String strLog = "[getBalaceDocument] ";
+		Double finalBalance = 0.0;
+		try {
+			List<Collection> collections = collectionBll.select(selectedDocument);
+			int size = collections.size();
+			finalBalance = document.getTotalValue();
+			if (size > 0) {
+				// Obtener la última factura
+				Collection collection = collections.get(size - 1);
+				finalBalance = NumericUtil.bigDecimalToDouble((BigDecimal) collection.getFinalBalance());
+			}
+		} catch (Exception e) {
+			log.error(strLog + "[Exception] " + e.getMessage());
+			e.printStackTrace();
+		}
+		return finalBalance;
+	}
+
+	/**
+	 * Construir venta para seleccionar persona
+	 * 
+	 * @param personFiltter
+	 */
 	private void buildPersonWindow(String personFiltter) {
 
 		personSubwindow = ViewHelper.buildSubwindow("75%", null);

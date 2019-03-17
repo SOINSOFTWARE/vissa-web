@@ -556,14 +556,16 @@ public class CashConciliationLayout extends AbstractEditableLayout<CashConciliat
 	private void saveConciliation(CashConciliation entity) {
 		String strLog = "[saveButtonAction]";
 		try {
+			Date concilitationDate = null;
 			CashConciliation.Builder conciliationBuilder = null;
 			if (entity == null) {
 				conciliationBuilder = CashConciliation.builder();
+
 			} else {
 				conciliationBuilder = CashConciliation.builder(entity);
 			}
 
-			Date concilitationDate = DateUtil.localDateToDate(dfConciliationDate.getValue());
+			concilitationDate = DateUtil.localDateToDate(dfConciliationDate.getValue());
 			entity = conciliationBuilder.person(selectedPerson).conciliationDate(concilitationDate)
 					.cashBase(NumericUtil.stringToBigDecimal(txtCashBase.getValue())).archived(false).build();
 
@@ -1075,13 +1077,26 @@ public class CashConciliationLayout extends AbstractEditableLayout<CashConciliat
 		return result;
 	}
 
-	public void saveDailyConciliation(User user) {
-		this.user = user;
-		this.loginRole = user.getRole().getName();
-		this.employeeRole = user.getRole().getName();
-		this.autoSaved = true;
-		buildEditionComponent(null);
-		saveConciliation(null);
+	/**
+	 * Guardar la conciliación de caja por dia y empleado
+	 * @param user
+	 * @param conciliationDate
+	 */
+	public void saveDailyConciliation(User user, Date conciliationDate) {
+		String strLog = "[saveDailyConciliation] ";
+		try {
+			log.info(strLog + "[parameters] user: " + user + ", conciliationDate: " + conciliationDate);
+			this.user = user;
+			this.loginRole = user.getRole().getName();
+			this.employeeRole = user.getRole().getName();
+			this.autoSaved = true;
+			buildEditionComponent(null);
+			CashConciliation cashConciliation = conciliationBll.select(user.getPerson(), conciliationDate);
+			saveConciliation(cashConciliation);
+		} catch (Exception e) {
+			log.error(strLog + "[Exception] " + e.getMessage());
+			e.printStackTrace();
+		}
 	}
 
 }
