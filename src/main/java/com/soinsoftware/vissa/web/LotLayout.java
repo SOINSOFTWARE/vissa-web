@@ -3,6 +3,7 @@ package com.soinsoftware.vissa.web;
 import static com.soinsoftware.vissa.web.VissaUI.KEY_LOTS;
 
 import java.io.IOException;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
 import java.util.Set;
@@ -18,6 +19,7 @@ import com.soinsoftware.vissa.bll.ProductBll;
 import com.soinsoftware.vissa.bll.WarehouseBll;
 import com.soinsoftware.vissa.model.DocumentDetailLot;
 import com.soinsoftware.vissa.model.ETransactionType;
+import com.soinsoftware.vissa.model.InventoryTransaction;
 import com.soinsoftware.vissa.model.Lot;
 import com.soinsoftware.vissa.model.MeasurementUnit;
 import com.soinsoftware.vissa.model.MeasurementUnitProduct;
@@ -369,25 +371,33 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 	protected void fillGridData() {
 		String strLog = "[fillGridData]";
 		try {
+			List<Lot> lots = null;
 			if (product != null) {
-				dataProvider = new ListDataProvider<>(lotBll.select(product));
+				lots = lotBll.select(product);
 			} else if (warehouse != null) {
-				dataProvider = new ListDataProvider<>(lotBll.select(warehouse));
+				lots = lotBll.select(warehouse);
 			} else {
-				dataProvider = new ListDataProvider<>(lotBll.selectAll(false));
+				lots = lotBll.selectAll(false);
 			}
 
-			if (dataProvider != null) {
-				lotGrid.setDataProvider(dataProvider);
-			}
-			if (dataProvider != null) {
-				dataProvider.addDataProviderListener(
-						event -> footer.getCell(columnQuantity).setHtml(calculateTotalQuantity(dataProvider)));
-				refreshGrid();
+			if (lots != null) {
+				Comparator<Lot> comparator = (h1, h2) -> new Integer((h1.getCode()))
+						.compareTo(new Integer(h2.getCode()));
+				lots.sort(comparator.reversed());
+				dataProvider = new ListDataProvider<>(lots);
+				if (dataProvider != null) {
+					lotGrid.setDataProvider(dataProvider);
+				}
+				if (dataProvider != null) {
+					dataProvider.addDataProviderListener(
+							event -> footer.getCell(columnQuantity).setHtml(calculateTotalQuantity(dataProvider)));
+					refreshGrid();
+				}
 			}
 
 		} catch (Exception e) {
 			log.error(strLog + "[Exception]" + e.getMessage());
+			e.printStackTrace();
 		}
 	}
 
@@ -592,13 +602,14 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 
 			result = lot.getQuantity() > 0;
 
-			String productNameFilter = txtProductNameFilter.getValue().trim();
+			String productNameFilter = txtProductNameFilter != null ? txtProductNameFilter.getValue().trim() : "";
 			result = lot.getQuantity() > 0 && (productNameFilter != null && !productNameFilter.isEmpty()
 					? lot.getProduct().getName().contains(productNameFilter)
 					: true);
 
 		} catch (Exception e) {
 			log.error(strLog + "[Exception]" + e.getMessage());
+			e.printStackTrace();
 		}
 		return result;
 	}

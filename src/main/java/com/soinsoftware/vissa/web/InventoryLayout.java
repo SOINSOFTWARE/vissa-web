@@ -3,10 +3,12 @@ package com.soinsoftware.vissa.web;
 import static com.soinsoftware.vissa.web.VissaUI.KEY_INVENTORY;
 
 import java.io.IOException;
-import java.util.Date;
+import java.util.Comparator;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import com.soinsoftware.vissa.bll.InventoryTransactionBll;
-import com.soinsoftware.vissa.model.Document;
+import com.soinsoftware.vissa.model.Collection;
 import com.soinsoftware.vissa.model.InventoryTransaction;
 import com.soinsoftware.vissa.model.Product;
 import com.soinsoftware.vissa.util.DateUtil;
@@ -65,6 +67,7 @@ public class InventoryLayout extends AbstractEditableLayout<Product> {
 		return layout;
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
 	protected Panel buildGridPanel() {
 		inventoryGrid = ViewHelper.buildGrid(SelectionMode.SINGLE);
@@ -120,7 +123,14 @@ public class InventoryLayout extends AbstractEditableLayout<Product> {
 
 	@Override
 	protected void fillGridData() {
-		ListDataProvider<InventoryTransaction> dataProvider = new ListDataProvider<>(inventoryBll.selectAll());
+		List<InventoryTransaction> inventory = inventoryBll.selectAll();
+
+		Comparator<InventoryTransaction> comparator = (h1, h2) -> h1.getDocument().getDocumentDate()
+				.compareTo(h2.getDocument().getDocumentDate());
+
+		inventory.sort(comparator.reversed());
+
+		ListDataProvider<InventoryTransaction> dataProvider = new ListDataProvider<>(inventory);
 		filterInvDataProvider = dataProvider.withConfigurableFilter();
 		inventoryGrid.setDataProvider(filterInvDataProvider);
 

@@ -5,9 +5,11 @@ import static com.soinsoftware.vissa.web.VissaUI.KEY_SALESMAN_CONCILIATION;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.apache.log4j.Logger;
 import org.vaadin.ui.NumberField;
@@ -60,7 +62,7 @@ import com.vaadin.ui.VerticalLayout;
 import com.vaadin.ui.Window;
 import com.vaadin.ui.themes.ValoTheme;
 
-@SuppressWarnings("unchecked")
+@SuppressWarnings({ "unchecked", "deprecation" })
 public class CashConciliationLayout extends AbstractEditableLayout<CashConciliation> {
 
 	/**
@@ -216,7 +218,7 @@ public class CashConciliationLayout extends AbstractEditableLayout<CashConciliat
 		return ViewHelper.buildPanel(null, layout);
 	}
 
-	@SuppressWarnings("deprecation")
+	
 	@Override
 	protected Component buildEditionComponent(CashConciliation concilitation) {
 
@@ -282,6 +284,10 @@ public class CashConciliationLayout extends AbstractEditableLayout<CashConciliat
 		return layout;
 	}
 
+	/*
+	 * 
+	 * Construir campos de acuerdo al perfil del empleado
+	 */
 	private Component buildDetailLayout(CashConciliation concilitation) {
 		VerticalLayout detailLayout = null;
 		if (employeeRole != null) {
@@ -448,9 +454,11 @@ public class CashConciliationLayout extends AbstractEditableLayout<CashConciliat
 
 	private void setAdminFieldValues(CashConciliation concil) {
 		if (concil != null) {
-			txtSupplierPayments.setValue(String.valueOf(concil.getSupplierPayments()));
-			txtCashRegisterBorrow.setValue(String.valueOf(concil.getCashRegisterBorrow()));
-			txtBalance.setValue(String.valueOf(concil.getBalance()));
+			txtSupplierPayments.setValue(
+					concil.getSupplierPayments() != null ? String.valueOf(concil.getSupplierPayments()) : "0.0");
+			txtCashRegisterBorrow.setValue(
+					concil.getCashRegisterBorrow() != null ? String.valueOf(concil.getCashRegisterBorrow()) : "0.0");
+			txtBalance.setValue(concil.getBalance() != null ? String.valueOf(concil.getBalance()) : "0.0");
 		} else {
 			txtCashBase.setValue(0.0);
 			// txtSupplierPayments.setValue(txtSupplierPayments);
@@ -535,6 +543,9 @@ public class CashConciliationLayout extends AbstractEditableLayout<CashConciliat
 		} else {
 			concilitationList = conciliationBll.select(user.getPerson());
 		}
+		concilitationList = concilitationList.stream()
+				.sorted(Comparator.comparing(CashConciliation::getConciliationDate).reversed())
+				.collect(Collectors.toList());
 		ListDataProvider<CashConciliation> dataProvider = new ListDataProvider<>(concilitationList);
 		filterProductDataProvider = dataProvider.withConfigurableFilter();
 		concilicationGrid.setDataProvider(filterProductDataProvider);
@@ -722,7 +733,7 @@ public class CashConciliationLayout extends AbstractEditableLayout<CashConciliat
 	 * 
 	 * @param personFiltter
 	 */
-	@SuppressWarnings("deprecation")
+
 	private void buildPersonWindow(String personFiltter) {
 
 		personSubwindow = ViewHelper.buildSubwindow("75%", null);
@@ -1094,7 +1105,12 @@ public class CashConciliationLayout extends AbstractEditableLayout<CashConciliat
 			this.loginRole = user.getRole().getName();
 			this.employeeRole = user.getRole().getName();
 			this.autoSaved = true;
+			loginRole = ERole.SALESMAN.getName();
 			buildEditionComponent(null);
+
+			loginRole = ERole.ADMINISTRATOR.getName();
+			buildEditionComponent(null);
+
 			CashConciliation cashConciliation = conciliationBll.select(user.getPerson(), conciliationDate);
 			saveConciliation(cashConciliation);
 		} catch (Exception e) {

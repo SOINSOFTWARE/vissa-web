@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
@@ -92,7 +93,6 @@ import com.vaadin.ui.HorizontalLayout;
 import com.vaadin.ui.Label;
 import com.vaadin.ui.Notification;
 import com.vaadin.ui.Panel;
-import com.vaadin.ui.PopupView;
 import com.vaadin.ui.TextField;
 import com.vaadin.ui.VerticalLayout;
 import com.vaadin.ui.Window;
@@ -505,20 +505,38 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		deleteProductBtn.addStyleName(ValoTheme.BUTTON_TINY);
 		deleteProductBtn.addClickListener(e -> deleteItemDetail());
 
-		Button newProductBtn = new Button("Crear producto", FontAwesome.PLUS);
-		newProductBtn.addStyleName(ValoTheme.BUTTON_TINY);
 		newProductBtn.addClickListener(e -> buildProductWindow(null));
-
-		buttonlayout.addComponents(addProductBtn, deleteProductBtn);
+		String label = "";
 		if (transactionType.equals(ETransactionType.ENTRADA)) {
-			buttonlayout.addComponent(newProductBtn);
+			label = "Crear producto";
+		} else if (transactionType.equals(ETransactionType.SALIDA)) {
+			label = "Ver producto";
 		}
+		Button newProductBtn = new Button(label, FontAwesome.PLUS);
+		newProductBtn.addStyleName(ValoTheme.BUTTON_TINY);
+		newProductBtn.addClickListener(e -> {
+
+			List<Product> products = null;
+			if (transactionType.equals(ETransactionType.SALIDA)) {
+				DocumentDetail detail = detailGrid.getSelectedItems().iterator().next();
+				products = Arrays.asList(detail.getProduct());
+			}
+
+			buildProductWindow(products);
+		});
+
+		buttonlayout.addComponents(addProductBtn, deleteProductBtn, newProductBtn);
 
 		layout.addComponents(buttonlayout, builGridPanel());
 
 		return ViewHelper.buildPanel("Productos", layout);
 	}
 
+	/**
+	 * Metodo para construir la grid de los items a facturar
+	 * 
+	 * @return
+	 */
 	@SuppressWarnings("unchecked")
 	private Component builGridPanel() {
 		detailGrid = ViewHelper.buildGrid(SelectionMode.SINGLE);
@@ -526,8 +544,13 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 		// columns
 		TextField txtCode = new TextField();
-		detailGrid.addColumn(DocumentDetail::getCode).setCaption("Código").setEditorComponent(txtCode,
-				DocumentDetail::setCode);
+		detailGrid.addColumn(documentDetail -> {
+			if (documentDetail.getProduct() != null) {
+				return documentDetail.getProduct().getCode();
+			} else {
+				return "";
+			}
+		}).setCaption("Código").setEditorComponent(txtCode, DocumentDetail::setCode);
 
 		TextField txtName = new TextField();
 		txtName.setStyleName(ValoTheme.TEXTFIELD_TINY);
@@ -853,9 +876,6 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 			personLayout.getGrid().addItemClickListener(listener -> {
 				if (listener.getMouseEventDetails().isDoubleClick())
-					// pass the row/item that the user double clicked
-					// to method doStuff.
-					// doStuff(l.getItem());
 					selectPerson(listener.getItem());
 			});
 
@@ -935,36 +955,35 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	}
 
 	/**
-	 * Metodo que construye la venta para buscar productos
+	 * Metodo que construye la ventana para buscar productos
 	 */
 	private void buildProductWindow(List<Product> productList) {
-		selectedProduct = null;
-		selectedLot = null;
-
-		productSubwindow = ViewHelper.buildSubwindow("75%", null);
-		productSubwindow.setCaption("Productos");
-
-		VerticalLayout subContent = ViewHelper.buildVerticalLayout(true, true);
+		String strLog = "[buildProductWindow] ";
 
 		try {
+			selectedProduct = null;
+			selectedLot = null;
+
+			productSubwindow = ViewHelper.buildSubwindow("75%", null);
+			productSubwindow.setCaption("Productos");
+
+			VerticalLayout subContent = ViewHelper.buildVerticalLayout(true, true);
 			productLayout = new ProductLayout(ELayoutMode.LIST, productList);
 
 			productLayout.getProductGrid().addItemClickListener(listener -> {
 				if (listener.getMouseEventDetails().isDoubleClick())
-					// pass the row/item that the user double clicked
-					// to method doStuff.
-					// doStuff(l.getItem());
 					selectProduct(listener.getItem());
 			});
+
+			Panel productPanel = ViewHelper.buildPanel(null, productLayout);
+			subContent.addComponents(productPanel);
+
+			productSubwindow.setContent(subContent);
+			getUI().addWindow(productSubwindow);
 		} catch (IOException e) {
-			log.error("Error al cargar lista de productos. Exception:" + e);
+			log.error(strLog + "Error al cargar lista de productos. Exception:" + e);
+			e.printStackTrace();
 		}
-		Panel productPanel = ViewHelper.buildPanel(null, productLayout);
-		subContent.addComponents(productPanel);
-
-		productSubwindow.setContent(subContent);
-		getUI().addWindow(productSubwindow);
-
 	}
 
 	/**
@@ -1217,13 +1236,16 @@ public class InvoiceLayout extends VerticalLayout implements View {
 							paymentType = cbPaymentType.getSelectedItem().get().getPaymentType();
 							if (transactionType.equals(ETransactionType.SALIDA)
 									&& paymentType.getCode().equals(EPaymemtType.PAID.getName())) {
+								// Mostrar ventana para el cambio
 								buildCashChangeWindow();
 							} else {
 								saveInvoice(documentEntity);
 							}
 
 							// Actualizar conciliación (cuadre de caja) por día y empleado
-							saveConciliation();
+							if (this.document != null) {
+								saveConciliation();
+							}
 						}
 					});
 		}

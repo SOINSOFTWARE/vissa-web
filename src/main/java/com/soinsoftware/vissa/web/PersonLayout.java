@@ -747,15 +747,13 @@ public class PersonLayout extends AbstractEditableLayout<Person> {
 		String message = "";
 		String character = "|";
 
-		if (!cbDocumentType.getSelectedItem().isPresent()) {
-			message = "El tipo de documento es obligatorio";
-		}
-		if (txtDocumentId.getValue() == null || txtDocumentId.getValue().isEmpty()) {
-			if (!message.isEmpty()) {
-				message = message.concat(character);
-			}
-			message = message.concat("El número de documento es obligatorio");
-		}
+		/*
+		 * if (!cbDocumentType.getSelectedItem().isPresent()) { message =
+		 * "El tipo de documento es obligatorio"; } if (txtDocumentId.getValue() == null
+		 * || txtDocumentId.getValue().isEmpty()) { if (!message.isEmpty()) { message =
+		 * message.concat(character); } message =
+		 * message.concat("El número de documento es obligatorio"); }
+		 */
 		if (txtName.getValue() == null || txtName.getValue().isEmpty()) {
 			if (!message.isEmpty()) {
 				message = message.concat(character);
