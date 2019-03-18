@@ -505,7 +505,6 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		deleteProductBtn.addStyleName(ValoTheme.BUTTON_TINY);
 		deleteProductBtn.addClickListener(e -> deleteItemDetail());
 
-		newProductBtn.addClickListener(e -> buildProductWindow(null));
 		String label = "";
 		if (transactionType.equals(ETransactionType.ENTRADA)) {
 			label = "Crear producto";
