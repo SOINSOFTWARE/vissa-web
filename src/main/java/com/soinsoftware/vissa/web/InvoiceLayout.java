@@ -518,7 +518,9 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			List<Product> products = null;
 			if (transactionType.equals(ETransactionType.SALIDA)) {
 				DocumentDetail detail = detailGrid.getSelectedItems().iterator().next();
-				products = Arrays.asList(detail.getProduct());
+				if (detail != null) {
+					products = Arrays.asList(detail.getProduct());
+				}
 			}
 
 			buildProductWindow(products);
@@ -1053,25 +1055,30 @@ public class InvoiceLayout extends VerticalLayout implements View {
 				docDetail.setMeasurementUnitList(muList);
 				MeasurementUnit mu = muList.get(0);
 				docDetail.setMeasurementUnit(mu);
-				// Setear el precio e impuesto
+				// Setear el precio del impuesto
 				MeasurementUnitProduct priceXMu = selectMuXProduct(docDetail.getMeasurementUnit(),
 						docDetail.getProduct());
-				setPriceComponent(priceXMu);
-				docDetail.setMeasurementUnitProduct(priceXMu);
+				if (transactionType.equals(ETransactionType.SALIDA)
+						&& (priceXMu == null || (priceXMu != null && priceXMu.getFinalPrice().equals(0.0)))) {
+					ViewHelper.showNotification("Precio del producto no válido", Notification.Type.ERROR_MESSAGE);
+				} else {
+					setPriceComponent(priceXMu);
+					docDetail.setMeasurementUnitProduct(priceXMu);
 
-				if (transactionType.equals(ETransactionType.ENTRADA)) {
-					docDetail.setPrice(priceXMu.getPurchasePrice());
-					docDetail.setTax(priceXMu.getPurchaseTax());
-				} else if (transactionType.equals(ETransactionType.SALIDA)) {
-					docDetail.setPrice(priceXMu.getSalePrice());
-					docDetail.setTax(priceXMu.getSaleTax());
+					if (transactionType.equals(ETransactionType.ENTRADA)) {
+						docDetail.setPrice(priceXMu.getPurchasePrice());
+						docDetail.setTax(priceXMu.getPurchaseTax());
+					} else if (transactionType.equals(ETransactionType.SALIDA)) {
+						docDetail.setPrice(priceXMu.getSalePrice());
+						docDetail.setTax(priceXMu.getSaleTax());
+					}
+
+					// Actualizar el item
+					itemsList.set(pos, docDetail);
+					fillDetailGridData(itemsList);
+					buildMeasurementUnitComponent();
+					closeWindow(productSubwindow);
 				}
-
-				// Actualizar el item
-				itemsList.set(pos, docDetail);
-				fillDetailGridData(itemsList);
-				buildMeasurementUnitComponent();
-				closeWindow(productSubwindow);
 			} else {
 				ViewHelper.showNotification("El producto no tiene unidad de medida configurada",
 						Notification.Type.ERROR_MESSAGE);
