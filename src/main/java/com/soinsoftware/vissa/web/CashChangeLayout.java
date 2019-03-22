@@ -40,6 +40,7 @@ public class CashChangeLayout extends VerticalLayout implements View {
 	private NumberField txtChange;
 	private Double totalValueDocument;
 	private InvoiceLayout invoiceLayout;
+	private ReturnLayout returnLayout;
 
 	private User user = null;
 
@@ -55,6 +56,15 @@ public class CashChangeLayout extends VerticalLayout implements View {
 		userBll = UserBll.getInstance();
 		this.totalValueDocument = totalValueDocument;
 		this.invoiceLayout = invoiceLayout;
+		buildComponents();
+
+	}
+
+	public CashChangeLayout(ReturnLayout returnLayout, Double totalValueDocument) throws IOException {
+		super();
+		userBll = UserBll.getInstance();
+		this.totalValueDocument = totalValueDocument;
+		this.returnLayout = returnLayout;
 		buildComponents();
 
 	}
@@ -183,8 +193,13 @@ public class CashChangeLayout extends VerticalLayout implements View {
 		// Guardar Usuario
 		try {
 			if (txtPaidAmount.getValue() != null && !txtPaidAmount.getValue().isEmpty()) {
-				invoiceLayout.setPayValue(Double.valueOf(txtPaidAmount.getValue()));
-				invoiceLayout.saveInvoice(invoiceLayout.getDocument());
+				if (invoiceLayout != null) {
+					invoiceLayout.setPayValue(Double.valueOf(txtPaidAmount.getValue()));
+					invoiceLayout.saveInvoice(invoiceLayout.getDocument());
+				} else if (returnLayout != null) {
+					returnLayout.setPayValue(Double.valueOf(txtPaidAmount.getValue()));
+					returnLayout.saveInvoice(invoiceLayout.getDocument());
+				}
 			} else if (Double.parseDouble(txtPaidAmount.getValue()) < Double.parseDouble(txtTotalInvoice.getValue())) {
 				ViewHelper.showNotification("El valor pagado debe ser mayor al total de la factura",
 						Notification.Type.WARNING_MESSAGE);

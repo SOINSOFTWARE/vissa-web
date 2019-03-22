@@ -1267,6 +1267,12 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		String message = "";
 		String character = "|";
 
+		if (txtTotal.getValue().equals("0.0")) {
+			if (!message.isEmpty()) {
+				message = message.concat(character);
+			}
+			message = "Total de la factura no válido: " + txtTotal.getValue();
+		}
 		if (!cbDocumentType.getSelectedItem().isPresent()) {
 			if (!message.isEmpty()) {
 				message = message.concat(character);

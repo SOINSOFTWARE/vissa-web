@@ -1338,7 +1338,7 @@ public class ReturnLayout extends VerticalLayout implements View {
 
 				// Consultat UM x Product
 				MeasurementUnitProduct muProduct = detail.getMeasurementUnitProduct();
-				log.info(strLog + "muProduct: " + muProduct.getMeasurementUnit());
+				log.info(strLog + "muProduct: " + muProduct );
 
 				Double initialStock = 0.0;
 				Double quantity = 0.0;
@@ -1348,8 +1348,8 @@ public class ReturnLayout extends VerticalLayout implements View {
 				Double quantityLot = 0.0;
 				Double finalStockLot = 0.0;
 
-				quantity = Double.parseDouble(detail.getQuantity());
-				log.info(strLog + "quantity ingresado: " + quantity);
+				quantity = Double.parseDouble(detail.getDiffQuantity());
+				log.info(strLog + "diferencia quantity ingresado: " + quantity);
 
 				// Actualizar stock para la UM escogida
 				finalStockMU = muProduct.getStock();
@@ -1924,12 +1924,13 @@ public class ReturnLayout extends VerticalLayout implements View {
 	 * Metodo que construye la ventana para mostrar el cambio de dinero
 	 */
 	private boolean buildCashChangeWindow() {
+		String strLog =  "[buildCashChangeWindow]";
 
 		cashChangeWindow = ViewHelper.buildSubwindow("50%", null);
 
 		try {
 			Double totalValue = txtTotal.getValue() != null ? Double.parseDouble(txtTotal.getValue()) : 0;
-			cashChangeLayout = null;// new CashChangeLayout(this, totalValue);
+			cashChangeLayout = new CashChangeLayout(this, totalValue);
 			cashChangeLayout.setMargin(false);
 			cashChangeLayout.setSpacing(false);
 
@@ -1939,7 +1940,7 @@ public class ReturnLayout extends VerticalLayout implements View {
 
 			getUI().addWindow(cashChangeWindow);
 		} catch (Exception e) {
-			log.error("Error al cargar lista de lotes. Exception:" + e);
+			log.error(strLog + "Error en ventana de cambio" + e);
 		}
 
 		return true;
