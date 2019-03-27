@@ -1366,7 +1366,7 @@ public class ReturnLayout extends VerticalLayout implements View {
 
 				// Para las compras la cantidad es la misma del lote, y esta cant ya se agregó
 				// al crear el lote
-				if (transactionType.equals(ETransactionType.ENTRADA)) {
+				if (detail.getTransactionType().equals(ETransactionType.ENTRADA)) {
 					// Para el inventario general
 					finalStock = initialStock;
 					log.info(strLog + "finalStock: " + finalStock);
@@ -1384,7 +1384,7 @@ public class ReturnLayout extends VerticalLayout implements View {
 					finalStockLot = lotTmp.getQuantity();
 					quantityLot = quantity;
 
-				} else if (transactionType.equals(ETransactionType.SALIDA)) {
+				} else if (detail.getTransactionType().equals(ETransactionType.SALIDA)) {
 					finalStockMU = finalStockMU - quantity;
 					// Para inventario general
 					if (!detail.getMeasurementUnit().equals(detail.getProduct().getMeasurementUnit())) {

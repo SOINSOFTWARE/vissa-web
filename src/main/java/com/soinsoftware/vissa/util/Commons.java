@@ -28,6 +28,7 @@ public class Commons {
 	public static final String PARAM_CUSTOMER_ADDRESS = "P_CUSTOMER_ADDRESS";
 	public static final String PARAM_CUSTOMER_PHONE = "P_CUSTOMER_PHONE";
 	public static final String PARAM_CASH = "P_CASH";
+	public static final String PARAM_TOTAL_IVA = "P_TOTAL_IVA";
 	public static final String PARAM_CHANGE = "P_CHANGE";
 	public static final Double PARAM_SALESMAN_CASH_BASE = 100000.0;
 

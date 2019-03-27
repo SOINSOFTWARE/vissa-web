@@ -198,7 +198,7 @@ public class CashChangeLayout extends VerticalLayout implements View {
 					invoiceLayout.saveInvoice(invoiceLayout.getDocument());
 				} else if (returnLayout != null) {
 					returnLayout.setPayValue(Double.valueOf(txtPaidAmount.getValue()));
-					returnLayout.saveInvoice(invoiceLayout.getDocument());
+					returnLayout.saveInvoice(returnLayout.getDocument());
 				}
 			} else if (Double.parseDouble(txtPaidAmount.getValue()) < Double.parseDouble(txtTotalInvoice.getValue())) {
 				ViewHelper.showNotification("El valor pagado debe ser mayor al total de la factura",

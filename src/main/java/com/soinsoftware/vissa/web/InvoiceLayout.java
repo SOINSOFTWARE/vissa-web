@@ -517,7 +517,9 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 			List<Product> products = null;
 			if (transactionType.equals(ETransactionType.SALIDA)) {
-				DocumentDetail detail = detailGrid.getSelectedItems().iterator().next();
+				DocumentDetail detail = !detailGrid.getSelectedItems().isEmpty()
+						? detailGrid.getSelectedItems().iterator().next()
+						: null;
 				if (detail != null) {
 					products = Arrays.asList(detail.getProduct());
 				}
@@ -623,7 +625,8 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		}
 
 		txtQuantity.addBlurListener(e -> changeQuantity(txtQuantity.getValue()));
-		txtQuantity.addValueChangeListener(e -> changeQuantity(txtQuantity.getValue()));
+		// txtQuantity.addValueChangeListener(e ->
+		// changeQuantity(txtQuantity.getValue()));
 
 		footer = detailGrid.prependFooterRow();
 		if (columnDiscount != null) {
@@ -637,7 +640,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 		detailGrid.getEditor().addSaveListener(e -> changeQuantity(txtQuantity.getValue()));
 
-		initializeGrid();
+		// initializeGrid();
 
 		HorizontalLayout itemsLayout = ViewHelper.buildHorizontalLayout(false, false);
 		itemsLayout.setSizeFull();
@@ -707,7 +710,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			if (quantity != null && !quantity.isEmpty()) {
 				qty = Double.parseDouble(quantity);
 
-				if (qty > 0) {
+				if (CommonsUtil.CURRENT_DOCUMENT_DETAIL.getProduct() != null && qty > 0) {
 					currentDetail = CommonsUtil.CURRENT_DOCUMENT_DETAIL;
 					log.info(strLog + "currentDetail:" + currentDetail);
 					// if (!withoutLot) {
@@ -746,8 +749,10 @@ public class InvoiceLayout extends VerticalLayout implements View {
 					correct = true;
 
 				} else {
-					message = "La cantidad debe ser mayor a 0";
-					throw new Exception(message);
+					if (CommonsUtil.CURRENT_DOCUMENT_DETAIL.getProduct() == null && qty <= 0) {
+						message = "La cantidad debe ser mayor a 0";
+						throw new Exception(message);
+					}
 				}
 			}
 
@@ -1612,7 +1617,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			// cbPaymentType.clear();
 			cbDocumentStatus.setSelectedItem(docStatusBll.select("Nueva").get(0));
 			itemsList.clear();
-			initializeGrid();
+			// initializeGrid();
 			detailGrid.getDataProvider().refreshAll();
 			txtDocNumFilter.clear();
 			txtTotal.clear();
@@ -1620,6 +1625,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			dtfDocumentDate.setValue(LocalDateTime.now());
 			getNextDocumentNumber(cbDocumentType.getSelectedItem().get());
 			disableComponents(false);
+			CommonsUtil.CURRENT_DOCUMENT_DETAIL = null;
 		} catch (Exception e) {
 			log.error(strLog + "[Exception]" + e.getMessage());
 			ViewHelper.showNotification(
@@ -1648,8 +1654,10 @@ public class InvoiceLayout extends VerticalLayout implements View {
 					txtReference.setValue(document.getReference() != null ? document.getReference() : "");
 					txtResolution.setValue(document.getResolution() != null ? document.getResolution() : "");
 					dtfDocumentDate.setValue(DateUtil.dateToLocalDateTime(document.getDocumentDate()));
+					PaymentType docType = document.getPaymentType();
+					PaymentDocumentType payDocType = PaymentDocumentType.builder().documentType(document.getDocumentType()).paymentType(docType).build();
 					cbPaymentType
-							.setValue(PaymentDocumentType.builder().paymentType(document.getPaymentType()).build());
+							.setValue(payDocType);
 					cbPaymentMethod.setValue(document.getPaymentMethod());
 					txtPaymentTerm.setValue(document.getPaymentTerm() != null ? document.getPaymentTerm() : "");
 					selectedPerson = document.getPerson();
@@ -1874,6 +1882,8 @@ public class InvoiceLayout extends VerticalLayout implements View {
 				parameters.put(Commons.PARAM_CASH, document.getPayValue() != null ? document.getPayValue() : 0.0);
 				parameters.put(Commons.PARAM_CHANGE,
 						document.getPayValue() != null ? document.getPayValue() - document.getTotalValue() : 0.0);
+				parameters.put(Commons.PARAM_TOTAL_IVA,
+						document.getTotalValueNoTax() != null ? document.getTotalValueNoTax() : 0.0);
 			}
 		} catch (Exception e) {
 
@@ -1928,7 +1938,8 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			MeasurementUnitProduct muProduct = selectMuXProduct(
 					cbMeasurementUnit.getSelectedItem().isPresent() ? e.getValue() : null, product);
 			setPriceComponent(muProduct);
-			String qty = CommonsUtil.CURRENT_DOCUMENT_DETAIL.getQuantity();
+			String qty = CommonsUtil.CURRENT_DOCUMENT_DETAIL != null ? CommonsUtil.CURRENT_DOCUMENT_DETAIL.getQuantity()
+					: null;
 			if (qty != null && !qty.isEmpty()) {
 				setQuantityComponent(Double.parseDouble(qty), e.getOldValue(), e.getValue());
 			}

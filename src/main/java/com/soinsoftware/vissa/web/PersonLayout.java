@@ -126,7 +126,7 @@ public class PersonLayout extends AbstractEditableLayout<Person> {
 			personType = PersonType.CUSTOMER;
 			this.pageTitle = "Clientes";
 		}
-		
+
 		if (Commons.PERSON_TYPE.equals(PersonType.USER.getName())) {
 			personType = PersonType.USER;
 			this.pageTitle = "Usuarios";
@@ -402,11 +402,11 @@ public class PersonLayout extends AbstractEditableLayout<Person> {
 		}
 		txtLogin = new TextField("Nombre de usuario");
 		txtLogin.setRequiredIndicatorVisible(true);
-		txtLogin.setStyleName(ValoTheme.TEXTFIELD_TINY);
+		// txtLogin.setStyleName(ValoTheme.TEXTFIELD_TINY);
 
 		txtPassword = new PasswordField("Contraseña");
 		txtPassword.setRequiredIndicatorVisible(true);
-		txtPassword.setStyleName(ValoTheme.TEXTFIELD_TINY);
+		// txtPassword.setStyleName(ValoTheme.TEXTFIELD_TINY);
 
 		cbRole = new ComboBox<>("Rol");
 		cbRole.setEmptySelectionCaption("Seleccione");
@@ -423,7 +423,7 @@ public class PersonLayout extends AbstractEditableLayout<Person> {
 		}
 
 		FormLayout authForm = ViewHelper.buildForm("Datos de autenticación", false, false);
-		authForm.addComponents(txtLogin, txtPassword);
+		authForm.addComponents(txtLogin, txtPassword, cbRole);
 		Panel authPanel = ViewHelper.buildPanel("Datos de autenticación", authForm);
 
 		return authPanel;
@@ -824,5 +824,4 @@ public class PersonLayout extends AbstractEditableLayout<Person> {
 		this.grid = grid;
 	}
 
-	
 }
