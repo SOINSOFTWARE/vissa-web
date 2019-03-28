@@ -725,9 +725,9 @@ public class InvoiceLayout extends VerticalLayout implements View {
 							Double initialStockLot = 0.0;
 							// Si la UM del item es diferente a la del lote, se convierte
 							if (!currentDetail.getMeasurementUnit().equals(detailLot.getLot().getMeasurementUnit())) {
-								qty = convertMU(qty, currentDetail.getMeasurementUnit(),
+								qty = convertStockXMU(qty, currentDetail.getMeasurementUnit(),
 										detailLot.getLot().getMeasurementUnit());
-								initialStockLot = convertMU(detailLot.getInitialStockLot(),
+								initialStockLot = convertStockXMU(detailLot.getInitialStockLot(),
 										currentDetail.getMeasurementUnit(), detailLot.getLot().getMeasurementUnit());
 							}
 
@@ -772,7 +772,15 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		}
 	}
 
-	private Double convertMU(Double quantity, MeasurementUnit muSource, MeasurementUnit muTarget) {
+	/**
+	 * Convertir el stock que está en una MU a su equivalencia en otra MU
+	 * 
+	 * @param quantity
+	 * @param muSource
+	 * @param muTarget
+	 * @return
+	 */
+	private Double convertStockXMU(Double quantity, MeasurementUnit muSource, MeasurementUnit muTarget) {
 		String strLog = "[convertQuantityMU]";
 		Double muTargetStock = 0.0;
 		try {
@@ -1386,7 +1394,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 					log.info(strLog + "finalStock: " + finalStock);
 					// Si la UM es diferente a la UM principal se debe convertir
 					if (!detail.getMeasurementUnit().equals(detail.getProduct().getMeasurementUnit())) {
-						quantity = convertMU(quantity, detail.getMeasurementUnit(),
+						quantity = convertStockXMU(quantity, detail.getMeasurementUnit(),
 								detail.getProduct().getMeasurementUnit());
 						log.info(strLog + "quantity convertido: " + quantity);
 					}
@@ -1403,11 +1411,11 @@ public class InvoiceLayout extends VerticalLayout implements View {
 					// Para inventario general
 					if (!detail.getMeasurementUnit().equals(detail.getProduct().getMeasurementUnit())) {
 						// Si la UM es diferente a la UM principal se debe convertir
-						initialStock = convertMU(initialStock, detail.getMeasurementUnit(),
+						initialStock = convertStockXMU(initialStock, detail.getMeasurementUnit(),
 								detail.getProduct().getMeasurementUnit());
 						log.info(strLog + "initialStock convertido: " + quantity);
 
-						quantity = convertMU(quantity, detail.getMeasurementUnit(),
+						quantity = convertStockXMU(quantity, detail.getMeasurementUnit(),
 								detail.getProduct().getMeasurementUnit());
 						log.info(strLog + "quantity convertido: " + quantity);
 					}
@@ -1658,7 +1666,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 					PaymentDocumentType payDocType = paymentDocumentTypeBll.select(document.getDocumentType(),
 							document.getPaymentType());
 
-					cbPaymentType.setValue(payDocType);					
+					cbPaymentType.setValue(payDocType);
 
 					cbPaymentMethod.setValue(document.getPaymentMethod());
 					txtPaymentTerm.setValue(document.getPaymentTerm() != null ? document.getPaymentTerm() : "");
@@ -1959,7 +1967,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		// Binding de cantidad
 
 		NumberField txtQuantity = new NumberField();
-		Double newQty = convertMU(value, sourceMU, targetMU);
+		Double newQty = convertStockXMU(value, sourceMU, targetMU);
 		txtQuantity.setValue(newQty);
 		Binder<DocumentDetail> binder = detailGrid.getEditor().getBinder();
 		Binding<DocumentDetail, String> quantityBinding = binder.bind(txtQuantity, DocumentDetail::getQuantity,
@@ -2058,7 +2066,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			List<MeasurementUnitProduct> muProductList = measurementUnitProductBll.select(product);
 			for (MeasurementUnitProduct muProductObj : muProductList) {
 				if (!muProductObj.getMeasurementUnit().equals(paramMuProduct.getMeasurementUnit())) {
-					Double newStock = convertMU(paramMuProduct.getStock(), paramMuProduct.getMeasurementUnit(),
+					Double newStock = convertStockXMU(paramMuProduct.getStock(), paramMuProduct.getMeasurementUnit(),
 							muProductObj.getMeasurementUnit());
 					muProductObj.setStock(newStock);
 				} else {

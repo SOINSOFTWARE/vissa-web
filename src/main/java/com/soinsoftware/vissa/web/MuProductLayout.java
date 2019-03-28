@@ -256,7 +256,7 @@ public class MuProductLayout extends AbstractEditableLayout<MeasurementUnitProdu
 				measurementUnitProductBll.save(entity);
 				fillGridData();
 				ViewHelper.showNotification("Unidad de medida eliminada", Notification.Type.WARNING_MESSAGE);
-			}else {
+			} else {
 				ViewHelper.showNotification("No ha seleccionado un registro", Notification.Type.WARNING_MESSAGE);
 			}
 		} catch (Exception e) {

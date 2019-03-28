@@ -153,6 +153,7 @@ public class VissaUI extends UI {
 		if (permissionUtil.canView(KEY_INVENTORY)) {
 			treeData.addItem(null, KEY_INVENTORY);
 			if (permissionUtil.canView(KEY_PRODUCTS)) {
+				Commons.LAYOUT_MODE = ELayoutMode.ALL;
 				treeData.addItem(KEY_INVENTORY, KEY_PRODUCTS);
 			}
 			if (permissionUtil.canView(KEY_LOTS)) {

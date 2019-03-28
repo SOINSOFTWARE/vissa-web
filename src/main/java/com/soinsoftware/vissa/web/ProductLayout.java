@@ -18,13 +18,16 @@ import org.vaadin.ui.NumberField;
 
 import com.soinsoftware.vissa.bll.MeasurementUnitBll;
 import com.soinsoftware.vissa.bll.MeasurementUnitProductBll;
+import com.soinsoftware.vissa.bll.MuEquivalenceBll;
 import com.soinsoftware.vissa.bll.ProductBll;
 import com.soinsoftware.vissa.bll.ProductCategoryBll;
 import com.soinsoftware.vissa.bll.ProductTypeBll;
 import com.soinsoftware.vissa.bll.TableSequenceBll;
+import com.soinsoftware.vissa.common.CommonsUtil;
 import com.soinsoftware.vissa.exception.ModelValidationException;
 import com.soinsoftware.vissa.model.MeasurementUnit;
 import com.soinsoftware.vissa.model.MeasurementUnitProduct;
+import com.soinsoftware.vissa.model.MuEquivalence;
 import com.soinsoftware.vissa.model.Product;
 import com.soinsoftware.vissa.model.ProductCategory;
 import com.soinsoftware.vissa.model.ProductType;
@@ -36,6 +39,7 @@ import com.soinsoftware.vissa.util.ViewHelper;
 import com.vaadin.data.provider.ConfigurableFilterDataProvider;
 import com.vaadin.data.provider.ListDataProvider;
 import com.vaadin.data.provider.Query;
+import com.vaadin.server.FontAwesome;
 import com.vaadin.server.Page;
 import com.vaadin.server.SerializablePredicate;
 import com.vaadin.ui.AbstractOrderedLayout;
@@ -68,6 +72,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 	private final MeasurementUnitBll measurementUnitBll;
 	private final MeasurementUnitProductBll measurementUnitProductBll;
 	private final TableSequenceBll tableSequenceBll;
+	private final MuEquivalenceBll muEquivalencesBll;
 
 	public Grid<Product> productGrid;
 	private Grid<MeasurementUnitProduct> priceGrid;
@@ -111,6 +116,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		measurementUnitBll = MeasurementUnitBll.getInstance();
 		measurementUnitProductBll = MeasurementUnitProductBll.getInstance();
 		tableSequenceBll = TableSequenceBll.getInstance();
+		muEquivalencesBll = MuEquivalenceBll.getInstance();
 		this.mode = mode;
 		this.productList = productList;
 		if (mode.equals(ELayoutMode.LIST)) {
@@ -126,6 +132,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		measurementUnitBll = MeasurementUnitBll.getInstance();
 		measurementUnitProductBll = MeasurementUnitProductBll.getInstance();
 		tableSequenceBll = TableSequenceBll.getInstance();
+		muEquivalencesBll = MuEquivalenceBll.getInstance();
 
 		if (mode.equals("new")) {
 			addListTab();
@@ -141,6 +148,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		measurementUnitBll = MeasurementUnitBll.getInstance();
 		measurementUnitProductBll = MeasurementUnitProductBll.getInstance();
 		tableSequenceBll = TableSequenceBll.getInstance();
+		muEquivalencesBll = MuEquivalenceBll.getInstance();
 
 	}
 
@@ -170,6 +178,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		return layout;
 	}
 
+	@SuppressWarnings("deprecation")
 	@Override
 	protected Panel buildGridPanel() {
 		VerticalLayout layout = ViewHelper.buildVerticalLayout(true, true);
@@ -185,6 +194,14 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 				return "";
 			}
 		}).setCaption("Unidad de medida");
+
+		if (Commons.LAYOUT_MODE.equals(ELayoutMode.ALL)) {
+			productGrid.addItemClickListener(listener -> {
+				if (listener.getMouseEventDetails().isDoubleClick())
+					productGrid.select(listener.getItem());
+				showEditionTab(listener.getItem(), "Editar", FontAwesome.EDIT);
+			});
+		}
 
 		layout.addComponent(ViewHelper.buildPanel(null, productGrid));
 		fillGridData();
@@ -204,6 +221,14 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		newPriceBtn.setStyleName(ValoTheme.BUTTON_TINY);
 		newPriceBtn.addClickListener(e -> addItemPriceGrid());
 
+		Button deletePriceBtn = new Button("Eliminar unidad de medida");
+		deletePriceBtn.setStyleName(ValoTheme.BUTTON_TINY);
+		deletePriceBtn.addClickListener(e -> deleteItemPriceGrid(getMUProduct()));
+
+		HorizontalLayout horizontaLayout = ViewHelper.buildHorizontalLayout(false, false);
+
+		horizontaLayout.addComponents(newPriceBtn, deletePriceBtn);
+
 		priceGrid = ViewHelper.buildGrid(SelectionMode.SINGLE);
 		priceGrid.setHeight("160px");
 
@@ -222,6 +247,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		NumberField txtPurchasePrice = new NumberField();
 		priceGrid.addColumn(MeasurementUnitProduct::getPurchasePriceStr).setCaption("Precio de compra")
 				.setEditorComponent(txtPurchasePrice, MeasurementUnitProduct::setPurchasePriceStr);
+
 		NumberField txtPurchaseTax = new NumberField();
 		priceGrid.addColumn(MeasurementUnitProduct::getPurchaseTaxStr).setCaption("% Impuesto compra")
 				.setEditorComponent(txtPurchaseTax, MeasurementUnitProduct::setPurchaseTaxStr);
@@ -237,9 +263,15 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 
 		priceGrid.addColumn(MeasurementUnitProduct::getFinalPrice).setCaption("Precio final");
 
+		NumberField txtStock = new NumberField();
+		priceGrid.addColumn(MeasurementUnitProduct::getStockStr).setCaption("Stock").setEditorComponent(txtStock,
+				MeasurementUnitProduct::setStockStr);
+
 		priceGrid.getEditor().setEnabled(true);
 
-		layout.addComponents(newPriceBtn, priceGrid);
+		layout.addComponents(horizontaLayout, priceGrid);
+
+		cbMeasurementUnit.addValueChangeListener(e -> MUEquivalences(e.getValue()));
 
 		fillPriceGridData(product);
 		Panel panel = ViewHelper.buildPanel("Unidades de medida y precios", layout);
@@ -557,9 +589,28 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		String strLog = "[fillPriceGridData]";
 
 		try {
+			log.error(strLog + "[parameters] product: " + product);
 			priceProductList = measurementUnitProductBll.select(product);
 			dataProviderProdMeasurement = new ListDataProvider<>(priceProductList);
 			priceGrid.setDataProvider(dataProviderProdMeasurement);
+		} catch (Exception e) {
+			log.error(strLog + "[Exception]" + e.getMessage());
+		}
+	}
+
+	/**
+	 * Metodo para actualizar la grid de productos a partir de una lista
+	 */
+
+	protected void fillPriceGridData(List<MeasurementUnitProduct> priceProductList) {
+		String strLog = "[fillPriceGridData]";
+
+		try {
+			log.error(strLog + "[parameters] priceProductList: " + priceProductList);
+			if (priceProductList != null) {
+				dataProviderProdMeasurement = new ListDataProvider<>(priceProductList);
+				priceGrid.setDataProvider(dataProviderProdMeasurement);
+			}
 		} catch (Exception e) {
 			log.error(strLog + "[Exception]" + e.getMessage());
 		}
@@ -779,11 +830,118 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		}
 	}
 
+	/*
+	 * Método para agregar un item a la grid de UM y precios
+	 */
 	private void addItemPriceGrid() {
 		MeasurementUnitProduct muProduct = new MeasurementUnitProduct();
 		priceProductList.add(muProduct);
 		priceGrid.focus();
 		refreshPriceGrid();
+	}
+
+	/**
+	 * Metodo para eliminar un ítem de la grid de UM y precios
+	 * 
+	 * @param entity
+	 */
+	private void deleteItemPriceGrid(MeasurementUnitProduct entity) {
+		String strLog = "[deleteItemPriceGrid]";
+		try {
+			if (entity != null) {
+				entity = MeasurementUnitProduct.builder(entity).archived(true).build();
+				measurementUnitProductBll.save(entity);
+				fillPriceGridData(product);
+				ViewHelper.showNotification("Unidad de medida eliminada", Notification.Type.WARNING_MESSAGE);
+			} else {
+				ViewHelper.showNotification("No ha seleccionado un registro", Notification.Type.WARNING_MESSAGE);
+			}
+		} catch (Exception e) {
+			log.error(strLog + "[Exception]" + e.getMessage());
+			ViewHelper.showNotification("Se generó un error al eliminar la UM", Notification.Type.ERROR_MESSAGE);
+		}
+	}
+
+	/**
+	 * Obtener el precio seleccionado
+	 */
+	protected MeasurementUnitProduct getMUProduct() {
+		MeasurementUnitProduct muProduct = null;
+		Set<MeasurementUnitProduct> muProducts = priceGrid.getSelectedItems();
+		if (muProducts != null && !muProducts.isEmpty()) {
+			muProduct = (MeasurementUnitProduct) muProducts.toArray()[0];
+		}
+		return muProduct;
+	}
+
+	/**
+	 * Método para buscar las equivalencias de la nueva MU del producto
+	 * 
+	 * @param measurementUnit
+	 */
+	private void MUEquivalences(MeasurementUnit measurementUnit) {
+		String strLog = "[MUEquivalences]";
+		try {
+			MeasurementUnitProduct muProductSource = null;
+			MeasurementUnitProduct muProductTarget = MeasurementUnitProduct.builder().measurementUnit(measurementUnit)
+					.build();
+
+			if (priceProductList != null && !priceProductList.isEmpty() && priceProductList.size() > 1) {
+				// Se toma de referencia la primera MU
+				muProductSource = priceProductList.get(0);
+
+				// Convertir la unidad de medida
+				convertMUProduct(muProductSource, muProductTarget);
+			}
+
+		} catch (Exception e) {
+			log.error(strLog + "[Exception]" + e.getMessage());
+			e.printStackTrace();
+		}
+
+	}
+
+	/**
+	 * Convertir todos los valores de una MU del prodyucto a otra
+	 * 
+	 * @param quantity
+	 * @param muSource
+	 * @param muTarget
+	 * @return
+	 */
+
+	private Double convertMUProduct(MeasurementUnitProduct muProductSource, MeasurementUnitProduct muProductTarget) {
+		String strLog = "[convertQuantityMU]";
+		Double muTargetStock = 0.0;
+		try {
+			MeasurementUnit muSource = muProductSource.getMeasurementUnit();
+			MeasurementUnit muTarget = muProductTarget.getMeasurementUnit();
+			MuEquivalence muEquivalence = muEquivalencesBll.select(muSource, muTarget);
+			if (muEquivalence != null) {
+				Double sourceFactor = Double.parseDouble(muEquivalence.getMuSourceFactor());
+				Double targetFactor = Double.parseDouble(muEquivalence.getMuTargetFactor());
+				// Se calcula la equivalencia de los precios y stock para la UM. Los impuestos
+				// se mantienen
+
+				int pos = priceProductList.indexOf(CommonsUtil.MEASUREMENT_UNIT_PRODUCT);
+
+				muProductTarget.setPurchaseTax(muProductSource.getPurchaseTax());
+				muProductTarget.setUtilityPrc(muProductSource.getUtilityPrc());
+				muProductTarget.setSaleTax(muProductSource.getSaleTax());
+				Double purchasePrice = (muProductSource.getPurchasePrice() * sourceFactor) * targetFactor;
+				muProductTarget.setPurchasePrice(purchasePrice);
+				Double stock = (muProductSource.getStock() * sourceFactor) * targetFactor;
+				muProductTarget.setStock(stock);
+
+				priceProductList.set(pos, muProductTarget);
+				fillPriceGridData(priceProductList);
+			}
+
+		} catch (Exception e) {
+			log.error(strLog + "[Exception]" + e.getMessage());
+			e.printStackTrace();
+		}
+		return muTargetStock;
 	}
 
 	public Product getProduct() {
