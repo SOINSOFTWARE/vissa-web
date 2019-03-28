@@ -165,6 +165,13 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 			}
 		}).setCaption("Tipo");
 		grid.addColumn(document -> {
+			if (document.getPaymentType() != null) {
+				return document.getPaymentType().getName();
+			} else {
+				return "";
+			}
+		}).setCaption("Tipo de pago");
+		grid.addColumn(document -> {
 			if (document.getDocumentDate() != null) {
 				return DateUtil.dateToString(document.getDocumentDate());
 			} else {
@@ -189,10 +196,6 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 		layout.addComponent(ViewHelper.buildPanel(null, grid));
 		grid.addItemClickListener(listener -> {
 			if (listener.getMouseEventDetails().isDoubleClick()) {
-				// pass the row/item that the user double clicked
-				// to method doStuff.
-				// doStuff(l.getItem());
-				// selectPerson(listener.getItem());
 				grid.select(listener.getItem());
 			}
 		});

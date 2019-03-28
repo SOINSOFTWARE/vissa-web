@@ -29,6 +29,7 @@ import com.soinsoftware.vissa.model.Product;
 import com.soinsoftware.vissa.model.ProductCategory;
 import com.soinsoftware.vissa.model.ProductType;
 import com.soinsoftware.vissa.model.TableSequence;
+import com.soinsoftware.vissa.util.Commons;
 import com.soinsoftware.vissa.util.DateUtil;
 import com.soinsoftware.vissa.util.ELayoutMode;
 import com.soinsoftware.vissa.util.ViewHelper;
@@ -183,7 +184,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 			} else {
 				return "";
 			}
-		}).setCaption("Stock");
+		}).setCaption("Unidad de medida");
 
 		layout.addComponent(ViewHelper.buildPanel(null, productGrid));
 		fillGridData();
@@ -382,10 +383,12 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		LotLayout lotPanel = null;
 
 		try {
+			Commons.LAYOUT_MODE = ELayoutMode.ALL;
 			lotPanel = new LotLayout(product, this, null);
+
 			lotPanel.setCaption("Lotes");
 			lotPanel.setMargin(false);
-			lotPanel.setSpacing(false);
+			lotPanel.setSpacing(true);
 
 		} catch (IOException e) {
 			log.error("Error al cargar lotes del producto. Exception: " + e);
@@ -601,14 +604,6 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 			}
 		}
 
-		if (!cbMeasurementUnit.getSelectedItem().isPresent()) {
-			if (!message.isEmpty()) {
-				message = message.concat(character);
-			} else {
-				message = message.concat("La unidad de medida es obligatoria");
-			}
-		}
-
 		return message;
 	}
 
@@ -661,11 +656,14 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 					afterSave("Producto guardado con éxito");
 				}
 				// Actualizar consecutivo de producto
-				tableSequenceBll.save(tableSequence);
+				if (tableSequence != null) {
+					tableSequenceBll.save(tableSequence);
+				}
 
 			} catch (Exception e) {
 				tableSequenceBll.rollback();
 				log.error(strLog + "[Exception]" + e.getMessage());
+				e.printStackTrace();
 			}
 		}
 

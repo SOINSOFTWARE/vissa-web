@@ -1654,10 +1654,12 @@ public class InvoiceLayout extends VerticalLayout implements View {
 					txtReference.setValue(document.getReference() != null ? document.getReference() : "");
 					txtResolution.setValue(document.getResolution() != null ? document.getResolution() : "");
 					dtfDocumentDate.setValue(DateUtil.dateToLocalDateTime(document.getDocumentDate()));
-					PaymentType docType = document.getPaymentType();
-					PaymentDocumentType payDocType = PaymentDocumentType.builder().documentType(document.getDocumentType()).paymentType(docType).build();
-					cbPaymentType
-							.setValue(payDocType);
+
+					PaymentDocumentType payDocType = paymentDocumentTypeBll.select(document.getDocumentType(),
+							document.getPaymentType());
+
+					cbPaymentType.setValue(payDocType);					
+
 					cbPaymentMethod.setValue(document.getPaymentMethod());
 					txtPaymentTerm.setValue(document.getPaymentTerm() != null ? document.getPaymentTerm() : "");
 					selectedPerson = document.getPerson();

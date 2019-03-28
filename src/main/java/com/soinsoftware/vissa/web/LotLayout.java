@@ -169,57 +169,61 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 
 	@Override
 	protected Panel buildGridPanel() {
+		String strLog = "[buildGridPanel] ";
+		try {
+			lotGrid = ViewHelper.buildGrid(SelectionMode.SINGLE);
 
-		lotGrid = ViewHelper.buildGrid(SelectionMode.SINGLE);
+			if (Commons.LAYOUT_MODE.equals(ELayoutMode.REPORT)) {
+				lotGrid.addColumn(lot -> {
+					if (lot != null && lot.getProduct() != null) {
+						return lot.getProduct().getName();
+					} else {
+						return null;
+					}
+				}).setCaption("Producto");
+			}
 
-		if (Commons.LAYOUT_MODE.equals(ELayoutMode.REPORT)) {
-			lotGrid.addColumn(lot -> {
-				if (lot != null && lot.getProduct() != null) {
-					return lot.getProduct().getName();
+			lotGrid.addColumn(Lot::getCode).setCaption("Código");
+			columnWarehouse = lotGrid.addColumn(lot -> {
+				if (lot != null && lot.getWarehouse() != null) {
+					return lot.getWarehouse().getName();
 				} else {
 					return null;
 				}
-			}).setCaption("Producto");
-		}
+			}).setCaption("Bodega");
+			columnQuantity = lotGrid.addColumn(Lot::getQuantity).setCaption("Cantidad de productos");
+			lotGrid.addColumn(lot -> {
+				if (lot != null && lot.getLotDate() != null) {
+					return DateUtil.dateToString(lot.getLotDate());
+				} else {
+					return null;
+				}
+			}).setCaption("Fecha de fabricación");
+			lotGrid.addColumn(lot -> {
+				if (lot != null && lot.getExpirationDate() != null) {
+					return DateUtil.dateToString(lot.getExpirationDate());
+				} else {
+					return null;
+				}
+			}).setCaption("Fecha de vencimiento");
 
-		lotGrid.addColumn(Lot::getCode).setCaption("Código");
-		columnWarehouse = lotGrid.addColumn(lot -> {
-			if (lot != null && lot.getWarehouse() != null) {
-				return lot.getWarehouse().getName();
-			} else {
-				return null;
-			}
-		}).setCaption("Bodega");
-		columnQuantity = lotGrid.addColumn(Lot::getQuantity).setCaption("Cantidad de productos");
-		lotGrid.addColumn(lot -> {
-			if (lot != null && lot.getLotDate() != null) {
-				return DateUtil.dateToString(lot.getLotDate());
-			} else {
-				return null;
-			}
-		}).setCaption("Fecha de fabricación");
-		lotGrid.addColumn(lot -> {
-			if (lot != null && lot.getExpirationDate() != null) {
-				return DateUtil.dateToString(lot.getExpirationDate());
-			} else {
-				return null;
-			}
-		}).setCaption("Fecha de vencimiento");
+			lotGrid.setStyleName(ValoTheme.TABLE_SMALL);
+			footer = lotGrid.prependFooterRow();
+			footer.getCell(columnWarehouse).setHtml("<b>Totat cantidad:</b>");
+			fillGridData();
 
-		lotGrid.setStyleName(ValoTheme.TABLE_SMALL);
-		footer = lotGrid.prependFooterRow();
-		footer.getCell(columnWarehouse).setHtml("<b>Totat cantidad:</b>");
-		fillGridData();
+			// refreshGrid();
+			if (Commons.LAYOUT_MODE.equals(ELayoutMode.REPORT)) {
+				lotGrid.addItemClickListener(listener -> {
+					if (listener.getMouseEventDetails().isDoubleClick())
+					
+						selectLot(listener.getItem());
+				});
+			}
+		} catch (Exception e) {
+			log.error(strLog + "[Exception]" + e.getMessage());
+			e.printStackTrace();
 
-		// refreshGrid();
-		if (Commons.LAYOUT_MODE.equals(ELayoutMode.REPORT)) {
-			lotGrid.addItemClickListener(listener -> {
-				if (listener.getMouseEventDetails().isDoubleClick())
-					// pass the row/item that the user double clicked
-					// to method doStuff.
-					// doStuff(l.getItem());
-					selectLot(listener.getItem());
-			});
 		}
 		return ViewHelper.buildPanel(null, lotGrid);
 	}
