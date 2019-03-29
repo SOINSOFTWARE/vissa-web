@@ -216,7 +216,7 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 			if (Commons.LAYOUT_MODE.equals(ELayoutMode.REPORT)) {
 				lotGrid.addItemClickListener(listener -> {
 					if (listener.getMouseEventDetails().isDoubleClick())
-					
+
 						selectLot(listener.getItem());
 				});
 			}
@@ -380,6 +380,8 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 				lots = lotBll.select(product);
 			} else if (warehouse != null) {
 				lots = lotBll.select(warehouse);
+			} else if (productLayout != null) {
+				lots = null;
 			} else {
 				lots = lotBll.selectAll(false);
 			}

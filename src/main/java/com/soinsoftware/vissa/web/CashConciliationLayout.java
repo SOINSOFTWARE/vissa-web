@@ -218,7 +218,6 @@ public class CashConciliationLayout extends AbstractEditableLayout<CashConciliat
 		return ViewHelper.buildPanel(null, layout);
 	}
 
-	
 	@Override
 	protected Component buildEditionComponent(CashConciliation concilitation) {
 
@@ -310,25 +309,26 @@ public class CashConciliationLayout extends AbstractEditableLayout<CashConciliat
 		txtSales.setStyleName(ValoTheme.TEXTFIELD_TINY);
 		txtSales.setReadOnly(true);
 		txtSales.setWidth("50%");
-		txtSales.setValue(getSumPaidDailySales());
-		txtSales.setDecimalAllowed(true);
-		txtSales.setDecimalPrecision(2);
-		txtSales.setNegativeAllowed(false);
+		txtSales.setDecimalSeparator(',');
+		txtSales.setValue(getSumPaidDailySales());		
 
 		txtCreditCollection = new NumberField("Recaudo créditos");
 		txtCreditCollection.setStyleName(ValoTheme.TEXTFIELD_TINY);
 		txtCreditCollection.setWidth("50%");
+		txtCreditCollection.setDecimalSeparator(',');
 		txtCreditCollection.setValue(getSumDailyCollection());
 		txtCreditCollection.addValueChangeListener(e -> setTotalSale());
 
 		txtRemnantSale = new NumberField("Sobrante");
 		txtRemnantSale.setStyleName(ValoTheme.TEXTFIELD_TINY);
 		txtRemnantSale.setWidth("50%");
+		txtRemnantSale.setDecimalSeparator(',');
 		txtRemnantSale.addValueChangeListener(e -> setTotalSale());
 
 		txtTotalIngress = new NumberField("Total Ventas");
 		txtTotalIngress.setStyleName(ValoTheme.TEXTFIELD_TINY);
 		txtTotalIngress.setWidth("50%");
+		txtTotalIngress.setDecimalSeparator(',');
 		txtTotalIngress.setReadOnly(true);
 
 		FormLayout saleForm = ViewHelper.buildForm("", false, false);
@@ -340,22 +340,26 @@ public class CashConciliationLayout extends AbstractEditableLayout<CashConciliat
 		txtGeneralExpense = new NumberField("Gastos generales");
 		txtGeneralExpense.setStyleName(ValoTheme.TEXTFIELD_TINY);
 		txtGeneralExpense.setWidth("50%");
+		txtGeneralExpense.setDecimalSeparator(',');
 		txtGeneralExpense.setValue(getSumDailyExpense());
 		txtGeneralExpense.addValueChangeListener(e -> setTotalEgress());
 
 		txtSupplierPaymentsLoan = new NumberField("Pago a proveedores");
 		txtSupplierPaymentsLoan.setStyleName(ValoTheme.TEXTFIELD_TINY);
 		txtSupplierPaymentsLoan.setWidth("50%");
+		txtSupplierPaymentsLoan.setDecimalSeparator(',');
 		txtSupplierPaymentsLoan.setValue(getSumDailyLoan());
 		txtSupplierPaymentsLoan.addValueChangeListener(e -> setTotalEgress());
 
 		txtRemnantEgress = new NumberField("Remanente");
 		txtRemnantEgress.setStyleName(ValoTheme.TEXTFIELD_TINY);
 		txtRemnantEgress.setWidth("50%");
+		txtRemnantEgress.setDecimalSeparator(',');
 
 		txtTotalEgress = new NumberField("Total egresos");
 		txtTotalEgress.setStyleName(ValoTheme.TEXTFIELD_TINY);
 		txtTotalEgress.setWidth("50%");
+		txtTotalEgress.setDecimalSeparator(',');
 		txtTotalEgress.setReadOnly(true);
 
 		FormLayout egressForm = ViewHelper.buildForm("", true, false);
@@ -367,11 +371,13 @@ public class CashConciliationLayout extends AbstractEditableLayout<CashConciliat
 		txtTotalCredit = new NumberField("Créditos");
 		txtTotalCredit.setStyleName(ValoTheme.TEXTFIELD_TINY);
 		txtTotalCredit.setWidth("50%");
+		txtTotalCredit.setDecimalSeparator(',');
 		txtTotalCredit.setValue(getSumDailyCreditSales());
 
 		txtTotalCash = new NumberField("Efectivo neto");
 		txtTotalCash.setStyleName(ValoTheme.TEXTFIELD_TINY);
 		txtTotalCash.setWidth("50%");
+		txtTotalCash.setDecimalSeparator(',');
 		txtTotalCash.setReadOnly(true);
 
 		FormLayout totalForm = ViewHelper.buildForm("", false, false);

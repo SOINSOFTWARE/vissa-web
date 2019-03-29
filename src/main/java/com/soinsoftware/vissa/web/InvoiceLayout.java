@@ -496,24 +496,29 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		HorizontalLayout buttonlayout = ViewHelper.buildHorizontalLayout(false, false);
 		addProductBtn = new Button("Agregar ítem", FontAwesome.PLUS);
 		addProductBtn.addStyleName(ValoTheme.BUTTON_TINY);
-		addProductBtn.addClickListener(e -> {
-			itemsList.add(new DocumentDetail());
-			fillDetailGridData(itemsList);
-		});
+		addProductBtn.addClickListener(e -> addRowToGrid());
 
 		deleteProductBtn = new Button("Eliminar ítem", FontAwesome.ERASER);
 		deleteProductBtn.addStyleName(ValoTheme.BUTTON_TINY);
 		deleteProductBtn.addClickListener(e -> deleteItemDetail());
 
-		String label = "";
-		if (transactionType.equals(ETransactionType.ENTRADA)) {
-			label = "Crear producto";
-		} else if (transactionType.equals(ETransactionType.SALIDA)) {
-			label = "Ver producto";
-		}
-		Button newProductBtn = new Button(label, FontAwesome.PLUS);
+		
+		Button newProductBtn = new Button("Crear producto", FontAwesome.ARCHIVE);
 		newProductBtn.addStyleName(ValoTheme.BUTTON_TINY);
 		newProductBtn.addClickListener(e -> {
+			buildProductWindow(ELayoutMode.NEW, new ArrayList<Product>());
+		});
+
+		String label = "";
+		if (transactionType.equals(ETransactionType.ENTRADA)) {
+			label = "Ver producto";
+		} else if (transactionType.equals(ETransactionType.SALIDA)) {
+			label = "Lista de productos";
+		}
+		
+		Button listProductBtn = new Button(label, FontAwesome.LIST);
+		listProductBtn.addStyleName(ValoTheme.BUTTON_TINY);
+		listProductBtn.addClickListener(e -> {
 
 			List<Product> products = null;
 			if (transactionType.equals(ETransactionType.SALIDA)) {
@@ -525,16 +530,31 @@ public class InvoiceLayout extends VerticalLayout implements View {
 				}
 			}
 
-			buildProductWindow(products);
+			buildProductWindow(ELayoutMode.LIST, products);
 		});
 
-		buttonlayout.addComponents(addProductBtn, deleteProductBtn, newProductBtn);
+		buttonlayout.addComponents(addProductBtn, deleteProductBtn );
+		if (transactionType.equals(ETransactionType.ENTRADA)) {
+			buttonlayout.addComponent(newProductBtn);
+		}
+		
+		buttonlayout.addComponent(listProductBtn);
 
 		layout.addComponents(buttonlayout, builGridPanel());
 
 		return ViewHelper.buildPanel("Productos", layout);
 	}
 
+	/**
+	 * Metodo para agregar una fila a la grid de productos
+	 */
+	private void addRowToGrid() {
+		DocumentDetail detail = new DocumentDetail();
+		itemsList.add(detail);
+		detailGrid.focus();
+		detailGrid.select(detail);
+		fillDetailGridData(itemsList);
+	}
 	/**
 	 * Metodo para construir la grid de los items a facturar
 	 * 
@@ -675,7 +695,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 				if (product != null) {
 					selectProduct(product);
 				} else {
-					buildProductWindow(products);
+					buildProductWindow(ELayoutMode.LIST, products);
 				}
 			}
 			if (name != null && !name.isEmpty()) {
@@ -685,7 +705,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 				if (size == 1) {
 					selectProduct(products.get(0));
 				} else {
-					buildProductWindow(products);
+					buildProductWindow(ELayoutMode.LIST,products);
 				}
 			}
 		} catch (Exception e) {
@@ -971,7 +991,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	/**
 	 * Metodo que construye la ventana para buscar productos
 	 */
-	private void buildProductWindow(List<Product> productList) {
+	private void buildProductWindow(ELayoutMode layoutMode, List<Product> productList) {
 		String strLog = "[buildProductWindow] ";
 
 		try {
@@ -982,7 +1002,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			productSubwindow.setCaption("Productos");
 
 			VerticalLayout subContent = ViewHelper.buildVerticalLayout(true, true);
-			productLayout = new ProductLayout(ELayoutMode.LIST, productList);
+			productLayout = new ProductLayout(layoutMode, productList);
 
 			productLayout.getProductGrid().addItemClickListener(listener -> {
 				if (listener.getMouseEventDetails().isDoubleClick())

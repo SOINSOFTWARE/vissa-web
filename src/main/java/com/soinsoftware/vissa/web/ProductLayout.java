@@ -121,6 +121,9 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		this.productList = productList;
 		if (mode.equals(ELayoutMode.LIST)) {
 			addListTab();
+		} else if (mode.equals(ELayoutMode.NEW)) {
+			addListTab();
+			newButtonAction();
 		}
 	}
 
@@ -156,7 +159,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 	protected AbstractOrderedLayout buildListView() {
 		VerticalLayout layout = ViewHelper.buildVerticalLayout(false, false);
 		Panel buttonPanel = null;
-		if (mode.equals(ELayoutMode.LIST)) {
+		if (mode.equals(ELayoutMode.LIST) || mode.equals(ELayoutMode.NEW)) {
 			buttonPanel = buildButtonPanelListMode();
 		} else {
 			buttonPanel = buildButtonPanelForLists();

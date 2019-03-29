@@ -149,14 +149,17 @@ public class CashChangeLayout extends VerticalLayout implements View {
 		txtTotalInvoice = new NumberField("Total Factura");
 		txtTotalInvoice.setReadOnly(true);
 		txtTotalInvoice.setStyleName(ValoTheme.TEXTFIELD_TINY);
+		txtTotalInvoice.setDecimalSeparator(',');
 
 		txtPaidAmount = new NumberField("Valor pagado");
 		txtPaidAmount.focus();
 		txtPaidAmount.setStyleName(ValoTheme.TEXTFIELD_TINY);
+		txtPaidAmount.setDecimalSeparator(',');
 
 		txtChange = new NumberField("Cambio");
 		txtChange.setReadOnly(true);
 		txtChange.setStyleName(ValoTheme.TEXTFIELD_TINY);
+		txtChange.setDecimalSeparator(',');
 
 		txtPaidAmount.addValueChangeListener(e -> setChangeValue());
 

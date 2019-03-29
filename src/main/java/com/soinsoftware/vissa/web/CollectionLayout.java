@@ -312,12 +312,11 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 	@Override
 	protected void fillGridData() {
 		List<Collection> collectionList = collectionBll.selectAll();
-		
+
 		collectionList = collectionList.stream().sorted(Comparator.comparing(Collection::getCollectionDate).reversed())
 				.collect(Collectors.toList());
 
 		collectionDataProvider = new ListDataProvider<>(collectionList);
-		
 
 		collectionGrid.setDataProvider(collectionDataProvider);
 		collectionDataProvider.addDataProviderListener(
@@ -710,9 +709,6 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 
 			personLayout.getGrid().addItemClickListener(listener -> {
 				if (listener.getMouseEventDetails().isDoubleClick())
-					// pass the row/item that the user double clicked
-					// to method doStuff.
-					// doStuff(l.getItem());
 					selectPerson(listener.getItem());
 			});
 

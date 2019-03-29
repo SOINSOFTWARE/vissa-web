@@ -430,28 +430,18 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 
 		VerticalLayout subContent = ViewHelper.buildVerticalLayout(true, true);
 
-		// Panel de botones
-		Button backBtn = new Button("Cancelar", FontAwesome.BACKWARD);
-		backBtn.addStyleName("mystyle-btn");
-		backBtn.addClickListener(e -> closeWindow(personSubwindow));
-
-		Button selectBtn = new Button("Seleccionar", FontAwesome.CHECK);
-		selectBtn.addStyleName("mystyle-btn");
-		selectBtn.addClickListener(e -> selectPerson());
-
-		HorizontalLayout buttonLayout = ViewHelper.buildHorizontalLayout(true, true);
-		buttonLayout.addComponents(backBtn, selectBtn);
-		Panel buttonPanel = ViewHelper.buildPanel(null, buttonLayout);
-
 		try {
-
 			personLayout = new PersonLayout(true);
+			personLayout.getGrid().addItemClickListener(listener -> {
+				if (listener.getMouseEventDetails().isDoubleClick())
+					selectPerson(listener.getItem());
+			});
 
 		} catch (IOException e) {
 			log.error("Error al cargar lista de personas. Exception:" + e);
 		}
 		Panel personPanel = ViewHelper.buildPanel(null, personLayout);
-		subContent.addComponents(buttonPanel, personPanel);
+		subContent.addComponents(personPanel);
 
 		personSubwindow.setContent(subContent);
 		getUI().addWindow(personSubwindow);
@@ -465,8 +455,8 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 	/**
 	 * Método para seleccionar proveedor o cliente
 	 */
-	private void selectPerson() {
-		personSelected = personLayout.getSelected();
+	private void selectPerson(Person person) {
+		personSelected = person;
 
 		if (personSelected != null) {
 			txtFilterByPerson.setValue(personSelected.getName() + " " + personSelected.getLastName());
