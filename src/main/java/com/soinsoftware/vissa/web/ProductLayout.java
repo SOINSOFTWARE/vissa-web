@@ -56,7 +56,7 @@ import com.vaadin.ui.TextField;
 import com.vaadin.ui.VerticalLayout;
 import com.vaadin.ui.themes.ValoTheme;
 
-@SuppressWarnings("unchecked")
+@SuppressWarnings({ "unchecked", "deprecation" })
 public class ProductLayout extends AbstractEditableLayout<Product> {
 
 	/**
@@ -152,6 +152,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		measurementUnitProductBll = MeasurementUnitProductBll.getInstance();
 		tableSequenceBll = TableSequenceBll.getInstance();
 		muEquivalencesBll = MuEquivalenceBll.getInstance();
+		Commons.LAYOUT_MODE = ELayoutMode.ALL;
 
 	}
 
@@ -181,7 +182,6 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		return layout;
 	}
 
-	@SuppressWarnings("deprecation")
 	@Override
 	protected Panel buildGridPanel() {
 		VerticalLayout layout = ViewHelper.buildVerticalLayout(true, true);
@@ -569,12 +569,12 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 	 */
 	@Override
 	protected void fillGridData() {
-		String strLog = "[fillGridData]";
+		String strLog = "[fillGridData] ";
 
 		try {
-			if (productList == null) {
-				productList = productBll.selectAll(false);
-			}
+
+			productList = productBll.selectAll(false);
+
 			ListDataProvider<Product> dataProvider = new ListDataProvider<>(productList);
 			filterProductDataProvider = dataProvider.withConfigurableFilter();
 			productGrid.setDataProvider(filterProductDataProvider);
@@ -606,10 +606,10 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 	 */
 
 	protected void fillPriceGridData(List<MeasurementUnitProduct> priceProductList) {
-		String strLog = "[fillPriceGridData]";
+		String strLog = "[fillPriceGridData] ";
 
 		try {
-			log.error(strLog + "[parameters] priceProductList: " + priceProductList);
+			log.info(strLog + "[parameters] priceProductList: " + priceProductList);
 			if (priceProductList != null) {
 				dataProviderProdMeasurement = new ListDataProvider<>(priceProductList);
 				priceGrid.setDataProvider(dataProviderProdMeasurement);
@@ -691,11 +691,12 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 			entity = productBuilder.code(txtCode.getValue()).name(txtName.getValue())
 					.description(txtDescription.getValue()).category(category).type(type).eanCode(txtEan.getValue())
 					.brand(txtBrand.getValue()).stock(stock).stockDate(stockDate).archived(false).build();
-			productBll.save(entity);
+			productBll.save(entity, false);
 
 		} catch (Exception e) {
 			productBll.rollback();
 			log.error(strLog + "[Exception]" + e.getMessage());
+			e.printStackTrace();
 			ViewHelper.showNotification("Se generó un error al guardar el producto", Notification.Type.ERROR_MESSAGE);
 		}
 
@@ -705,6 +706,16 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 			try {
 				// Guardar unidades de medidas y precios del producto
 				savePriceProduct(product);
+
+				// Actualizar precio de venta y stock de la UM en el product
+				if (priceProductList != null && !priceProductList.isEmpty()) {
+					MeasurementUnitProduct muProduct = priceProductList.get(0);
+					product.setSalePrice(muProduct.getFinalPrice());
+					product.setStock(muProduct.getStock());
+					product.setMeasurementUnit(muProduct.getMeasurementUnit());
+					productBll.save(product);
+				}
+
 				if (showConfirmMessage) {
 					showConfirmMessage = true;
 					afterSave("Producto guardado con éxito");
@@ -723,14 +734,19 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 
 	}
 
+	/**
+	 * Guardar las UM y precios seleccionados para el producto
+	 * 
+	 * @param product
+	 */
 	private void savePriceProduct(Product product) {
 		String strLog = "[savePriceProduct] ";
 		try {
 
-			Set<MeasurementUnitProduct> details = priceGrid.getDataProvider().fetch(new Query<>())
-					.collect(Collectors.toSet());
+			// Se obtienen los precios de la grid de la UM del producto
+			priceProductList = priceGrid.getDataProvider().fetch(new Query<>()).collect(Collectors.toList());
 
-			for (MeasurementUnitProduct priceTmp : details) {
+			for (MeasurementUnitProduct priceTmp : priceProductList) {
 
 				MeasurementUnitProduct.Builder priceBuilder = null;
 				priceBuilder = MeasurementUnitProduct.builder(priceTmp);
@@ -742,7 +758,8 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 							.purchaseTax(priceTmp.getPurchaseTax()).utility(priceTmp.getUtility())
 							.salePrice(priceTmp.getSalePrice()).saleTax(priceTmp.getSaleTax())
 							.finalPrice(priceTmp.getFinalPrice()).archived(false).build();
-					measurementUnitProductBll.save(price);
+
+					measurementUnitProductBll.save(price, false);
 					log.info("UM Precio guardado " + price);
 				} catch (ModelValidationException ex) {
 					measurementUnitProductBll.rollback();
@@ -885,18 +902,27 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 	private void MUEquivalences(MeasurementUnit measurementUnit) {
 		String strLog = "[MUEquivalences]";
 		try {
-			MeasurementUnitProduct muProductSource = null;
-			MeasurementUnitProduct muProductTarget = MeasurementUnitProduct.builder().measurementUnit(measurementUnit)
-					.build();
+			if (measurementUnit != null) {
+				MeasurementUnitProduct muProductSource = null;
+				MeasurementUnitProduct muProductTarget = MeasurementUnitProduct.builder()
+						.measurementUnit(measurementUnit).build();
 
-			if (priceProductList != null && !priceProductList.isEmpty() && priceProductList.size() > 1) {
-				// Se toma de referencia la primera MU
-				muProductSource = priceProductList.get(0);
-
-				// Convertir la unidad de medida
-				convertMUProduct(muProductSource, muProductTarget);
+				if (priceProductList != null && !priceProductList.isEmpty() && priceProductList.size() > 1) {
+					// Se toma de referencia la primera MU
+					muProductSource = priceProductList.get(0);
+					if (!muProductSource.getMeasurementUnit().equals(muProductTarget.getMeasurementUnit())) {
+						// Convertir la unidad de medida
+						convertMUProduct(muProductSource, muProductTarget);
+					} else {
+						// Si se cambia la primera UM se actualizan las otras
+						for (MeasurementUnitProduct muProduct : priceProductList) {
+							if (muProduct != muProductSource) {
+								convertMUProduct(muProductSource, muProduct);
+							}
+						}
+					}
+				}
 			}
-
 		} catch (Exception e) {
 			log.error(strLog + "[Exception]" + e.getMessage());
 			e.printStackTrace();
@@ -926,18 +952,22 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 				// Se calcula la equivalencia de los precios y stock para la UM. Los impuestos
 				// se mantienen
 
-				int pos = priceProductList.indexOf(CommonsUtil.MEASUREMENT_UNIT_PRODUCT);
+				int index = priceGrid.getTabIndex();
+				MeasurementUnitProduct muPRoduct = priceGrid.getSelectedItems().iterator().next();
+				int pos = priceProductList.indexOf(muPRoduct);
 
-				muProductTarget.setPurchaseTax(muProductSource.getPurchaseTax());
-				muProductTarget.setUtilityPrc(muProductSource.getUtilityPrc());
-				muProductTarget.setSaleTax(muProductSource.getSaleTax());
-				Double purchasePrice = (muProductSource.getPurchasePrice() * sourceFactor) * targetFactor;
-				muProductTarget.setPurchasePrice(purchasePrice);
-				Double stock = (muProductSource.getStock() * sourceFactor) * targetFactor;
-				muProductTarget.setStock(stock);
+				if (pos >= 0) {
+					muProductTarget.setPurchaseTax(muProductSource.getPurchaseTax());
+					muProductTarget.setUtilityPrc(muProductSource.getUtilityPrc());
+					muProductTarget.setSaleTax(muProductSource.getSaleTax());
+					Double purchasePrice = (muProductSource.getPurchasePrice() * sourceFactor) * targetFactor;
+					muProductTarget.setPurchasePrice(purchasePrice);
+					Double stock = (muProductSource.getStock() * sourceFactor) * targetFactor;
+					muProductTarget.setStock(stock);
 
-				priceProductList.set(pos, muProductTarget);
-				fillPriceGridData(priceProductList);
+					priceProductList.set(pos, muProductTarget);
+					fillPriceGridData(priceProductList);
+				}
 			}
 
 		} catch (Exception e) {

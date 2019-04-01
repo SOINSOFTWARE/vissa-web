@@ -192,7 +192,7 @@ public abstract class AbstractEditableLayout<E> extends VerticalLayout implement
 		fillGridData();
 		cancelButtonAction();
 
-		if (caption != null && caption.isEmpty()) {
+		if (caption != null && !caption.isEmpty()) {
 			ViewHelper.showNotification(caption, Notification.Type.WARNING_MESSAGE);
 		}
 	}

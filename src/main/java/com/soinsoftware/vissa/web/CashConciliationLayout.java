@@ -310,7 +310,7 @@ public class CashConciliationLayout extends AbstractEditableLayout<CashConciliat
 		txtSales.setReadOnly(true);
 		txtSales.setWidth("50%");
 		txtSales.setDecimalSeparator(',');
-		txtSales.setValue(getSumPaidDailySales());		
+		txtSales.setValue(getSumPaidDailySales());
 
 		txtCreditCollection = new NumberField("Recaudo créditos");
 		txtCreditCollection.setStyleName(ValoTheme.TEXTFIELD_TINY);
@@ -592,11 +592,11 @@ public class CashConciliationLayout extends AbstractEditableLayout<CashConciliat
 			// save(conciliationBll, entity, "");
 			conciliationBll.save(entity, false);
 
-			if (employeeRole.equals(ERole.ADMINISTRATOR.getName())) {
+			if (autoSaved || employeeRole.equals(ERole.ADMINISTRATOR.getName())) {
 				saveAdminConciliation(entity);
 			}
 
-			if (employeeRole.equals(ERole.SALESMAN.getName())) {
+			if (autoSaved || employeeRole.equals(ERole.SALESMAN.getName())) {
 				saveSalesmanConciliation(entity);
 			}
 		} catch (Exception e) {
@@ -1112,12 +1112,17 @@ public class CashConciliationLayout extends AbstractEditableLayout<CashConciliat
 			this.employeeRole = user.getRole().getName();
 			this.autoSaved = true;
 			loginRole = ERole.SALESMAN.getName();
-			buildEditionComponent(null);
-
-			loginRole = ERole.ADMINISTRATOR.getName();
+			employeeRole = ERole.SALESMAN.getName();
+			// Guardar las entradas
 			buildEditionComponent(null);
 
 			CashConciliation cashConciliation = conciliationBll.select(user.getPerson(), conciliationDate);
+
+			// Guardar las salidas
+			loginRole = ERole.ADMINISTRATOR.getName();
+			employeeRole = ERole.ADMINISTRATOR.getName();
+			buildEditionComponent(null);
+
 			saveConciliation(cashConciliation);
 		} catch (Exception e) {
 			log.error(strLog + "[Exception] " + e.getMessage());

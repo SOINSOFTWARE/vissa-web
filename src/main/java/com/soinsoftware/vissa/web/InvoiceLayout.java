@@ -502,7 +502,6 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		deleteProductBtn.addStyleName(ValoTheme.BUTTON_TINY);
 		deleteProductBtn.addClickListener(e -> deleteItemDetail());
 
-		
 		Button newProductBtn = new Button("Crear producto", FontAwesome.ARCHIVE);
 		newProductBtn.addStyleName(ValoTheme.BUTTON_TINY);
 		newProductBtn.addClickListener(e -> {
@@ -515,7 +514,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		} else if (transactionType.equals(ETransactionType.SALIDA)) {
 			label = "Lista de productos";
 		}
-		
+
 		Button listProductBtn = new Button(label, FontAwesome.LIST);
 		listProductBtn.addStyleName(ValoTheme.BUTTON_TINY);
 		listProductBtn.addClickListener(e -> {
@@ -533,11 +532,11 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			buildProductWindow(ELayoutMode.LIST, products);
 		});
 
-		buttonlayout.addComponents(addProductBtn, deleteProductBtn );
+		buttonlayout.addComponents(addProductBtn, deleteProductBtn);
 		if (transactionType.equals(ETransactionType.ENTRADA)) {
 			buttonlayout.addComponent(newProductBtn);
 		}
-		
+
 		buttonlayout.addComponent(listProductBtn);
 
 		layout.addComponents(buttonlayout, builGridPanel());
@@ -555,6 +554,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		detailGrid.select(detail);
 		fillDetailGridData(itemsList);
 	}
+
 	/**
 	 * Metodo para construir la grid de los items a facturar
 	 * 
@@ -705,7 +705,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 				if (size == 1) {
 					selectProduct(products.get(0));
 				} else {
-					buildProductWindow(ELayoutMode.LIST,products);
+					buildProductWindow(ELayoutMode.LIST, products);
 				}
 			}
 		} catch (Exception e) {
@@ -859,7 +859,11 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			log.info(strLog + "[parameters]" + detailDataProv);
 			String totalIVA = String.valueOf(detailDataProv.fetch(new Query<>()).mapToDouble(documentDetail -> {
 				if (documentDetail.getTax() != null) {
-					return documentDetail.getTaxValue();
+					Double qty = 0.0;
+					if (documentDetail.getQuantity() != null && !documentDetail.getQuantity().isEmpty()) {
+						qty = Double.parseDouble(documentDetail.getQuantity());
+					}
+					return documentDetail.getTaxValue() * qty;
 				} else {
 					return 0.0;
 				}
@@ -1107,7 +1111,11 @@ public class InvoiceLayout extends VerticalLayout implements View {
 					}
 
 					// Actualizar el item
-					itemsList.set(pos, docDetail);
+					if (pos >= 0) {
+						itemsList.set(pos, docDetail);
+					} else {
+						itemsList.add(docDetail);
+					}
 					fillDetailGridData(itemsList);
 					buildMeasurementUnitComponent();
 					closeWindow(productSubwindow);
