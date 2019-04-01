@@ -65,6 +65,7 @@ import com.soinsoftware.vissa.model.User;
 import com.soinsoftware.vissa.util.Commons;
 import com.soinsoftware.vissa.util.DateUtil;
 import com.soinsoftware.vissa.util.ELayoutMode;
+import com.soinsoftware.vissa.util.NotificationUtil;
 import com.soinsoftware.vissa.util.PermissionUtil;
 import com.soinsoftware.vissa.util.ViewHelper;
 import com.vaadin.data.Binder;
@@ -260,6 +261,13 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		addComponent(layout);
 		this.setMargin(false);
 		this.setSpacing(false);
+		// notificationWindow();
+		// Commons.appWindow = getUI();
+		// NotificationUtil.showNotification(this);
+
+	}
+
+	public void notificationWindow() {
 
 		VerticalLayout popupContent = new VerticalLayout();
 		// popupContent.addComponent(new TextField("Textfield"));
@@ -272,9 +280,6 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		w.setWidth("20%");
 		w.setHeight("25%");
 		getUI().addWindow(w);
-
-		log.info(w.getPositionX() + "/" + w.getPositionY() + " / " + getUI().getWidth() + " / "
-				+ getUI().getWidthUnits().ordinal() + " / " + layout.getWidth());
 
 	}
 

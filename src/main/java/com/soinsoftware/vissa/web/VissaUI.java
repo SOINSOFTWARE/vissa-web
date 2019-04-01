@@ -109,8 +109,9 @@ public class VissaUI extends UI {
 	protected void init(VaadinRequest vaadinRequest) {
 		getPage().setTitle("Vissa");
 		addStyleName(ValoTheme.UI_WITH_MENU);
-		Responsive.makeResponsive(this);
+		Responsive.makeResponsive(this);		
 		buildUI(getUser());
+		Commons.appWindow = this;
 	}
 
 	private void buildValoMenuLayout() {

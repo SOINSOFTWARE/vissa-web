@@ -591,13 +591,15 @@ public class CashConciliationLayout extends AbstractEditableLayout<CashConciliat
 
 			// save(conciliationBll, entity, "");
 			conciliationBll.save(entity, false);
-
+			
+			CashConciliation cashConciliation = conciliationBll.select(entity.getPerson(), entity.getConciliationDate());
+			
 			if (autoSaved || employeeRole.equals(ERole.ADMINISTRATOR.getName())) {
-				saveAdminConciliation(entity);
+				saveAdminConciliation(cashConciliation);
 			}
 
 			if (autoSaved || employeeRole.equals(ERole.SALESMAN.getName())) {
-				saveSalesmanConciliation(entity);
+				saveSalesmanConciliation(cashConciliation);
 			}
 		} catch (Exception e) {
 			log.error(strLog + "[Exception]" + e.getMessage());
