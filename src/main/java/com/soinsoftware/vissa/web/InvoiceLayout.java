@@ -1508,7 +1508,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 						muProduct.setStock(finalStockMU);
 
 						// Actualizar precio del producto
-						updatePrice(muProduct, detail.getPrice());
+						updatePrice(muProduct, detail);
 
 						// Actualizar stock de cada UM asociada al producto
 						updateStockByMU(detail.getProduct(), muProduct);
@@ -2120,17 +2120,19 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	 * @param muProduct
 	 * @param price
 	 */
-	private void updatePrice(MeasurementUnitProduct muProduct, Double price) {
+	private void updatePrice(MeasurementUnitProduct muProduct, DocumentDetail detail) {
 		String strLog = "[updatePrice] ";
 		try {
+			Double price = detail.getPrice();
+			Double tax = detail.getTax();
 			log.info(strLog + "[parameters] muProduct: " + muProduct + ", price: " + price);
 			if (price != null && !price.equals(0.0) && muProduct != null) {
 				MeasurementUnitProduct entity = null;
 				MeasurementUnitProduct.Builder muProductBuilder = MeasurementUnitProduct.builder(muProduct);
 				if (transactionType.equals(ETransactionType.ENTRADA)) {
-					entity = muProductBuilder.purchasePrice(price).build();
+					entity = muProductBuilder.purchasePrice(price).purchaseTax(tax).build();
 				} else if (transactionType.equals(ETransactionType.SALIDA)) {
-					entity = muProductBuilder.salePrice(price).build();
+					entity = muProductBuilder.salePrice(price).saleTax(tax).build();
 				}
 				measurementUnitProductBll.save(entity, false);
 				log.info(strLog + "Precio actualizado");

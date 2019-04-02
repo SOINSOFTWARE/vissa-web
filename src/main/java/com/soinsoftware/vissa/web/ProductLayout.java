@@ -248,13 +248,15 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 				.setEditorComponent(cbMeasurementUnit, MeasurementUnitProduct::setMeasurementUnit);
 
 		NumberField txtPurchasePrice = new NumberField();
-		priceGrid.addColumn(MeasurementUnitProduct::getPurchasePriceStr).setCaption("Precio de compra")
+		priceGrid.addColumn(MeasurementUnitProduct::getPurchasePriceStr).setCaption("Precio de compra sin IVA")
 				.setEditorComponent(txtPurchasePrice, MeasurementUnitProduct::setPurchasePriceStr);
 
-		NumberField txtPurchaseTax = new NumberField();
-		priceGrid.addColumn(MeasurementUnitProduct::getPurchaseTaxStr).setCaption("% Impuesto compra")
-				.setEditorComponent(txtPurchaseTax, MeasurementUnitProduct::setPurchaseTaxStr);
-
+		/*
+		 * NumberField txtPurchaseTax = new NumberField();
+		 * priceGrid.addColumn(MeasurementUnitProduct::getPurchaseTaxStr).
+		 * setCaption("% Impuesto compra") .setEditorComponent(txtPurchaseTax,
+		 * MeasurementUnitProduct::setPurchaseTaxStr);
+		 */
 		NumberField txtUtilityPrc = new NumberField();
 		priceGrid.addColumn(MeasurementUnitProduct::getUtilityPrcStr).setCaption("% Utilidad")
 				.setEditorComponent(txtUtilityPrc, MeasurementUnitProduct::setUtilityPrcStr);
