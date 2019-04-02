@@ -154,7 +154,7 @@ public class CashChangeLayout extends VerticalLayout implements View {
 		txtPaidAmount = new NumberField("Valor pagado");
 		txtPaidAmount.focus();
 		txtPaidAmount.setStyleName(ValoTheme.TEXTFIELD_TINY);
-		txtPaidAmount.setDecimalSeparator(',');
+		//txtPaidAmount.setDecimalSeparator(',');
 
 		txtChange = new NumberField("Cambio");
 		txtChange.setReadOnly(true);
@@ -195,17 +195,21 @@ public class CashChangeLayout extends VerticalLayout implements View {
 
 		// Guardar Usuario
 		try {
+
 			if (txtPaidAmount.getValue() != null && !txtPaidAmount.getValue().isEmpty()) {
-				if (invoiceLayout != null) {
-					invoiceLayout.setPayValue(Double.valueOf(txtPaidAmount.getValue()));
-					invoiceLayout.saveInvoice(invoiceLayout.getDocument());
-				} else if (returnLayout != null) {
-					returnLayout.setPayValue(Double.valueOf(txtPaidAmount.getValue()));
-					returnLayout.saveInvoice(returnLayout.getDocument());
+				if (Double.parseDouble(txtPaidAmount.getValue()) < Double.parseDouble(txtTotalInvoice.getValue())) {
+					ViewHelper.showNotification("El valor pagado debe ser mayor al total de la factura",
+							Notification.Type.WARNING_MESSAGE);
+				} else {
+					if (invoiceLayout != null) {
+						invoiceLayout.setPayValue(Double.valueOf(txtPaidAmount.getValue()));
+						invoiceLayout.saveInvoice(invoiceLayout.getDocument());
+					} else if (returnLayout != null) {
+						returnLayout.setPayValue(Double.valueOf(txtPaidAmount.getValue()));
+						returnLayout.saveInvoice(returnLayout.getDocument());
+					}
 				}
-			} else if (Double.parseDouble(txtPaidAmount.getValue()) < Double.parseDouble(txtTotalInvoice.getValue())) {
-				ViewHelper.showNotification("El valor pagado debe ser mayor al total de la factura",
-						Notification.Type.WARNING_MESSAGE);
+
 			} else {
 				ViewHelper.showNotification("Ingrese el valor pagado", Notification.Type.WARNING_MESSAGE);
 			}

@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Set;
 
 import org.apache.log4j.Logger;
@@ -39,6 +40,7 @@ import com.soinsoftware.vissa.model.State;
 import com.soinsoftware.vissa.model.Supplier;
 import com.soinsoftware.vissa.model.User;
 import com.soinsoftware.vissa.util.Commons;
+import com.soinsoftware.vissa.util.ELayoutMode;
 import com.soinsoftware.vissa.util.ViewHelper;
 import com.vaadin.data.provider.ConfigurableFilterDataProvider;
 import com.vaadin.data.provider.ListDataProvider;
@@ -111,7 +113,9 @@ public class PersonLayout extends AbstractEditableLayout<Person> {
 	private ComboBox<Role> cbRole;
 
 	private boolean listMode;
+	private ELayoutMode mode;
 	private PersonType personType;
+	private List<Person> personList;
 
 	private ConfigurableFilterDataProvider<Person, Void, SerializablePredicate<Person>> filterDataProvider;
 
@@ -182,11 +186,43 @@ public class PersonLayout extends AbstractEditableLayout<Person> {
 
 	}
 
+	public PersonLayout(ELayoutMode mode, List<Person> personList) throws IOException {
+		super("", KEY_PERSON);
+		this.mode = mode;
+		if (Commons.PERSON_TYPE.equals(PersonType.SUPPLIER.getName())) {
+			personType = PersonType.SUPPLIER;
+			this.pageTitle = "Proveedores";
+		}
+		if (Commons.PERSON_TYPE.equals(PersonType.CUSTOMER.getName())) {
+			personType = PersonType.CUSTOMER;
+			this.pageTitle = "Clientes";
+		}
+		if (Commons.PERSON_TYPE.equals(PersonType.USER.getName())) {
+			personType = PersonType.USER;
+			this.pageTitle = "Usuarios";
+		}
+
+		supplierBll = SupplierBll.getInstance();
+		personBll = PersonBll.getInstance();
+		userBll = UserBll.getInstance();
+		payMethodBll = PaymentMethodBll.getInstance();
+		payTypeBll = PaymentTypeBll.getInstance();
+		countryBll = CountryBll.getInstance();
+		stateBll = StateBll.getInstance();
+		cityBll = CityBll.getInstance();
+		bankBll = BankBll.getInstance();
+		roleBll = RoleBll.getInstance();
+		this.personList = personList;
+		if (mode.equals(ELayoutMode.LIST)) {
+			addListTab();
+		}
+	}
+
 	@Override
 	protected AbstractOrderedLayout buildListView() {
 		VerticalLayout layout = ViewHelper.buildVerticalLayout(false, false);
 		Panel buttonPanel = null;
-		if (listMode) {
+		if (listMode || mode.equals(ELayoutMode.LIST)) {
 			buttonPanel = buildButtonPanelListMode();
 		} else {
 			buttonPanel = buildButtonPanelForLists();
@@ -514,7 +550,10 @@ public class PersonLayout extends AbstractEditableLayout<Person> {
 
 	@Override
 	protected void fillGridData() {
-		ListDataProvider<Person> dataProvider = new ListDataProvider<>(personBll.select(personType));
+		if (!mode.equals(ELayoutMode.LIST) || (personList == null|| personList.isEmpty())) {
+			personList = personBll.select(personType);
+		}
+		ListDataProvider<Person> dataProvider = new ListDataProvider<>(personList);
 		filterDataProvider = dataProvider.withConfigurableFilter();
 		grid.setDataProvider(filterDataProvider);
 

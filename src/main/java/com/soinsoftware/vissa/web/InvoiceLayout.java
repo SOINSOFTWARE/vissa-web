@@ -37,6 +37,7 @@ import com.soinsoftware.vissa.bll.MeasurementUnitProductBll;
 import com.soinsoftware.vissa.bll.MuEquivalenceBll;
 import com.soinsoftware.vissa.bll.PaymentDocumentTypeBll;
 import com.soinsoftware.vissa.bll.PaymentMethodBll;
+import com.soinsoftware.vissa.bll.PersonBll;
 import com.soinsoftware.vissa.bll.ProductBll;
 import com.soinsoftware.vissa.common.CommonsUtil;
 import com.soinsoftware.vissa.exception.ModelValidationException;
@@ -122,6 +123,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	private final PaymentDocumentTypeBll paymentDocumentTypeBll;
 	private final MeasurementUnitProductBll measurementUnitProductBll;
 	private final MuEquivalenceBll muEquivalencesBll;
+	private final PersonBll personBll;
 
 	// Components
 	private TextField txtDocNumFilter;
@@ -204,6 +206,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		paymentDocumentTypeBll = PaymentDocumentTypeBll.getInstance();
 		measurementUnitProductBll = MeasurementUnitProductBll.getInstance();
 		muEquivalencesBll = MuEquivalenceBll.getInstance();
+		personBll = PersonBll.getInstance();
 		lotBll = LotBll.getInstance();
 		document = new Document();
 		itemsList = new ArrayList<DocumentDetail>();
@@ -388,11 +391,28 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		}
 		txtPerson = new TextField(title);
 		// txtPerson.setWidth("28%");
-		txtPerson.setReadOnly(true);
+		// txtPerson.setReadOnly(true);
 		txtPerson.setRequiredIndicatorVisible(true);
 		txtPerson.setStyleName(ValoTheme.TEXTFIELD_TINY);
+
+		// Evento de enter
+	/*	txtPerson.addShortcutListener(new ShortcutListener("search person", ShortcutAction.KeyCode.ENTER, null) {
+
+			private static final long serialVersionUID = 6441523733731956234L;
+
+			@Override
+			public void handleAction(Object sender, Object target) {
+				try {
+					if (((TextField) target).equals(txtPerson)) {
+						searchPerson(txtPerson.getValue());
+					}
+				} catch (Exception e) {
+					log.error("[search person][ShortcutListener][handleAction][Exception] " + e.getMessage());
+				}
+			}
+		});*/
 		searchPersonBtn = new Button("Buscar proveedor", FontAwesome.SEARCH);
-		searchPersonBtn.addClickListener(e -> buildPersonWindow(txtPerson.getValue()));
+		searchPersonBtn.addClickListener(e -> buildPersonWindow(null));
 		searchPersonBtn.setStyleName("icon-only");
 
 		dtfDocumentDate = new DateTimeField("Fecha");
@@ -609,6 +629,9 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 		// Columna cantidad editable
 		NumberField txtQuantity = new NumberField();
+		txtQuantity.setDecimalAllowed(true);		
+		txtQuantity.setDecimalPrecision(4);
+		txtQuantity.setDecimalSeparator(',');
 		columnQuantity = detailGrid.addColumn(DocumentDetail::getQuantity).setCaption("Cantidad")
 				.setEditorComponent(txtQuantity, DocumentDetail::setQuantity);
 
@@ -674,20 +697,12 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 	}
 
-	private void initializeGrid() {
-		int i = 0;
-		while (i < 6) {
-			DocumentDetail docDetail = new DocumentDetail();
-			docDetail.setIndex(i);
-			itemsList.add(docDetail);
-			i++;
-		}
-
-		log.info(itemsList);
-		dataProvider = new ListDataProvider<>(itemsList);
-		detailGrid.setDataProvider(dataProvider);
-	}
-
+	/**
+	 * Método para buscar un producto por código y/o nombre
+	 * 
+	 * @param code
+	 * @param name
+	 */
 	private void searchProduct(String code, String name) {
 		String strLog = "[searchProduct] ";
 		List<Product> products = null;
@@ -711,6 +726,34 @@ public class InvoiceLayout extends VerticalLayout implements View {
 					selectProduct(products.get(0));
 				} else {
 					buildProductWindow(ELayoutMode.LIST, products);
+				}
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+			log.error(strLog + "[Exception]" + e.getMessage());
+		}
+	}
+
+	/**
+	 * Método para buscar un producto por código y/o nombre
+	 * 
+	 * @param code
+	 * @param name
+	 */
+	private void searchPerson(String name) {
+		String strLog = "[searchPerson] ";
+		List<Person> persons = null;
+		try {
+			log.info(strLog + "[parameters] name: " + name);
+
+			if (name != null && !name.isEmpty()) {
+				persons = personBll.selectByName(name);
+				int size = persons.size();
+				log.info(strLog + "Cantidad de personas consultados: " + size);
+				if (size == 1) {
+					selectPerson(persons.get(0));
+				} else {
+					buildPersonWindow(persons);
 				}
 			}
 		} catch (Exception e) {
@@ -836,7 +879,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			log.info(strLog + "[parameters]" + detailDataProv);
 			String total = String.valueOf(detailDataProv.fetch(new Query<>()).mapToDouble(documentDetail -> {
 				if (documentDetail.getSubtotal() != null) {
-					return documentDetail.getSubtotal();
+					return Math.round(documentDetail.getSubtotal());
 				} else {
 					return 0.0;
 				}
@@ -868,7 +911,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 					if (documentDetail.getQuantity() != null && !documentDetail.getQuantity().isEmpty()) {
 						qty = Double.parseDouble(documentDetail.getQuantity());
 					}
-					return documentDetail.getTaxValue() * qty;
+					return Math.round(documentDetail.getTaxValue() * qty);
 				} else {
 					return 0.0;
 				}
@@ -888,24 +931,12 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	 * 
 	 * @param personFiltter
 	 */
-	private void buildPersonWindow(String personFiltter) {
+	private void buildPersonWindow(List<Person> persons) {
 
 		personSubwindow = ViewHelper.buildSubwindow("75%", null);
 		personSubwindow.setCaption("Personas");
 
 		VerticalLayout subContent = ViewHelper.buildVerticalLayout(true, true);
-
-		// Panel de botones
-		Button backBtn = new Button("Cancelar", FontAwesome.BACKWARD);
-		backBtn.addStyleName("mystyle-btn");
-		backBtn.addClickListener(e -> closeWindow(personSubwindow));
-
-		Button selectBtn = new Button("Seleccionar", FontAwesome.CHECK);
-		selectBtn.addStyleName("mystyle-btn");
-		selectBtn.addClickListener(e -> selectPerson(null));
-
-		HorizontalLayout buttonLayout = ViewHelper.buildHorizontalLayout(true, true);
-		buttonLayout.addComponents(backBtn, selectBtn);
 
 		try {
 
@@ -915,7 +946,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			if (transactionType.equals(ETransactionType.SALIDA)) {
 				Commons.PERSON_TYPE = PersonType.CUSTOMER.getName();
 			}
-			personLayout = new PersonLayout(true);
+			personLayout = new PersonLayout(ELayoutMode.LIST, persons);
 
 			personLayout.getGrid().addItemClickListener(listener -> {
 				if (listener.getMouseEventDetails().isDoubleClick())
@@ -937,13 +968,20 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	 * Método para seleccionar proveedor o cliente
 	 */
 	private void selectPerson(Person person) {
-		selectedPerson = person != null ? person : personLayout.getSelected();
+		String strLog = "[selectPerson]";
+		try {
+			selectedPerson = person != null ? person : personLayout.getSelected();
 
-		if (selectedPerson != null) {
-			txtPerson.setValue(selectedPerson.getName() + " " + selectedPerson.getLastName());
-			personSubwindow.close();
-		} else {
-			ViewHelper.showNotification("Seleccione una persona", Notification.Type.WARNING_MESSAGE);
+			if (selectedPerson != null) {
+				txtPerson.setValue(selectedPerson.getName() + " " + selectedPerson.getLastName());
+				if (personSubwindow != null) {
+					personSubwindow.close();
+				}
+			} else {
+				ViewHelper.showNotification("Seleccione una persona", Notification.Type.WARNING_MESSAGE);
+			}
+		} catch (Exception e) {
+			log.error (strLog +  "[Exception]" + e.getMessage());
 		}
 
 	}

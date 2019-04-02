@@ -575,7 +575,11 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 
 		try {
 
-			productList = productBll.selectAll(false);
+			if (this.mode.equals(ELayoutMode.LIST) && productList != null) {
+
+			} else {
+				productList = productBll.selectAll(false);
+			}
 
 			ListDataProvider<Product> dataProvider = new ListDataProvider<>(productList);
 			filterProductDataProvider = dataProvider.withConfigurableFilter();
