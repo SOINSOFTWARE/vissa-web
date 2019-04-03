@@ -7,6 +7,7 @@ import java.time.ZoneId;
 import java.util.Calendar;
 import java.util.Date;
 
+import org.apache.commons.lang3.time.DateUtils;
 import org.apache.log4j.Logger;
 
 public class DateUtil {
@@ -222,5 +223,17 @@ public class DateUtil {
 			log.error("Error al convertir Date " + date + " a LocalDate");
 		}
 		return ld;
+	}
+
+	public static Date iniDate(Date date) {
+		Date returnDate = DateUtils.truncate(date, Calendar.DATE);
+		return returnDate;
+	}
+
+	public static Date endDate(Date date) {
+		Date returnDate = DateUtils.addHours(date, 23);
+		returnDate = DateUtils.addMinutes(returnDate, 59);
+		returnDate = DateUtils.addSeconds(returnDate, 59);
+		return returnDate;
 	}
 }

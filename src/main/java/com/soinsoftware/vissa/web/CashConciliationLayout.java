@@ -114,6 +114,9 @@ public class CashConciliationLayout extends AbstractEditableLayout<CashConciliat
 	private String employeeRole;
 	private VerticalLayout detailLayout;
 	private boolean autoSaved = false;
+	Date conciliationDate;
+	Date iniDateFilter;
+	Date endDateFilter;
 
 	private ListDataProvider<Document> documentDataProvider;
 	private ListDataProvider<Collection> collectionDataProvider;
@@ -272,6 +275,17 @@ public class CashConciliationLayout extends AbstractEditableLayout<CashConciliat
 
 		setFieldValues(concilitation);
 
+		dfConciliationDate.addValueChangeListener(e -> {
+			setFieldValues(concilitation);
+			VerticalLayout detailLayout2 = (VerticalLayout) buildDetailLayout(concilitation);
+			if (detailLayout2 != null) {
+				layout.removeComponent(detailLayout);
+
+				layout.addComponent(detailLayout2);
+				detailLayout = detailLayout2;
+			}
+		});
+
 		// -------------------------------------------------------------------------
 		detailLayout = (VerticalLayout) buildDetailLayout(concilitation);
 		if (detailLayout != null) {
@@ -423,12 +437,15 @@ public class CashConciliationLayout extends AbstractEditableLayout<CashConciliat
 	}
 
 	private void setFieldValues(CashConciliation concil) {
-
+		conciliationDate = DateUtil.localDateToDate(dfConciliationDate.getValue());
+		iniDateFilter = DateUtil.iniDate(conciliationDate);
+		endDateFilter = DateUtil.endDate(conciliationDate);
 		if (concil != null) {
 			selectedPerson = concil.getPerson();
 			txtPerson.setValue(concil.getPerson().getName() + " " + concil.getPerson().getLastName());
 			dfConciliationDate.setValue(DateUtil.dateToLocalDate(concil.getConciliationDate()));
 			txtCashBase.setValue(String.valueOf(concil.getCashBase()));
+
 		}
 
 	}
@@ -591,9 +608,10 @@ public class CashConciliationLayout extends AbstractEditableLayout<CashConciliat
 
 			// save(conciliationBll, entity, "");
 			conciliationBll.save(entity, false);
-			
-			CashConciliation cashConciliation = conciliationBll.select(entity.getPerson(), entity.getConciliationDate());
-			
+
+			CashConciliation cashConciliation = conciliationBll.select(entity.getPerson(),
+					entity.getConciliationDate());
+
 			if (autoSaved || employeeRole.equals(ERole.ADMINISTRATOR.getName())) {
 				saveAdminConciliation(cashConciliation);
 			}
@@ -1038,8 +1056,10 @@ public class CashConciliationLayout extends AbstractEditableLayout<CashConciliat
 		String strLog = "[filterDocumentByDate]";
 		boolean result = false;
 		try {
-			Date iniDateFilter = DateUtil.localDateTimeToDate(DateUtil.getDefaultIniDate());
-			Date endDateFilter = DateUtil.localDateTimeToDate(DateUtil.getDefaultEndDateTime());
+			// Date iniDateFilter =
+			// DateUtil.localDateTimeToDate(DateUtil.getDefaultIniDate());
+			// Date endDateFilter =
+			// DateUtil.localDateTimeToDate(DateUtil.getDefaultEndDateTime());
 
 			log.info(strLog + " iniDateFilter: " + iniDateFilter + ", endDateFilter:" + endDateFilter);
 
@@ -1061,8 +1081,10 @@ public class CashConciliationLayout extends AbstractEditableLayout<CashConciliat
 		String strLog = "[filterEgressByDate]";
 		boolean result = false;
 		try {
-			Date iniDateFilter = DateUtil.localDateTimeToDate(DateUtil.getDefaultIniDate());
-			Date endDateFilter = DateUtil.localDateTimeToDate(DateUtil.getDefaultEndDateTime());
+			// Date iniDateFilter =
+			// DateUtil.localDateTimeToDate(DateUtil.getDefaultIniDate());
+			// Date endDateFilter =
+			// DateUtil.localDateTimeToDate(DateUtil.getDefaultEndDateTime());
 
 			log.info(strLog + " iniDateFilter: " + iniDateFilter + ", endDateFilter:" + endDateFilter);
 
@@ -1083,8 +1105,10 @@ public class CashConciliationLayout extends AbstractEditableLayout<CashConciliat
 		String strLog = "[filterCollectiobByDate]";
 		boolean result = false;
 		try {
-			Date iniDateFilter = DateUtil.localDateTimeToDate(DateUtil.getDefaultIniDate());
-			Date endDateFilter = DateUtil.localDateTimeToDate(DateUtil.getDefaultEndDateTime());
+			// Date iniDateFilter =
+			// DateUtil.localDateTimeToDate(DateUtil.getDefaultIniDate());
+			// Date endDateFilter =
+			// DateUtil.localDateTimeToDate(DateUtil.getDefaultEndDateTime());
 
 			log.info(strLog + " iniDateFilter: " + iniDateFilter + ", endDateFilter:" + endDateFilter);
 
