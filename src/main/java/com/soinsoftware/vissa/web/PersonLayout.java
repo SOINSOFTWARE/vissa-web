@@ -222,7 +222,7 @@ public class PersonLayout extends AbstractEditableLayout<Person> {
 	protected AbstractOrderedLayout buildListView() {
 		VerticalLayout layout = ViewHelper.buildVerticalLayout(false, false);
 		Panel buttonPanel = null;
-		if (listMode || mode.equals(ELayoutMode.LIST)) {
+		if (listMode || (mode != null && mode.equals(ELayoutMode.LIST))) {
 			buttonPanel = buildButtonPanelListMode();
 		} else {
 			buttonPanel = buildButtonPanelForLists();
@@ -550,7 +550,7 @@ public class PersonLayout extends AbstractEditableLayout<Person> {
 
 	@Override
 	protected void fillGridData() {
-		if (!mode.equals(ELayoutMode.LIST) || (personList == null|| personList.isEmpty())) {
+		if ((mode != null && !mode.equals(ELayoutMode.LIST)) || (personList == null || personList.isEmpty())) {
 			personList = personBll.select(personType);
 		}
 		ListDataProvider<Person> dataProvider = new ListDataProvider<>(personList);
