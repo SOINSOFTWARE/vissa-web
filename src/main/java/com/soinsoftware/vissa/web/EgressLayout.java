@@ -24,6 +24,7 @@ import com.soinsoftware.vissa.model.Egress;
 import com.soinsoftware.vissa.model.EgressType;
 import com.soinsoftware.vissa.model.PaymentType;
 import com.soinsoftware.vissa.model.Person;
+import com.soinsoftware.vissa.model.PersonType;
 import com.soinsoftware.vissa.model.Role;
 import com.soinsoftware.vissa.model.User;
 import com.soinsoftware.vissa.util.Commons;
@@ -32,8 +33,11 @@ import com.soinsoftware.vissa.util.NumericUtil;
 import com.soinsoftware.vissa.util.ViewHelper;
 import com.vaadin.data.provider.ConfigurableFilterDataProvider;
 import com.vaadin.data.provider.ListDataProvider;
+import com.vaadin.server.FontAwesome;
 import com.vaadin.server.SerializablePredicate;
 import com.vaadin.ui.AbstractOrderedLayout;
+import com.vaadin.ui.Alignment;
+import com.vaadin.ui.Button;
 import com.vaadin.ui.ComboBox;
 import com.vaadin.ui.Component;
 import com.vaadin.ui.DateTimeField;
@@ -46,6 +50,7 @@ import com.vaadin.ui.Panel;
 import com.vaadin.ui.TextArea;
 import com.vaadin.ui.TextField;
 import com.vaadin.ui.VerticalLayout;
+import com.vaadin.ui.Window;
 import com.vaadin.ui.themes.ValoTheme;
 
 @SuppressWarnings("unchecked")
@@ -64,9 +69,9 @@ public class EgressLayout extends AbstractEditableLayout<Egress> {
 
 	private Grid<Egress> egressGrid;
 
-	private TextField txFilterByName;
-	private TextField txFilterByCode;
-
+	private Window personSubwindow;
+	private PersonLayout personLayout;
+	private Person personSelected = null;
 	private TextField txtEgressName;
 	private TextArea taEgressDescription;
 	private TextField txtPerson;
@@ -75,6 +80,7 @@ public class EgressLayout extends AbstractEditableLayout<Egress> {
 	private ComboBox<EgressType> cbEgressType;
 
 	private Person selectedPerson = null;
+	private TextField txtFilterByPerson;
 
 	private User user;
 	private Role role;
@@ -101,7 +107,7 @@ public class EgressLayout extends AbstractEditableLayout<Egress> {
 		Panel buttonPanel = buildButtonPanelForLists();
 		Panel filterPanel = buildFilterPanel();
 		Panel dataPanel = buildGridPanel();
-		layout.addComponents(buttonPanel, dataPanel);
+		layout.addComponents(buttonPanel, filterPanel, dataPanel);
 		this.setMargin(false);
 		this.setSpacing(false);
 		return layout;
@@ -230,10 +236,10 @@ public class EgressLayout extends AbstractEditableLayout<Egress> {
 		} else {
 			egressList = egressBll.select(selectedPerson);
 		}
-		
+
 		egressList = egressList.stream().sorted(Comparator.comparing(Egress::getEgressDate).reversed())
 				.collect(Collectors.toList());
-		
+
 		dataProvider = new ListDataProvider<>(egressList);
 		filterProductDataProvider = dataProvider.withConfigurableFilter();
 		egressGrid.setDataProvider(filterProductDataProvider);
@@ -331,17 +337,69 @@ public class EgressLayout extends AbstractEditableLayout<Egress> {
 
 	private Panel buildFilterPanel() {
 		HorizontalLayout layout = ViewHelper.buildHorizontalLayout(true, true);
-		txFilterByName = new TextField("Nombre");
-		txFilterByName.addValueChangeListener(e -> refreshGrid());
-		txFilterByCode = new TextField("Código");
-		txFilterByCode.addValueChangeListener(e -> refreshGrid());
-		layout.addComponents(txFilterByCode, txFilterByName);
+
+		txtFilterByPerson = new TextField("Empleado");
+		txtFilterByPerson.addValueChangeListener(e -> refreshGrid());
+		txtFilterByPerson.setStyleName(ValoTheme.TEXTFIELD_TINY);
+		txtFilterByPerson.focus();
+		@SuppressWarnings("deprecation")
+		Button searchPersonBtn = new Button("Buscar proveedor", FontAwesome.SEARCH);
+		searchPersonBtn.addClickListener(e -> buildPersonWindow(txtFilterByPerson.getValue()));
+		searchPersonBtn.setStyleName("icon-only");
+
+		layout.addComponents(txtFilterByPerson, searchPersonBtn);
+		layout.setComponentAlignment(searchPersonBtn, Alignment.BOTTOM_CENTER);
 		return ViewHelper.buildPanel("Filtrar por", layout);
 	}
 
+	private void buildPersonWindow(String personFiltter) {
+
+		personSubwindow = ViewHelper.buildSubwindow("75%", null);
+		personSubwindow.setCaption("Personas");
+
+		VerticalLayout subContent = ViewHelper.buildVerticalLayout(true, true);
+
+		try {
+			Commons.PERSON_TYPE = PersonType.USER.getName();
+			personLayout = new PersonLayout(true);
+			personLayout.getGrid().addItemClickListener(listener -> {
+				if (listener.getMouseEventDetails().isDoubleClick())
+					selectPerson(listener.getItem());
+			});
+
+		} catch (IOException e) {
+			log.error("Error al cargar lista de personas. Exception:" + e);
+		}
+		Panel personPanel = ViewHelper.buildPanel(null, personLayout);
+		subContent.addComponents(personPanel);
+
+		personSubwindow.setContent(subContent);
+		getUI().addWindow(personSubwindow);
+
+	}
+
+	/**
+	 * Método para seleccionar proveedor o cliente
+	 */
+	private void selectPerson(Person person) {
+		personSelected = person;
+
+		if (personSelected != null) {
+			txtFilterByPerson.setValue(personSelected.getName() + " " + personSelected.getLastName());
+			personSubwindow.close();
+			refreshGrid();
+
+		} else {
+			ViewHelper.showNotification("Seleccione un proveedor", Notification.Type.WARNING_MESSAGE);
+		}
+
+	}
+
 	private void refreshGrid() {
-		filterProductDataProvider.setFilter(filterGrid());
-		egressGrid.getDataProvider().refreshAll();
+		if (filterProductDataProvider != null) {
+			filterProductDataProvider.setFilter(filterGrid());
+			egressGrid.getDataProvider().refreshAll();
+		}
 	}
 
 	private SerializablePredicate<Egress> filterGrid() {
