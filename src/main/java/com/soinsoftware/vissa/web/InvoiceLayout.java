@@ -47,7 +47,9 @@ import com.soinsoftware.vissa.model.DocumentDetail;
 import com.soinsoftware.vissa.model.DocumentDetailLot;
 import com.soinsoftware.vissa.model.DocumentStatus;
 import com.soinsoftware.vissa.model.DocumentType;
+import com.soinsoftware.vissa.model.EDocumentStatus;
 import com.soinsoftware.vissa.model.EPaymemtType;
+import com.soinsoftware.vissa.model.EPaymentStatus;
 import com.soinsoftware.vissa.model.ERole;
 import com.soinsoftware.vissa.model.ETransactionType;
 import com.soinsoftware.vissa.model.InventoryTransaction;
@@ -66,7 +68,6 @@ import com.soinsoftware.vissa.model.User;
 import com.soinsoftware.vissa.util.Commons;
 import com.soinsoftware.vissa.util.DateUtil;
 import com.soinsoftware.vissa.util.ELayoutMode;
-import com.soinsoftware.vissa.util.NotificationUtil;
 import com.soinsoftware.vissa.util.PermissionUtil;
 import com.soinsoftware.vissa.util.ViewHelper;
 import com.vaadin.data.Binder;
@@ -141,6 +142,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	private ComboBox<PaymentMethod> cbPaymentMethod;
 	private ComboBox<DocumentStatus> cbDocumentStatus;
 	private Grid<DocumentDetail> detailGrid;
+	private TextField txtPaymentStatus;
 	private Window personSubwindow;
 	private Window productSubwindow;
 	private Window lotSubwindow;
@@ -342,7 +344,11 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		txtDocNumFilter.addValueChangeListener(e -> searchDocument(txtDocNumFilter.getValue()));
 		txtDocNumFilter.setStyleName(ValoTheme.TEXTFIELD_TINY);
 
-		layout.addComponents(txtDocNumFilter);
+		txtPaymentStatus = new TextField("Estado de pago");
+		txtPaymentStatus.setEnabled(false);
+		txtPaymentStatus.setStyleName(ValoTheme.TEXTFIELD_TINY);
+
+		layout.addComponents(txtDocNumFilter, txtPaymentStatus);
 
 		return ViewHelper.buildPanel("", layout);
 	}
@@ -395,22 +401,6 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		txtPerson.setRequiredIndicatorVisible(true);
 		txtPerson.setStyleName(ValoTheme.TEXTFIELD_TINY);
 
-		// Evento de enter
-	/*	txtPerson.addShortcutListener(new ShortcutListener("search person", ShortcutAction.KeyCode.ENTER, null) {
-
-			private static final long serialVersionUID = 6441523733731956234L;
-
-			@Override
-			public void handleAction(Object sender, Object target) {
-				try {
-					if (((TextField) target).equals(txtPerson)) {
-						searchPerson(txtPerson.getValue());
-					}
-				} catch (Exception e) {
-					log.error("[search person][ShortcutListener][handleAction][Exception] " + e.getMessage());
-				}
-			}
-		});*/
 		searchPersonBtn = new Button("Buscar proveedor", FontAwesome.SEARCH);
 		searchPersonBtn.addClickListener(e -> buildPersonWindow(null));
 		searchPersonBtn.setStyleName("icon-only");
@@ -429,7 +419,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		ListDataProvider<DocumentStatus> docStatusDataProv = new ListDataProvider<>(docStatusBll.selectAll());
 		cbDocumentStatus.setDataProvider(docStatusDataProv);
 		cbDocumentStatus.setItemCaptionGenerator(DocumentStatus::getName);
-		cbDocumentStatus.setSelectedItem(docStatusBll.select("Nueva").get(0));
+		cbDocumentStatus.setSelectedItem(docStatusBll.select(EDocumentStatus.NEW.getName()).get(0));
 		cbDocumentStatus.setStyleName(ValoTheme.COMBOBOX_TINY);
 		cbDocumentStatus.setReadOnly(true);
 		cbDocumentStatus.setWidth("150px");
@@ -629,7 +619,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 		// Columna cantidad editable
 		NumberField txtQuantity = new NumberField();
-		txtQuantity.setDecimalAllowed(true);		
+		txtQuantity.setDecimalAllowed(true);
 		txtQuantity.setDecimalPrecision(4);
 		txtQuantity.setDecimalSeparator(',');
 		columnQuantity = detailGrid.addColumn(DocumentDetail::getQuantity).setCaption("Cantidad")
@@ -648,6 +638,28 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			detailGrid.getSelectionModel().deselectAll();
 		});
 
+		// Evento de enter para cmpo de persona
+		txtPerson.addShortcutListener(new ShortcutListener("search person", ShortcutAction.KeyCode.ENTER, null) {
+
+			private static final long serialVersionUID = 7441523733731956234L;
+
+			@Override
+			public void handleAction(Object sender, Object target) {
+				try {
+					if (((TextField) target).equals(txtPerson)) {
+						searchPerson(txtPerson.getValue());
+					}
+
+					if (((TextField) target).equals(txtCode) || ((TextField) target).equals(txtName)) {
+						dataProvider.refreshAll();
+						searchProduct(txtCode.getValue(), txtName.getValue());
+					}
+				} catch (Exception e) {
+					log.error("[search person][ShortcutListener][handleAction][Exception] " + e.getMessage());
+				}
+			}
+		});
+
 		// Evento de enter
 		txtName.addShortcutListener(new ShortcutListener("Shortcut Name", ShortcutAction.KeyCode.ENTER, null) {
 
@@ -659,6 +671,9 @@ public class InvoiceLayout extends VerticalLayout implements View {
 					if (((TextField) target).equals(txtCode) || ((TextField) target).equals(txtName)) {
 						dataProvider.refreshAll();
 						searchProduct(txtCode.getValue(), txtName.getValue());
+					}
+					if (((TextField) target).equals(txtPerson)) {
+						searchPerson(txtPerson.getValue());
 					}
 				} catch (Exception e) {
 					log.error("[ShortcutListener][handleAction][Exception] " + e.getMessage());
@@ -735,7 +750,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	}
 
 	/**
-	 * Método para buscar un producto por código y/o nombre
+	 * Método para buscar una persona por código y/o nombre
 	 * 
 	 * @param code
 	 * @param name
@@ -981,7 +996,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 				ViewHelper.showNotification("Seleccione una persona", Notification.Type.WARNING_MESSAGE);
 			}
 		} catch (Exception e) {
-			log.error (strLog +  "[Exception]" + e.getMessage());
+			log.error(strLog + "[Exception]" + e.getMessage());
 		}
 
 	}
@@ -1056,6 +1071,26 @@ public class InvoiceLayout extends VerticalLayout implements View {
 					selectProduct(listener.getItem());
 			});
 
+			// Evento de enter para grid
+			productLayout.getProductGrid()
+					.addShortcutListener(new ShortcutListener("search product", ShortcutAction.KeyCode.ENTER, null) {
+
+						private static final long serialVersionUID = 8441523733731956234L;
+
+						@SuppressWarnings("unchecked")
+						@Override
+						public void handleAction(Object sender, Object target) {
+							try {
+								if (((Grid<Product>) target).equals(productLayout.getProductGrid())) {
+									selectProduct(productLayout.getSelected());
+								}
+
+							} catch (Exception e) {
+								log.error(
+										"[search person][ShortcutListener][handleAction][Exception] " + e.getMessage());
+							}
+						}
+					});
 			Panel productPanel = ViewHelper.buildPanel(null, productLayout);
 			subContent.addComponents(productPanel);
 
@@ -1383,6 +1418,15 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			message = message.concat("La forma de pago es obligatoria");
 		}
 
+		if (cbPaymentType.getSelectedItem().isPresent() && cbPaymentType.getSelectedItem().get().getPaymentType()
+				.getCode().equals(EPaymemtType.CREDIT.getName()) && txtPaymentTerm.getValue().isEmpty()) {
+
+			if (!message.isEmpty()) {
+				message = message.concat(character);
+			}
+			message = message.concat("Si el tipo de pago es crédito, el plazo es obligatorio");
+		}
+
 		if (txtTotal.getValue() != null && txtTotal.getValue().equals("0")) {
 			if (!message.isEmpty()) {
 				message = message.concat(character);
@@ -1621,7 +1665,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 				DocumentStatus documentStatus = null;
 				if (documentEntity == null || documentEntity.getCode() == null) {
 					docBuilder = Document.builder();
-					documentStatus = docStatusBll.select("Registrada").get(0);
+					documentStatus = docStatusBll.select(EDocumentStatus.REGISTERED.getName()).get(0);
 				} else {
 					documentStatus = documentEntity.getStatus();
 					docBuilder = Document.builder(documentEntity);
@@ -1635,13 +1679,20 @@ public class InvoiceLayout extends VerticalLayout implements View {
 				Double total = txtTotal.getValue() != null ? Double.parseDouble(txtTotal.getValue()) : 0;
 				Double totalIVA = txtTotalTax.getValue() != null ? Double.parseDouble(txtTotalTax.getValue()) : 0;
 
+				String paymentStatus;
+				// Si el tipo de pago es crédito el pago queda pendiente
+				if (paymentType.getCode().equals(EPaymemtType.CREDIT.getName())) {
+					paymentStatus = EPaymentStatus.PENDING.getName();
+				} else {
+					paymentStatus = EPaymentStatus.PAYED.getName();
+				}
 				documentEntity = docBuilder.code(txtDocNumber.getValue())
 						.reference(txtReference.getValue() != null ? txtReference.getValue() : "")
 						.documentType(cbDocumentType.getValue()).resolution(txtResolution.getValue())
 						.person(selectedPerson).documentDate(docDate).paymentMethod(cbPaymentMethod.getValue())
 						.paymentType(paymentType).paymentTerm(txtPaymentTerm.getValue()).expirationDate(expirationDate)
 						.totalValue(total).totalValueNoTax(totalIVA).status(documentStatus).salesman(user.getPerson())
-						.payValue(payValue).details(detailsTmp).build();
+						.payValue(payValue).paymentStatus(paymentStatus).details(detailsTmp).build();
 
 				// Persistir documento
 				documentBll.save(documentEntity, false);
@@ -1691,6 +1742,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			txtDocNumFilter.clear();
 			txtReference.clear();
 			txtPerson.clear();
+			txtPaymentStatus.clear();
 			txtPaymentTerm.clear();
 			cbPaymentMethod.clear();
 			// cbPaymentType.clear();
@@ -1745,6 +1797,8 @@ public class InvoiceLayout extends VerticalLayout implements View {
 					txtPerson.setValue(document.getPerson().getName() + " " + document.getPerson().getLastName());
 					dtfExpirationDate.setValue(DateUtil.dateToLocalDateTime(document.getExpirationDate()));
 					cbDocumentStatus.setValue(document.getStatus());
+					txtPaymentStatus.setValue(document.getPaymentStatus() != null ? document.getPaymentStatus() : "");
+
 					Set<DocumentDetail> detailSet = document.getDetails();
 
 					itemsList = new ArrayList<>();
@@ -1861,7 +1915,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		String strLog = "[deleteDocument]";
 		try {
 
-			DocumentStatus status = docStatusBll.select("Cancelada").get(0);
+			DocumentStatus status = docStatusBll.select(EDocumentStatus.DECLINED.getName()).get(0);
 			Document documentEntity = Document.builder(document).status(status).build();
 			saveButtonAction(documentEntity);
 		} catch (Exception e) {

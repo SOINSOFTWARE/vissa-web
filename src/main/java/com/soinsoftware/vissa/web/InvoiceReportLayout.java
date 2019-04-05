@@ -3,6 +3,7 @@ package com.soinsoftware.vissa.web;
 import static com.soinsoftware.vissa.web.VissaUI.KEY_REPORTS;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Set;
@@ -16,7 +17,7 @@ import com.soinsoftware.vissa.bll.PaymentDocumentTypeBll;
 import com.soinsoftware.vissa.common.CommonsUtil;
 import com.soinsoftware.vissa.model.Document;
 import com.soinsoftware.vissa.model.DocumentType;
-import com.soinsoftware.vissa.model.EPaymemtType;
+import com.soinsoftware.vissa.model.EPaymentStatus;
 import com.soinsoftware.vissa.model.ETransactionType;
 import com.soinsoftware.vissa.model.PaymentDocumentType;
 import com.soinsoftware.vissa.model.PaymentType;
@@ -25,11 +26,9 @@ import com.soinsoftware.vissa.model.PersonType;
 import com.soinsoftware.vissa.util.Commons;
 import com.soinsoftware.vissa.util.DateUtil;
 import com.soinsoftware.vissa.util.ViewHelper;
-import com.vaadin.data.provider.ConfigurableFilterDataProvider;
 import com.vaadin.data.provider.ListDataProvider;
 import com.vaadin.data.provider.Query;
 import com.vaadin.server.FontAwesome;
-import com.vaadin.server.SerializablePredicate;
 import com.vaadin.shared.ui.datefield.DateTimeResolution;
 import com.vaadin.ui.AbstractOrderedLayout;
 import com.vaadin.ui.Alignment;
@@ -71,6 +70,7 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 	private TextField txtQuantity;
 	private TextField txtTotal;
 	private ComboBox<PaymentDocumentType> cbPaymentType;
+	private ComboBox<EPaymentStatus> cbPaymentStatus;
 	private Grid<Document> grid;
 
 	private boolean listMode;
@@ -302,6 +302,7 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 		dtfFilterIniDate.setValue(DateUtil.getDefaultIniDate());
 		dtfFilterIniDate.setDateFormat(Commons.FORMAT_DATE_TIME);
 		dtfFilterIniDate.setStyleName(ValoTheme.DATEFIELD_TINY);
+		dtfFilterIniDate.setWidth("184px");
 		dtfFilterIniDate.setRequiredIndicatorVisible(true);
 		dtfFilterIniDate.addValueChangeListener(e -> refreshGrid());
 
@@ -310,6 +311,7 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 		dtfFilterEndDate.setValue(DateUtil.getDefaultEndDateTime());
 		dtfFilterEndDate.setDateFormat(Commons.FORMAT_DATE_TIME);
 		dtfFilterEndDate.setStyleName(ValoTheme.DATEFIELD_TINY);
+		dtfFilterEndDate.setWidth("184px");
 		dtfFilterEndDate.setRequiredIndicatorVisible(true);
 		dtfFilterEndDate.addValueChangeListener(e -> refreshGrid());
 
@@ -328,10 +330,18 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 				return null;
 			}
 		});
-
 		cbPaymentType.addValueChangeListener(e -> refreshGrid());
 
-		layout.addComponents(txtFilterByPerson, searchPersonBtn, dtfFilterIniDate, dtfFilterEndDate, cbPaymentType);
+		cbPaymentStatus = new ComboBox<>("Estado de pago");
+		cbPaymentStatus.setEmptySelectionAllowed(true);
+		cbPaymentStatus.setEmptySelectionCaption("Seleccione");
+		cbPaymentStatus.setStyleName(ValoTheme.COMBOBOX_TINY);
+		ListDataProvider<EPaymentStatus> payStatusDate = new ListDataProvider<>(Arrays.asList(EPaymentStatus.values()));
+		cbPaymentStatus.setDataProvider(payStatusDate);
+		cbPaymentStatus.setItemCaptionGenerator(EPaymentStatus::getName);
+		cbPaymentStatus.addValueChangeListener(e -> refreshGrid());
+
+		layout.addComponents(txtFilterByPerson, searchPersonBtn, dtfFilterIniDate, dtfFilterEndDate, cbPaymentType, cbPaymentStatus);
 		layout.setComponentAlignment(searchPersonBtn, Alignment.BOTTOM_CENTER);
 		return ViewHelper.buildPanel("Buscar por", layout);
 	}
@@ -387,11 +397,23 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 				paymentTypeFilter = cbPaymentType.getSelectedItem().get().getPaymentType();
 			}
 
+			EPaymentStatus paymentStatusFilter = null;
+			if (cbPaymentStatus.getSelectedItem().isPresent()) {
+				paymentStatusFilter = cbPaymentStatus.getSelectedItem().get();
+			}
+
 			result = personFilter != null ? document.getPerson().equals(personFilter)
 					: true && document.getDocumentDate().before(endDateFilter)
 							&& document.getDocumentDate().after(iniDateFilter);
+
+			//Filtrar por tipo de pago
 			if (paymentTypeFilter != null) {
 				result = result && document.getPaymentType().equals(paymentTypeFilter);
+			}
+
+			//Filtrar por estado del pago
+			if (paymentStatusFilter != null) {
+				result = result && document.getPaymentStatus().equals(paymentStatusFilter.getName());
 			}
 		} catch (Exception e) {
 			ViewHelper.showNotification(e.getMessage(), Notification.Type.ERROR_MESSAGE);
