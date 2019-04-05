@@ -117,9 +117,6 @@
 			<artifactId>pagination</artifactId>
 			<version>8.0.6</version>
 		</dependency>
-
-	
-
 	</dependencies>
 
 	<build>
