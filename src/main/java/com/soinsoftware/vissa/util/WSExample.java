@@ -13,7 +13,7 @@ public class WSExample {
 
 	public static void main(String[] args) {
 		Twilio.init(ACCOUNT_SID, AUTH_TOKEN);
-		Message message = Message.creator(new com.twilio.type.PhoneNumber("whatsapp:+573002007694"),
+		Message message = Message.creator(new com.twilio.type.PhoneNumber("whatsapp:+57300720405"),
 				new com.twilio.type.PhoneNumber("whatsapp:+14064121262"), "Hello there!").create();
 
 		System.out.println(message.getSid());

@@ -1126,8 +1126,8 @@ public class ReturnLayout extends VerticalLayout implements View {
 			lotSubwindow.setCaption("Lotes del producto " + product.getCode() + " - " + product.getName());
 
 			VerticalLayout subContent = ViewHelper.buildVerticalLayout(true, true);
-
-			lotLayout = new LotLayout(product, productLayout, transactionType);
+			Commons.LAYOUT_MODE = ELayoutMode.ALL;
+			lotLayout = new LotLayout(product, productLayout);
 			lotLayout.setCaption("Lotes");
 			lotLayout.setMargin(false);
 			lotLayout.setSpacing(false);

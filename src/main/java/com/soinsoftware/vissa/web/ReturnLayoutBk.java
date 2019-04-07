@@ -991,7 +991,8 @@ public class ReturnLayoutBk extends VerticalLayout implements View {
 			buttonLayout.addComponents(backBtn, selectBtn);
 			Panel buttonPanel = ViewHelper.buildPanel(null, buttonLayout);
 
-			lotLayout = new LotLayout(selectedProduct, productLayout, transactionType);
+			Commons.LAYOUT_MODE = ELayoutMode.ALL;
+			lotLayout = new LotLayout(selectedProduct, productLayout);
 			lotLayout.setCaption("Lotes");
 			lotLayout.setMargin(false);
 			lotLayout.setSpacing(false);

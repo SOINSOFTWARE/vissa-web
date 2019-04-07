@@ -2,13 +2,16 @@ package com.soinsoftware.vissa.web;
 
 import static com.soinsoftware.vissa.web.VissaUI.KEY_REPORTS;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.apache.log4j.Logger;
+import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.soinsoftware.vissa.bll.DocumentBll;
@@ -28,6 +31,8 @@ import com.soinsoftware.vissa.util.DateUtil;
 import com.soinsoftware.vissa.util.ViewHelper;
 import com.vaadin.data.provider.ListDataProvider;
 import com.vaadin.data.provider.Query;
+import com.vaadin.server.FileDownloader;
+import com.vaadin.server.FileResource;
 import com.vaadin.server.FontAwesome;
 import com.vaadin.shared.ui.datefield.DateTimeResolution;
 import com.vaadin.ui.AbstractOrderedLayout;
@@ -72,6 +77,7 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 	private ComboBox<PaymentDocumentType> cbPaymentType;
 	private ComboBox<EPaymentStatus> cbPaymentStatus;
 	private Grid<Document> grid;
+	private Button printBtn;
 
 	private boolean listMode;
 	private ETransactionType transactionType;
@@ -154,56 +160,69 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 	@SuppressWarnings("unchecked")
 	@Override
 	protected Panel buildGridPanel() {
+		String strLog = "[buildGridPanel] ";
 		VerticalLayout layout = ViewHelper.buildVerticalLayout(true, true);
-		grid = ViewHelper.buildGrid(SelectionMode.SINGLE);
-		grid.addColumn(Document::getCode).setCaption("Número");
-		grid.addColumn(document -> {
-			if (document.getDocumentType() != null) {
-				return document.getDocumentType().getName();
-			} else {
-				return "";
-			}
-		}).setCaption("Tipo");
-		grid.addColumn(document -> {
-			if (document.getPaymentType() != null) {
-				return document.getPaymentType().getName();
-			} else {
-				return "";
-			}
-		}).setCaption("Tipo de pago");
-		grid.addColumn(document -> {
-			if (document.getDocumentDate() != null) {
-				return DateUtil.dateToString(document.getDocumentDate());
-			} else {
-				return "";
-			}
-		}).setCaption("Fecha");
+		try {
+			grid = ViewHelper.buildGrid(SelectionMode.SINGLE);
+			grid.addColumn(Document::getCode).setCaption("Número");
+			grid.addColumn(document -> {
+				if (document.getDocumentType() != null) {
+					return document.getDocumentType().getName();
+				} else {
+					return "";
+				}
+			}).setCaption("Tipo");
+			grid.addColumn(document -> {
+				if (document.getPaymentType() != null) {
+					return document.getPaymentType().getName();
+				} else {
+					return "";
+				}
+			}).setCaption("Tipo de pago");
+			grid.addColumn(document -> {
+				if (document.getDocumentDate() != null) {
+					return DateUtil.dateToString(document.getDocumentDate());
+				} else {
+					return "";
+				}
+			}).setCaption("Fecha");
 
-		personColumn = grid.addColumn(document -> {
-			if (document.getPerson() != null) {
-				return document.getPerson().getDocumentNumber() + "-" + document.getPerson().getName()
-						+ document.getPerson().getLastName();
-			} else {
-				return null;
+			personColumn = grid.addColumn(document -> {
+				if (document.getPerson() != null) {
+					return document.getPerson().getName() + " " + document.getPerson().getLastName();
+				} else {
+					return null;
+				}
+			}).setCaption(Commons.PERSON_TYPE);
+
+			grid.addColumn(document -> {
+				if (document.getPerson() != null) {
+					return document.getPaymentStatus();
+				} else {
+					return null;
+				}
+			}).setCaption("Estado");
+
+			totalColumn = grid.addColumn(Document::getTotalValue).setCaption("Total");
+
+			footer = grid.prependFooterRow();
+			footer.getCell(personColumn).setHtml("<b>Total:</b>");
+
+			layout.addComponent(ViewHelper.buildPanel(null, grid));
+			grid.addItemClickListener(listener -> {
+				if (listener.getMouseEventDetails().isDoubleClick()) {
+					grid.select(listener.getItem());
+				}
+			});
+			fillGridData();
+			if (!listMode) {
+				refreshGrid();
 			}
-		}).setCaption(Commons.PERSON_TYPE);
 
-		totalColumn = grid.addColumn(Document::getTotalValue).setCaption("Total");
-
-		footer = grid.prependFooterRow();
-		footer.getCell(personColumn).setHtml("<b>Total:</b>");
-
-		layout.addComponent(ViewHelper.buildPanel(null, grid));
-		grid.addItemClickListener(listener -> {
-			if (listener.getMouseEventDetails().isDoubleClick()) {
-				grid.select(listener.getItem());
-			}
-		});
-		fillGridData();
-		if (!listMode) {
-			refreshGrid();
+		} catch (Exception e) {
+			log.error(strLog + "[Exception]" + e.getMessage());
+			e.printStackTrace();
 		}
-
 		return ViewHelper.buildPanel(null, layout);
 	}
 
@@ -233,21 +252,38 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 
 	@Override
 	protected void fillGridData() {
-		List<DocumentType> types = documentTypeBll.select(transactionType);
-		dataProvider = new ListDataProvider<>(documentBll.select(types));
+		String strLog = "[fillGridData] ";
+		try {
+			List<DocumentType> types = documentTypeBll.select(transactionType);
+			dataProvider = new ListDataProvider<>(documentBll.select(types));
 
-		// filterDataProvider = dataProvider.withConfigurableFilter();
-		grid.setDataProvider(dataProvider);
-		dataProvider
-				.addDataProviderListener(event -> footer.getCell(totalColumn).setHtml(calculateTotal(dataProvider)));
+			grid.setDataProvider(dataProvider);
+			dataProvider.addDataProviderListener(
+					event -> footer.getCell(totalColumn).setHtml(calculateTotal(dataProvider)));
+		} catch (Exception e) {
+			log.error(strLog + "[Exception]" + e.getMessage());
+			e.printStackTrace();
+		}
 	}
 
+	/*
+	 * Metodo para calcular la suma del total de todas las facturas de acuerdo a los
+	 * filtros
+	 */
+
 	private String calculateTotal(ListDataProvider<Document> detailDataProv) {
-		log.info("Calculando total");
-		String total = String.valueOf(detailDataProv.fetch(new Query<>()).mapToDouble(Document::getTotalValue).sum());
-		String quantity = String.valueOf(detailDataProv.size(new Query<>()));
-		txtQuantity.setValue(quantity);
-		txtTotal.setValue(total);
+		String strLog = "[calculateTotal] ";
+		String total = null;
+		try {
+			log.info(strLog + "[parameters] documentList: " + detailDataProv);
+			total = String.valueOf(detailDataProv.fetch(new Query<>()).mapToDouble(Document::getTotalValue).sum());
+			String quantity = String.valueOf(detailDataProv.size(new Query<>()));
+			txtQuantity.setValue(quantity);
+			txtTotal.setValue(total);
+		} catch (Exception e) {
+			log.error(strLog + "[Exception]" + e.getMessage());
+			e.printStackTrace();
+		}
 		return "<b>" + total + "</b>";
 
 	}
@@ -341,23 +377,43 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 		cbPaymentStatus.setItemCaptionGenerator(EPaymentStatus::getName);
 		cbPaymentStatus.addValueChangeListener(e -> refreshGrid());
 
-		layout.addComponents(txtFilterByPerson, searchPersonBtn, dtfFilterIniDate, dtfFilterEndDate, cbPaymentType, cbPaymentStatus);
+		layout.addComponents(txtFilterByPerson, searchPersonBtn, dtfFilterIniDate, dtfFilterEndDate, cbPaymentType,
+				cbPaymentStatus);
 		layout.setComponentAlignment(searchPersonBtn, Alignment.BOTTOM_CENTER);
 		return ViewHelper.buildPanel("Buscar por", layout);
 	}
 
 	private Panel builTotalPanel() {
+		String strLog = "[builTotalPanel] ";
 		HorizontalLayout layout = ViewHelper.buildHorizontalLayout(true, true);
+		try {
 
-		txtQuantity = new TextField("Cantidad:");
-		txtQuantity.setReadOnly(true);
-		txtQuantity.setStyleName(ValoTheme.TEXTFIELD_TINY);
+			txtQuantity = new TextField("Cantidad:");
+			txtQuantity.setReadOnly(true);
+			txtQuantity.setStyleName(ValoTheme.TEXTFIELD_TINY);
 
-		txtTotal = new TextField("Total:");
-		txtTotal.setReadOnly(true);
-		txtTotal.setStyleName(ValoTheme.TEXTFIELD_TINY);
+			txtTotal = new TextField("Total:");
+			txtTotal.setReadOnly(true);
+			txtTotal.setStyleName(ValoTheme.TEXTFIELD_TINY);
 
-		layout.addComponents(txtQuantity, txtTotal);
+			String fileName = "Reporte" + documentType.getName().replaceAll(" ", "");
+			File fileTemp = File.createTempFile(fileName, ".xlsx");
+			String filePath = fileTemp.getPath();
+			log.info(strLog + "filePath:" + filePath);
+
+			printBtn = new Button(FontAwesome.PRINT);
+			printBtn.addStyleName(ValoTheme.BUTTON_ICON_ONLY);
+			printBtn.addClickListener(e -> printReport(filePath));
+
+			FileDownloader downloader = new FileDownloader(new FileResource(fileTemp));
+			downloader.extend(printBtn);
+
+			layout.addComponents(txtQuantity, txtTotal, printBtn);
+			layout.setComponentAlignment(printBtn, Alignment.BOTTOM_CENTER);
+		} catch (IOException e) {
+			log.error(strLog + "[IOException]" + e.getMessage());
+			e.printStackTrace();
+		}
 		return ViewHelper.buildPanel(null, layout);
 	}
 
@@ -372,11 +428,6 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 		boolean result = false;
 		try {
 
-			String codeFilter = txtFilterByCode.getValue().trim();
-
-			String docTypeFilter = cbFilterByType.getSelectedItem().isPresent()
-					? cbFilterByType.getSelectedItem().get().getName()
-					: "";
 			Date iniDateFilter = dtfFilterIniDate.getValue() != null
 					? DateUtil.localDateTimeToDate(dtfFilterIniDate.getValue())
 					: DateUtil.stringToDate("01-01-2000 00:00:00");
@@ -406,40 +457,18 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 					: true && document.getDocumentDate().before(endDateFilter)
 							&& document.getDocumentDate().after(iniDateFilter);
 
-			//Filtrar por tipo de pago
+			// Filtrar por tipo de pago
 			if (paymentTypeFilter != null) {
 				result = result && document.getPaymentType().equals(paymentTypeFilter);
 			}
 
-			//Filtrar por estado del pago
+			// Filtrar por estado del pago
 			if (paymentStatusFilter != null) {
 				result = result && document.getPaymentStatus().equals(paymentStatusFilter.getName());
 			}
 		} catch (Exception e) {
-			ViewHelper.showNotification(e.getMessage(), Notification.Type.ERROR_MESSAGE);
-		}
-		return result;
-
-	}
-
-	private boolean filterGrid(Document document, Person personFilter, Date iniDateFilter, Date endDateFilter) {
-		boolean result = false;
-		try {
-
-			if (personFilter != null) {
-				result = document.getPerson().equals(personFilter);
-			}
-			if (iniDateFilter != null && endDateFilter != null) {
-				if (endDateFilter.before(iniDateFilter)) {
-					throw new Exception("La fecha final debe ser mayor que la inicial");
-				} else {
-				}
-
-				result = result && document.getDocumentDate().before(endDateFilter)
-						&& document.getDocumentDate().after(iniDateFilter);
-			}
-		} catch (Exception e) {
-			ViewHelper.showNotification(e.getMessage(), Notification.Type.ERROR_MESSAGE);
+			ViewHelper.showNotification(e.getMessage(), Notification.Type.WARNING_MESSAGE);
+			e.printStackTrace();
 		}
 		return result;
 
@@ -470,10 +499,6 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 
 	}
 
-	private void closeWindow(Window w) {
-		w.close();
-	}
-
 	/**
 	 * Método para seleccionar proveedor o cliente
 	 */
@@ -486,7 +511,7 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 			refreshGrid();
 
 		} else {
-			ViewHelper.showNotification("Seleccione un proveedor", Notification.Type.WARNING_MESSAGE);
+			ViewHelper.showNotification("Seleccione una persona", Notification.Type.WARNING_MESSAGE);
 		}
 
 	}
@@ -499,4 +524,26 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 		this.grid = grid;
 	}
 
+	@SuppressWarnings("unchecked")
+	public void printReport(String fileName) {
+		List<Document> documents = grid.getDataProvider().fetch(new Query<>()).collect(Collectors.toList());
+		log.info("size: " + documents.size());
+
+		try {
+			String sheetName = "Facturas";
+			List<String> columns = Arrays.asList("N° FACTURA", "TIPO DE FACTURA", "TIPO DE PAGO", "ESTADO PAGO",
+					"FECHA", "CLIENTE", "TOTAL FACTURA");
+
+			InvoiceReportGenerator<Document> excelWriter = new InvoiceReportGenerator<Document>(fileName);
+			excelWriter.createSheet(sheetName, columns, documents);
+			excelWriter.exportFile();
+
+		} catch (InvalidFormatException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
 }

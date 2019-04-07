@@ -222,6 +222,10 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 		View.super.enter(event);
 
+		this.addDetachListener(e -> exit());
+		this.getUI().addDetachListener(e -> exit());
+		
+		
 		this.user = getSession().getAttribute(User.class);
 		this.role = user.getRole();
 		this.permissionUtil = new PermissionUtil(user.getRole().getPermissions());
@@ -1238,21 +1242,25 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		try {
 			Product product = detail.getProduct();
 			lotSubwindow = ViewHelper.buildSubwindow("70%", "95%");
-			lotSubwindow.setCaption("Lotes del producto " + product.getCode() + " - " + product.getName());
+			lotSubwindow.setCaption("Crear lote para producto " + product.getCode() + " - " + product.getName());
 
 			VerticalLayout subContent = ViewHelper.buildVerticalLayout(true, true);
 
-			Commons.LAYOUT_MODE = ELayoutMode.LIST;
-			lotLayout = new LotLayout(product, productLayout, transactionType);
+			Commons.LAYOUT_MODE = ELayoutMode.NEW;
+			CommonsUtil.CURRENT_DOCUMENT_DETAIL = detail;
+			lotLayout = new LotLayout(product, this);
 			lotLayout.setCaption("Lotes");
 			lotLayout.setMargin(false);
 			lotLayout.setSpacing(false);
-			lotLayout.getLotGrid().addItemClickListener(listener -> {
-				if (listener.getMouseEventDetails().isDoubleClick())
+		/*	lotLayout.getLotGrid().addItemClickListener(listener -> {
+				if (listener.getMouseEventDetails().isDoubleClick()) {
 					selectLot(detail, listener.getItem());
+				}
 			});
+			*/
 			subContent.addComponents(lotLayout);
 
+			log.info(selectedLot);
 			lotSubwindow.setContent(subContent);
 			lotSubwindow.addCloseListener(e -> {
 				if (selectedLot == null) {
@@ -1278,7 +1286,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	/**
 	 * Metodo para escoger lotes para tomar los productos
 	 */
-	private void selectLot(DocumentDetail detail, Lot lot) {
+	public void selectLot(DocumentDetail detail, Lot lot) {
 		String strLog = "[selectLot]";
 		try {
 
@@ -1451,6 +1459,8 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			boolean hasErrors = false;
 			for (DocumentDetail detail : documentEntity.getDetails()) {
 
+				//Guardar lote
+						
 				DocumentDetail.Builder detailBuilder = DocumentDetail.builder();
 
 				// Detail sin relacion al documento
@@ -1505,7 +1515,8 @@ public class InvoiceLayout extends VerticalLayout implements View {
 				// al crear el lote
 				if (transactionType.equals(ETransactionType.ENTRADA)) {
 					// Para el inventario general
-					finalStock = initialStock;
+					finalStock = initialStock + quantity;
+					finalStockMU = finalStock;
 					log.info(strLog + "finalStock: " + finalStock);
 					// Si la UM es diferente a la UM principal se debe convertir
 					if (!detail.getMeasurementUnit().equals(detail.getProduct().getMeasurementUnit())) {
@@ -1514,7 +1525,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 						log.info(strLog + "quantity convertido: " + quantity);
 					}
 					// Se le debe restar pq ya estaba agregado al lote
-					initialStock = initialStock - quantity;
+					//initialStock = initialStock - quantity;
 
 					// Para el lote
 					initialStockLot = 0.0;
@@ -1566,18 +1577,15 @@ public class InvoiceLayout extends VerticalLayout implements View {
 				product.setStockDate(new Date());
 
 				try {
-					// Guardar relación item factura con lote
-					if (detailLot != null) {
-						detailLotBll.save(detailLot, false);
-					}
-					log.info(strLog + "detailLot saved:" + detailLot);
+					
 
 					// Guardar movimiento de inventario
 					inventoryBll.save(inventoryTransaction, false);
 					log.info(strLog + "inventoryTransaction saved:" + inventoryTransaction);
 
-					if (transactionType.equals(ETransactionType.SALIDA)) {
+				//	if (transactionType.equals(ETransactionType.SALIDA)) {
 
+						
 						// Actualizar stock producto
 						productBll.save(product, false);
 						log.info("product saved:" + product);
@@ -1585,6 +1593,15 @@ public class InvoiceLayout extends VerticalLayout implements View {
 						// Actualizar stock de lote
 						lotBll.save(lotTmp, false);
 						log.info(strLog + "lot saved:" + lotTmp);
+						
+						Lot lotEntity = lotBll.select(lotTmp.getCode(), product);
+						
+						// Guardar relación item factura con lote
+						detailLot.setLot(lotEntity);
+						if (detailLot != null) {
+							detailLotBll.save(detailLot, false);
+						}
+						log.info(strLog + "detailLot saved:" + detailLot);
 
 						// Actualizar el stock para la UM escogida
 						muProduct.setStock(finalStockMU);
@@ -1594,7 +1611,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 						// Actualizar stock de cada UM asociada al producto
 						updateStockByMU(detail.getProduct(), muProduct);
-					}
+					//}
 
 					closeWindow(cashChangeWindow);
 				} catch (ModelValidationException ex) {
@@ -2250,12 +2267,41 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		}
 	}
 
+	public void exit() {
+		log.info("Exit");
+		Commons.LAYOUT_MODE= null;
+	}
+
 	public Double getPayValue() {
 		return payValue;
 	}
 
 	public void setPayValue(Double payValue) {
 		this.payValue = payValue;
+	}
+
+	public Lot getSelectedLot() {
+		return selectedLot;
+	}
+
+	public void setSelectedLot(Lot selectedLot) {
+		this.selectedLot = selectedLot;
+	}
+
+	public Window getLotSubwindow() {
+		return lotSubwindow;
+	}
+
+	public void setLotSubwindow(Window lotSubwindow) {
+		this.lotSubwindow = lotSubwindow;
+	}
+
+	public Grid<DocumentDetail> getDetailGrid() {
+		return detailGrid;
+	}
+
+	public void setDetailGrid(Grid<DocumentDetail> detailGrid) {
+		this.detailGrid = detailGrid;
 	}
 
 }

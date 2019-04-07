@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.vaadin.dialogs.ConfirmDialog;
 import org.vaadin.ui.NumberField;
 
+import com.soinsoftware.vissa.bll.LotBll;
 import com.soinsoftware.vissa.bll.MeasurementUnitBll;
 import com.soinsoftware.vissa.bll.MeasurementUnitProductBll;
 import com.soinsoftware.vissa.bll.MuEquivalenceBll;
@@ -23,8 +24,9 @@ import com.soinsoftware.vissa.bll.ProductBll;
 import com.soinsoftware.vissa.bll.ProductCategoryBll;
 import com.soinsoftware.vissa.bll.ProductTypeBll;
 import com.soinsoftware.vissa.bll.TableSequenceBll;
-import com.soinsoftware.vissa.common.CommonsUtil;
+import com.soinsoftware.vissa.bll.WarehouseBll;
 import com.soinsoftware.vissa.exception.ModelValidationException;
+import com.soinsoftware.vissa.model.Lot;
 import com.soinsoftware.vissa.model.MeasurementUnit;
 import com.soinsoftware.vissa.model.MeasurementUnitProduct;
 import com.soinsoftware.vissa.model.MuEquivalence;
@@ -32,6 +34,7 @@ import com.soinsoftware.vissa.model.Product;
 import com.soinsoftware.vissa.model.ProductCategory;
 import com.soinsoftware.vissa.model.ProductType;
 import com.soinsoftware.vissa.model.TableSequence;
+import com.soinsoftware.vissa.model.Warehouse;
 import com.soinsoftware.vissa.util.Commons;
 import com.soinsoftware.vissa.util.DateUtil;
 import com.soinsoftware.vissa.util.ELayoutMode;
@@ -73,6 +76,8 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 	private final MeasurementUnitProductBll measurementUnitProductBll;
 	private final TableSequenceBll tableSequenceBll;
 	private final MuEquivalenceBll muEquivalencesBll;
+	private final LotBll lotBll;
+	private final WarehouseBll warehouseBll;
 
 	public Grid<Product> productGrid;
 	private Grid<MeasurementUnitProduct> priceGrid;
@@ -84,6 +89,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 	private TextField txtDescription;
 	private ComboBox<ProductCategory> cbCategory;
 	private TextField txtEan;
+	private LotLayout lotPanel = null;
 
 	private ComboBox<ProductType> cbType;
 	private ComboBox<MeasurementUnit> cbMeasurementUnit;
@@ -117,6 +123,8 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		measurementUnitProductBll = MeasurementUnitProductBll.getInstance();
 		tableSequenceBll = TableSequenceBll.getInstance();
 		muEquivalencesBll = MuEquivalenceBll.getInstance();
+		lotBll = LotBll.getInstance();
+		warehouseBll = WarehouseBll.getInstance();
 		this.mode = mode;
 		this.productList = productList;
 		if (mode.equals(ELayoutMode.LIST)) {
@@ -124,22 +132,6 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		} else if (mode.equals(ELayoutMode.NEW)) {
 			addListTab();
 			newButtonAction();
-		}
-	}
-
-	public ProductLayout(String mode, Product product) throws IOException {
-		super("Productos", KEY_PRODUCTS);
-		productBll = ProductBll.getInstance();
-		categoryBll = ProductCategoryBll.getInstance();
-		typeBll = ProductTypeBll.getInstance();
-		measurementUnitBll = MeasurementUnitBll.getInstance();
-		measurementUnitProductBll = MeasurementUnitProductBll.getInstance();
-		tableSequenceBll = TableSequenceBll.getInstance();
-		muEquivalencesBll = MuEquivalenceBll.getInstance();
-
-		if (mode.equals("new")) {
-			addListTab();
-			showEditionTab(product, "", null);
 		}
 	}
 
@@ -152,6 +144,8 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		measurementUnitProductBll = MeasurementUnitProductBll.getInstance();
 		tableSequenceBll = TableSequenceBll.getInstance();
 		muEquivalencesBll = MuEquivalenceBll.getInstance();
+		lotBll = LotBll.getInstance();
+		warehouseBll = WarehouseBll.getInstance();
 		Commons.LAYOUT_MODE = ELayoutMode.ALL;
 
 	}
@@ -198,7 +192,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 			}
 		}).setCaption("Unidad de medida");
 
-		if (Commons.LAYOUT_MODE.equals(ELayoutMode.ALL)) {
+		if (mode.equals(ELayoutMode.ALL)) {
 			productGrid.addItemClickListener(listener -> {
 				if (listener.getMouseEventDetails().isDoubleClick())
 					productGrid.select(listener.getItem());
@@ -217,7 +211,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 	 * @param product
 	 * @return
 	 */
-	protected Panel buildPriceGridPanel(Product product) {
+	protected Panel buildMUGridPanel(Product product) {
 		VerticalLayout layout = ViewHelper.buildVerticalLayout(false, true);
 
 		Button newPriceBtn = new Button("Nueva unidad de medida");
@@ -269,6 +263,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		priceGrid.addColumn(MeasurementUnitProduct::getFinalPrice).setCaption("Precio final");
 
 		NumberField txtStock = new NumberField();
+		txtStock.setReadOnly(true);
 		priceGrid.addColumn(MeasurementUnitProduct::getStockStr).setCaption("Stock").setEditorComponent(txtStock,
 				MeasurementUnitProduct::setStockStr);
 
@@ -278,7 +273,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 
 		cbMeasurementUnit.addValueChangeListener(e -> MUEquivalences(e.getValue()));
 
-		fillPriceGridData(product);
+		fillMUGridData(product);
 		Panel panel = ViewHelper.buildPanel("Unidades de medida y precios", layout);
 		panel.setHeight("270px");
 		return panel;
@@ -366,7 +361,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		txtSalePriceWithTax.setReadOnly(true);
 
 		// Product Stock
-		txtStock = new NumberField("Stock");
+		txtStock = new NumberField("Stock total");
 		txtStock.setWidth("50%");
 		txtStock.addStyleName(ValoTheme.TEXTFIELD_TINY);
 
@@ -414,14 +409,30 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		formLayout.addComponents(form, form2);
 
 		// Panel de UM y precios
-		Panel pricePanel = buildPriceGridPanel(product);
+		Panel pricePanel = buildMUGridPanel(product);
 
-		// ---Panel de lotes
-		LotLayout lotPanel = null;
+		// PAnel de lotes
+		LotLayout lotPanel = buildLotPanel();
 
+		layout.addComponents(formLayout, pricePanel);
+
+		// txtStock.setValue(lotPanel.getTotalStock());
+
+		if (!mode.equals(ELayoutMode.LIST)) {
+			layout.addComponents(lotPanel);
+		}
+		return layout;
+	}
+
+	/**
+	 * Metodo para construir el panel de lotes
+	 * 
+	 * @return
+	 */
+	public LotLayout buildLotPanel() {
 		try {
 			Commons.LAYOUT_MODE = ELayoutMode.ALL;
-			lotPanel = new LotLayout(product, this, null);
+			lotPanel = new LotLayout(product, this);
 
 			lotPanel.setCaption("Lotes");
 			lotPanel.setMargin(false);
@@ -430,13 +441,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		} catch (IOException e) {
 			log.error("Error al cargar lotes del producto. Exception: " + e);
 		}
-
-		layout.addComponents(formLayout, pricePanel);
-
-		if (!mode.equals(ELayoutMode.LIST)) {
-			layout.addComponents(lotPanel);
-		}
-		return layout;
+		return lotPanel;
 	}
 
 	/**
@@ -591,14 +596,14 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 	}
 
 	/**
-	 * Metodo para llenar la grid de precios
+	 * Metodo para llenar la grid de UM y precios del producto
 	 */
 
-	protected void fillPriceGridData(Product product) {
+	protected void fillMUGridData(Product product) {
 		String strLog = "[fillPriceGridData]";
 
 		try {
-			log.error(strLog + "[parameters] product: " + product);
+			log.info(strLog + "[parameters] product: " + product);
 			priceProductList = measurementUnitProductBll.select(product);
 			dataProviderProdMeasurement = new ListDataProvider<>(priceProductList);
 			priceGrid.setDataProvider(dataProviderProdMeasurement);
@@ -691,8 +696,9 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 
 			ProductType type = cbType.getSelectedItem().isPresent() ? cbType.getSelectedItem().get() : null;
 
-			Double stock = txtStock.getValue() != null && !txtStock.isEmpty() ? Double.parseDouble(txtStock.getValue())
-					: null;
+			// Se obtiene el stock del total de los lotes
+			Double stock = lotPanel.getTotalStock();
+
 			Date stockDate = txtStockDate.getValue() != null ? DateUtil.stringToDate(txtStockDate.getValue()) : null;
 			entity = productBuilder.code(txtCode.getValue()).name(txtName.getValue())
 					.description(txtDescription.getValue()).category(category).type(type).eanCode(txtEan.getValue())
@@ -711,9 +717,9 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		if (!hasError && (product != null && product.getCode() != null)) {
 			try {
 				// Guardar unidades de medidas y precios del producto
-				savePriceProduct(product);
+				saveMuProduct(product);
 
-				// Actualizar precio de venta y stock de la UM en el product
+				// Actualizar precio de venta y stock de la UM principal en el product
 				if (priceProductList != null && !priceProductList.isEmpty()) {
 					MeasurementUnitProduct muProduct = priceProductList.get(0);
 					product.setSalePrice(muProduct.getFinalPrice());
@@ -745,7 +751,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 	 * 
 	 * @param product
 	 */
-	private void savePriceProduct(Product product) {
+	private void saveMuProduct(Product product) {
 		String strLog = "[savePriceProduct] ";
 		try {
 
@@ -763,7 +769,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 							.measurementUnit(priceTmp.getMeasurementUnit()).purchasePrice(priceTmp.getPurchasePrice())
 							.purchaseTax(priceTmp.getPurchaseTax()).utility(priceTmp.getUtility())
 							.salePrice(priceTmp.getSalePrice()).saleTax(priceTmp.getSaleTax())
-							.finalPrice(priceTmp.getFinalPrice()).archived(false).build();
+							.finalPrice(priceTmp.getFinalPrice()).stock(product.getStock()).archived(false).build();
 
 					measurementUnitProductBll.save(price, false);
 					log.info("UM Precio guardado " + price);
@@ -795,7 +801,12 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		return prod;
 	}
 
-	public MeasurementUnitProduct getPriceSelected() {
+	/**
+	 * Metodo para obtner la unidad de medida seleccionada en la grid
+	 * 
+	 * @return
+	 */
+	public MeasurementUnitProduct getMUSelected() {
 		MeasurementUnitProduct prod = null;
 		Set<MeasurementUnitProduct> products = priceGrid.getSelectedItems();
 		if (products != null && !products.isEmpty()) {
@@ -810,6 +821,10 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		save(productBll, entity, "Produto borrado");
 	}
 
+	/*
+	 * Método para construir el panel de filtros
+	 * 
+	 */
 	private Panel buildFilterPanel() {
 		HorizontalLayout layout = ViewHelper.buildHorizontalLayout(true, true);
 
@@ -877,7 +892,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 			if (entity != null) {
 				entity = MeasurementUnitProduct.builder(entity).archived(true).build();
 				measurementUnitProductBll.save(entity);
-				fillPriceGridData(product);
+				fillMUGridData(product);
 				ViewHelper.showNotification("Unidad de medida eliminada", Notification.Type.WARNING_MESSAGE);
 			} else {
 				ViewHelper.showNotification("No ha seleccionado un registro", Notification.Type.WARNING_MESSAGE);
@@ -958,7 +973,6 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 				// Se calcula la equivalencia de los precios y stock para la UM. Los impuestos
 				// se mantienen
 
-				int index = priceGrid.getTabIndex();
 				MeasurementUnitProduct muPRoduct = priceGrid.getSelectedItems().iterator().next();
 				int pos = priceProductList.indexOf(muPRoduct);
 
@@ -983,6 +997,12 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		return muTargetStock;
 	}
 
+	public void updateProductLayout(Product product) {
+		setFieldValues(product);
+		fillMUGridData(product);
+
+	}
+
 	public Product getProduct() {
 		return product;
 	}
@@ -1005,6 +1025,14 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 
 	public void setProductGrid(Grid<Product> productGrid) {
 		this.productGrid = productGrid;
+	}
+
+	public NumberField getTxtStock() {
+		return txtStock;
+	}
+
+	public void setTxtStock(NumberField txtStock) {
+		this.txtStock = txtStock;
 	}
 
 }

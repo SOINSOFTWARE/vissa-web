@@ -17,9 +17,8 @@ import com.soinsoftware.vissa.bll.MeasurementUnitProductBll;
 import com.soinsoftware.vissa.bll.MuEquivalenceBll;
 import com.soinsoftware.vissa.bll.ProductBll;
 import com.soinsoftware.vissa.bll.WarehouseBll;
+import com.soinsoftware.vissa.common.CommonsUtil;
 import com.soinsoftware.vissa.model.DocumentDetailLot;
-import com.soinsoftware.vissa.model.ETransactionType;
-import com.soinsoftware.vissa.model.InventoryTransaction;
 import com.soinsoftware.vissa.model.Lot;
 import com.soinsoftware.vissa.model.MeasurementUnit;
 import com.soinsoftware.vissa.model.MeasurementUnitProduct;
@@ -30,8 +29,6 @@ import com.soinsoftware.vissa.util.Commons;
 import com.soinsoftware.vissa.util.DateUtil;
 import com.soinsoftware.vissa.util.ELayoutMode;
 import com.soinsoftware.vissa.util.ViewHelper;
-import com.vaadin.addon.pagination.Pagination;
-import com.vaadin.addon.pagination.PaginationResource;
 import com.vaadin.data.provider.ListDataProvider;
 import com.vaadin.data.provider.Query;
 import com.vaadin.ui.AbstractOrderedLayout;
@@ -39,7 +36,6 @@ import com.vaadin.ui.Button;
 import com.vaadin.ui.ComboBox;
 import com.vaadin.ui.Component;
 import com.vaadin.ui.DateField;
-import com.vaadin.ui.DateTimeField;
 import com.vaadin.ui.FormLayout;
 import com.vaadin.ui.Grid;
 import com.vaadin.ui.Grid.Column;
@@ -50,7 +46,7 @@ import com.vaadin.ui.Panel;
 import com.vaadin.ui.TextField;
 import com.vaadin.ui.VerticalLayout;
 import com.vaadin.ui.Window;
-import com.vaadin.ui.components.grid.FooterRow;
+import com.vaadin.ui.components.grid.HeaderRow;
 import com.vaadin.ui.themes.ValoTheme;
 
 @SuppressWarnings("unchecked")
@@ -84,33 +80,50 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 	private Product product;
 	private Warehouse warehouse;
 	private Double totalStock;
-	private ETransactionType transactionType;
 
 	private ProductLayout productLayout;
+	private InvoiceLayout invoiceLayout;
 	private Column<?, ?> columnQuantity;
 	private Column<?, ?> columnWarehouse;
-	private FooterRow footer;
+	private HeaderRow footer;
 
 	private Window muProductSubwindow;
 	private MuProductLayout muProductLayout = null;
 
 	private ListDataProvider<Lot> dataProvider = null;
 	private ListDataProvider<MeasurementUnit> measurementDataProv;
-	ELayoutMode modeLayout;
+	private ELayoutMode modeLayout;
+	private Lot lot;
 
-	public LotLayout(Product product, ProductLayout productLayout, ETransactionType transactionType)
-			throws IOException {
+	public LotLayout(Product product, ProductLayout productLayout) throws IOException {
 		super("Lotes", KEY_LOTS);
 		this.product = product;
 		this.productLayout = productLayout;
-		this.transactionType = transactionType;
 		lotBll = LotBll.getInstance();
 		productBll = ProductBll.getInstance();
 		warehouseBll = WarehouseBll.getInstance();
 		measurementUnitProductBll = MeasurementUnitProductBll.getInstance();
 		muEquivalencesBll = MuEquivalenceBll.getInstance();
 		documentDetailLotBll = DocumentDetailLotBll.getInstance();
+		modeLayout = Commons.LAYOUT_MODE;
 		addListTab();
+	}
+
+	public LotLayout(Product product, InvoiceLayout invoiceLayout) throws IOException {
+		super("Lotes", KEY_LOTS);
+		this.product = product;
+		this.invoiceLayout = invoiceLayout;
+		lotBll = LotBll.getInstance();
+		productBll = ProductBll.getInstance();
+		warehouseBll = WarehouseBll.getInstance();
+		measurementUnitProductBll = MeasurementUnitProductBll.getInstance();
+		muEquivalencesBll = MuEquivalenceBll.getInstance();
+		documentDetailLotBll = DocumentDetailLotBll.getInstance();
+		modeLayout = Commons.LAYOUT_MODE;
+		if (modeLayout.equals(ELayoutMode.NEW)) {
+			addListTab();
+			newButtonAction();
+		}
 	}
 
 	public LotLayout(Warehouse warehouse) throws IOException {
@@ -122,7 +135,8 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 		measurementUnitProductBll = MeasurementUnitProductBll.getInstance();
 		muEquivalencesBll = MuEquivalenceBll.getInstance();
 		documentDetailLotBll = DocumentDetailLotBll.getInstance();
-		addListTab();
+		modeLayout = Commons.LAYOUT_MODE;
+
 	}
 
 	public LotLayout() throws IOException {
@@ -134,16 +148,18 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 		measurementUnitProductBll = MeasurementUnitProductBll.getInstance();
 		muEquivalencesBll = MuEquivalenceBll.getInstance();
 		documentDetailLotBll = DocumentDetailLotBll.getInstance();
+		modeLayout = ELayoutMode.REPORT;
+		log.info("modeLayout:" + modeLayout);
 	}
 
 	@Override
 	public AbstractOrderedLayout buildListView() {
 		VerticalLayout layout = ViewHelper.buildVerticalLayout(false, false);
-		if (transactionType != null && transactionType.equals(ETransactionType.ENTRADA)) {
+		if (modeLayout.equals(ELayoutMode.ALL)) {
 			Panel buttonPanel = buildButtonPanelForLists();
 			layout.addComponent(buttonPanel);
 		}
-		if (Commons.LAYOUT_MODE != null && Commons.LAYOUT_MODE.equals(ELayoutMode.REPORT)) {
+		if (modeLayout != null && modeLayout.equals(ELayoutMode.REPORT)) {
 			Panel filterPanel = buildFilterPanel();
 			layout.addComponent(filterPanel);
 		}
@@ -157,7 +173,7 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 	@Override
 	protected AbstractOrderedLayout buildEditionView(Lot entity) {
 		VerticalLayout layout = ViewHelper.buildVerticalLayout(false, false);
-		if (!Commons.LAYOUT_MODE.equals(ELayoutMode.REPORT)) {
+		if (!modeLayout.equals(ELayoutMode.REPORT)) {
 			Panel buttonPanel = buildButtonPanelForEdition(entity);
 			layout.addComponents(buttonPanel);
 		}
@@ -173,7 +189,7 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 		try {
 			lotGrid = ViewHelper.buildGrid(SelectionMode.SINGLE);
 
-			if (Commons.LAYOUT_MODE.equals(ELayoutMode.REPORT)) {
+			if (modeLayout.equals(ELayoutMode.REPORT)) {
 				lotGrid.addColumn(lot -> {
 					if (lot != null && lot.getProduct() != null) {
 						return lot.getProduct().getName();
@@ -191,14 +207,14 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 					return null;
 				}
 			}).setCaption("Bodega");
-			columnQuantity = lotGrid.addColumn(Lot::getQuantity).setCaption("Cantidad de productos");
+			columnQuantity = lotGrid.addColumn(Lot::getQuantity).setCaption("Stock");
 			lotGrid.addColumn(lot -> {
-				if (lot != null && lot.getLotDate() != null) {
-					return DateUtil.dateToString(lot.getLotDate());
+				if (lot != null && lot.getMeasurementUnit() != null) {
+					return lot.getMeasurementUnit().getName();
 				} else {
 					return null;
 				}
-			}).setCaption("Fecha de fabricación");
+			}).setCaption("Unidad de medida");
 			lotGrid.addColumn(lot -> {
 				if (lot != null && lot.getExpirationDate() != null) {
 					return DateUtil.dateToString(lot.getExpirationDate());
@@ -208,24 +224,38 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 			}).setCaption("Fecha de vencimiento");
 
 			lotGrid.setStyleName(ValoTheme.TABLE_SMALL);
-			footer = lotGrid.prependFooterRow();
-			footer.getCell(columnWarehouse).setHtml("<b>Totat cantidad:</b>");
+			footer = lotGrid.prependHeaderRow();
+			footer.getCell(columnWarehouse).setHtml("<b>Totat stock:</b>");
 			fillGridData();
 
 			// refreshGrid();
-			if (Commons.LAYOUT_MODE.equals(ELayoutMode.REPORT)) {
-				lotGrid.addItemClickListener(listener -> {
-					if (listener.getMouseEventDetails().isDoubleClick())
 
-						selectLot(listener.getItem());
-				});
-			}
+			lotGrid.addItemClickListener(listener -> {
+				if (listener.getMouseEventDetails().isDoubleClick()) {
+
+					mouseAction(listener.getItem());
+				}
+			});
+
 		} catch (Exception e) {
 			log.error(strLog + "[Exception]" + e.getMessage());
 			e.printStackTrace();
 
 		}
 		return ViewHelper.buildPanel(null, lotGrid);
+	}
+
+	private void mouseAction(Lot lot) {
+		if (modeLayout.equals(ELayoutMode.NEW)) {
+			if (invoiceLayout != null) {
+				invoiceLayout.selectLot(CommonsUtil.CURRENT_DOCUMENT_DETAIL, lot);
+			}
+		}
+		if (modeLayout.equals(ELayoutMode.REPORT)) {
+			lotGrid.select(lot);
+			editButtonAction();
+		}
+
 	}
 
 	protected Panel buildDetailLotGridPanel(Lot lot) {
@@ -242,7 +272,8 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 
 		detailLotGrid.addColumn(detailLot -> {
 			if (detailLot != null && detailLot.getDocumentDetail() != null) {
-				return detailLot.getDocumentDetail().getDocument().getDocumentDate();
+				return DateUtil.dateToString(detailLot.getDocumentDetail().getDocument().getDocumentDate(),
+						Commons.FORMAT_DATE_TIME);
 			} else {
 				return "";
 			}
@@ -298,7 +329,7 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 	protected Component buildEditionComponent(Lot entity) {
 		VerticalLayout layout = ViewHelper.buildVerticalLayout(false, false);
 
-		if (Commons.LAYOUT_MODE.equals(ELayoutMode.REPORT)) {
+		if (modeLayout.equals(ELayoutMode.REPORT)) {
 			layout.addComponents(buildDetailLotGridPanel(entity));
 		} else {
 			Integer sequence = getLotSequence();
@@ -419,15 +450,6 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 		}
 	}
 
-	private Pagination createPagination(long total, int page, int limit) {
-		final PaginationResource paginationResource = PaginationResource.newBuilder().setTotal(total).setPage(page)
-				.setLimit(limit).build();
-		final Pagination pagination = new Pagination(paginationResource);
-		pagination.setItemsPerPage(10, 20, 50, 100);
-
-		return pagination;
-	}
-
 	private void fillMeasurementUnit() {
 		measurementDataProv = new ListDataProvider<>(measurementUnitProductBll.selectMuByProduct(product));
 		cbMeasurementUnit.setDataProvider(measurementDataProv);
@@ -446,43 +468,54 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 				Lot.Builder lotBuilder = null;
 				if (entity == null) {
 					lotBuilder = Lot.builder();
-					isNew = true;
 				} else {
-					isNew = false;
 					lotBuilder = Lot.builder(entity);
 				}
-
+				// Bandera para indicar que el lote es nuevo y se puede usar
+				isNew = true;
 				MeasurementUnit measurementUnit = cbMeasurementUnit.getSelectedItem().isPresent()
 						? cbMeasurementUnit.getSelectedItem().get()
 						: null;
 				Warehouse warehouse = cbWarehouse.getSelectedItem().isPresent() ? cbWarehouse.getSelectedItem().get()
 						: null;
-				entity = lotBuilder.code(txtCode.getValue()).name(txtName.getValue())
+				lot = lotBuilder.code(txtCode.getValue()).name(txtName.getValue())
 						.lotDate(DateUtil.localDateToDate(dtFabricationDate.getValue()))
 						.expirationDate(DateUtil.localDateToDate(dtExpirationDate.getValue())).archived(false)
 						.quantity(Double.parseDouble(txtQuantity.getValue())).measurementUnit(measurementUnit)
 						.product(product).warehouse(warehouse).isNew(isNew).build();
 
-				// Guardar el lote
-				save(lotBll, entity, null);
-				log.info("Lote guardado: " + entity);
-
-				// Actualizar stock del product
-				product.setStock(totalStock);
-				product.setStockDate(new Date());
-				productBll.save(product);
-				log.info("Stock actualizado: " + totalStock);
-
-				if (productLayout != null && !productLayout.isShowConfirmMessage()) {
-					confirmMsg = "Producto guardado con éxito";
+				if (invoiceLayout != null && modeLayout.equals(ELayoutMode.NEW)) {
+					invoiceLayout.setSelectedLot(lot);
+					invoiceLayout.selectLot(CommonsUtil.CURRENT_DOCUMENT_DETAIL, lot);
+					invoiceLayout.getLotSubwindow().close();
+					invoiceLayout.getDetailGrid().focus();
 				} else {
-					confirmMsg = "Lote guardado";
+					// Guardar el lote
+					save(lotBll, lot, null);
+					log.info("Lote guardado: " + lot);
+
+					// Actualizar stock del product
+					product.setStock(totalStock);
+					product.setStockDate(new Date());
+					productBll.save(product);
+					log.info("Stock actualizado: " + totalStock);
+
+					// Actualizar el stock por cada UM del producto
+					updateStockByMU(measurementUnit);
+
+					if (productLayout != null && !productLayout.isShowConfirmMessage()) {
+						confirmMsg = "Producto guardado con éxito";
+					} else {
+						confirmMsg = "Lote guardado";
+					}
+
+					ViewHelper.showNotification(confirmMsg, Notification.Type.WARNING_MESSAGE);
+					if (productLayout != null) {
+						productLayout.updateProductLayout(product);
+					}
+
 				}
 
-				ViewHelper.showNotification(confirmMsg, Notification.Type.WARNING_MESSAGE);
-
-				// Actualizar el stock por cada UM
-				updateStockByMU(measurementUnit);
 			}
 
 		} catch (Exception e) {
@@ -623,7 +656,7 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 	/**
 	 * Obtener el consecutivo para lotes
 	 */
-	private Integer getLotSequence() {
+	public Integer getLotSequence() {
 		String strLog = "[getLotSequence] ";
 		Lot lastLot = null;
 		Integer maxCode = 1;
@@ -707,12 +740,6 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 		}
 	}
 
-	private void selectLot(Lot lot) {
-		lotGrid.select(lot);
-		editButtonAction();
-
-	}
-
 	private void selectMuProduct(MeasurementUnitProduct muProduct) {
 		cbMeasurementUnit.setValue(muProduct.getMeasurementUnit());
 	}
@@ -739,6 +766,14 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 
 	public void setMuProductSubwindow(Window muProductSubwindow) {
 		this.muProductSubwindow = muProductSubwindow;
+	}
+
+	public Lot getLot() {
+		return lot;
+	}
+
+	public void setLot(Lot lot) {
+		this.lot = lot;
 	}
 
 }
