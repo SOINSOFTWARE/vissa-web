@@ -695,8 +695,8 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		}
 
 		txtQuantity.addBlurListener(e -> changeQuantity(txtQuantity.getValue()));
-		// txtQuantity.addValueChangeListener(e ->
-		// changeQuantity(txtQuantity.getValue()));
+		 txtQuantity.addValueChangeListener(e ->
+		 changeQuantity(txtQuantity.getValue()));
 
 		footer = detailGrid.prependFooterRow();
 		if (columnDiscount != null) {
@@ -796,12 +796,16 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		boolean correct = false;
 		Double qty;
 		DocumentDetail currentDetail = null;
+		DocumentDetail initialCurrentDetail = null;
 		try {
 			if (CommonsUtil.CURRENT_DOCUMENT_DETAIL.getProduct() != null && quantity != null && !quantity.isEmpty()) {
 				qty = Double.parseDouble(quantity);
 
 				if (CommonsUtil.CURRENT_DOCUMENT_DETAIL.getProduct() != null && qty > 0) {
+
 					currentDetail = CommonsUtil.CURRENT_DOCUMENT_DETAIL;
+					initialCurrentDetail = CommonsUtil.CURRENT_DOCUMENT_DETAIL;
+					initialCurrentDetail.setQuantity(null);
 					log.info(strLog + "currentDetail:" + currentDetail);
 
 					if (transactionType.equals(ETransactionType.SALIDA)
@@ -811,8 +815,8 @@ public class InvoiceLayout extends VerticalLayout implements View {
 					} else {
 
 						// Validar los lotes asociados al detail
-						List<DocumentDetailLot> detailLotList = getDetailLotsByDetail(currentDetail);
-						log.info(strLog + "detailLotList: " + detailLotList);
+						List<DocumentDetailLot> detailLotList = getDetailLotsByDetail(initialCurrentDetail);
+						log.info(strLog + "detailLotList: " + detailLotList.size() + detailLotList  );
 
 						if (detailLotList.size() > 0) {
 							// Para la compra es un solo lote, para la venta por defecto es el más viejo
@@ -826,6 +830,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 								detailLotMap.set(pos, detailLotTmp);
 								correct = true;
 							} else if (transactionType.equals(ETransactionType.SALIDA)) {
+								currentDetail.setQuantity(quantity);
 								validateLot(currentDetail, detailLotList);
 							}
 						}
@@ -848,7 +853,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			message = e.getMessage();
 			e.printStackTrace();
 		} finally {
-			log.info("Correct: " + correct);
+			log.info(strLog + "Correct: " + correct);
 			if (!correct && (message != null && !message.isEmpty())) {
 				ViewHelper.showNotification(message, Notification.Type.ERROR_MESSAGE);
 			}
@@ -1175,9 +1180,10 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	private void validateLot(DocumentDetail detail, List<DocumentDetailLot> detailLotList) {
 		String strLog = "[validateLot] ";
 		try {
-			Double quantity = Double.parseDouble(detail.getQuantity());
-			DocumentDetailLot detailLotDefault = detailLotList.get(0);
-			if (quantity > detailLotDefault.getLot().getQuantity()) {
+			if (detailLotList.size() > 0) {
+				Double quantity = Double.parseDouble(detail.getQuantity());
+				DocumentDetailLot detailLotDefault = detailLotList.get(0);
+				// if (quantity > detailLotDefault.getLot().getQuantity()) {
 
 				log.info(strLog + "El lote escogido es menor para la cantidad seleccionada");
 
@@ -1231,27 +1237,28 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 				// Lot lastLot = lotBll.getOlderLotWithStockByProduct(product);
 				// selectLot(docDetail, lastLot);
-			} else {
-				
-				log.info(strLog + "El lote escogido está ok para la cantidad seleccionada");
-			
-				int pos = detailLotList.indexOf(detailLotDefault);
-				
-				detailLotDefault.setQuantity(quantity);
-				Double finalStockLot = detailLotDefault.getInitialStockLot() - quantity;
-				detailLotDefault.setFinalStockLot(finalStockLot);
-				
-				detailLotList.set(pos, detailLotDefault);
-				
-			/*	for (DocumentDetailLot detailLot : detailLotList) {
-					
-					// Se elimina del map de lotes los lotes iniciales para recalcular
-					detailLotMap.remove(detailLot);
-					
-				}
-				*/
-				
-				
+				/*
+				 * } else {
+				 * 
+				 * log.info(strLog + "El lote escogido está ok para la cantidad seleccionada");
+				 * 
+				 * int pos = detailLotList.indexOf(detailLotDefault);
+				 * 
+				 * detailLotDefault.setQuantity(quantity); Double finalStockLot =
+				 * detailLotDefault.getInitialStockLot() - quantity;
+				 * detailLotDefault.setFinalStockLot(finalStockLot);
+				 * 
+				 * detailLotList.set(pos, detailLotDefault);
+				 * 
+				 * /* for (DocumentDetailLot detailLot : detailLotList) {
+				 * 
+				 * // Se elimina del map de lotes los lotes iniciales para recalcular
+				 * detailLotMap.remove(detailLot);
+				 * 
+				 * }
+				 */
+
+				// }
 			}
 		} catch (Exception e) {
 			log.error(strLog + "[Exception]" + e.getMessage());
