@@ -1029,7 +1029,7 @@ public class ReturnLayout extends VerticalLayout implements View {
 								buildLotWindow(docDetail);
 							} else if (transactionType.equals(ETransactionType.SALIDA)) {
 								// Obtener lote más reciente
-								Lot lastLot = lotBll.getLastLotWithStockByProduct(product);
+								Lot lastLot = lotBll.getOlderLotWithStockByProduct(product);
 								selectLot(docDetail, lastLot);
 							}
 
