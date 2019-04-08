@@ -694,9 +694,9 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			txtQuantity.setReadOnly(true);
 		}
 
-		txtQuantity.addBlurListener(e -> changeQuantity(txtQuantity.getValue()));
-		 txtQuantity.addValueChangeListener(e ->
-		 changeQuantity(txtQuantity.getValue()));
+		// txtQuantity.addBlurListener(e -> changeQuantity(txtQuantity.getValue()));
+		// txtQuantity.addValueChangeListener(e ->
+		// changeQuantity(txtQuantity.getValue()));
 
 		footer = detailGrid.prependFooterRow();
 		if (columnDiscount != null) {
@@ -815,8 +815,8 @@ public class InvoiceLayout extends VerticalLayout implements View {
 					} else {
 
 						// Validar los lotes asociados al detail
-						List<DocumentDetailLot> detailLotList = getDetailLotsByDetail(initialCurrentDetail);
-						log.info(strLog + "detailLotList: " + detailLotList.size() + detailLotList  );
+						List<DocumentDetailLot> detailLotList = getDetailLotsByDetail(currentDetail);
+						log.info(strLog + "detailLotList: " + detailLotList.size() + detailLotList);
 
 						if (detailLotList.size() > 0) {
 							// Para la compra es un solo lote, para la venta por defecto es el más viejo
@@ -1032,17 +1032,23 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		if (docType != null) {
 			DocumentType.Builder docTypeBuilder = DocumentType.builder(docType);
 			documentType = docTypeBuilder.sequence(docType.getSequence() + 1).build();
-			txtDocNumber.setValue(String.valueOf(documentType.getSequence()));
-			ListDataProvider<PaymentDocumentType> payTypeDataProv = new ListDataProvider<>(
-					paymentDocumentTypeBll.select(documentType));
-			cbPaymentType.setDataProvider(payTypeDataProv);
-			cbPaymentType.setItemCaptionGenerator(paymentDocumentType -> {
-				if (paymentDocumentType != null && paymentDocumentType.getPaymentType() != null) {
-					return paymentDocumentType.getPaymentType().getName();
-				} else {
-					return null;
-				}
-			});
+			Document document = documentBll.select(String.valueOf(documentType.getSequence()), docType);
+			if (document == null) {
+				txtDocNumber.setValue(String.valueOf(documentType.getSequence()));
+				ListDataProvider<PaymentDocumentType> payTypeDataProv = new ListDataProvider<>(
+						paymentDocumentTypeBll.select(documentType));
+				cbPaymentType.setDataProvider(payTypeDataProv);
+				cbPaymentType.setItemCaptionGenerator(paymentDocumentType -> {
+					if (paymentDocumentType != null && paymentDocumentType.getPaymentType() != null) {
+						return paymentDocumentType.getPaymentType().getName();
+					} else {
+						return null;
+					}
+				});
+			} else {
+				ViewHelper.showNotification("Consecutivo no válido. Por favor verifique",
+						Notification.Type.ERROR_MESSAGE);
+			}
 
 		} else {
 			ViewHelper.showNotification("El tipo de factura no tiene consecutivo configurado",
@@ -1183,82 +1189,75 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			if (detailLotList.size() > 0) {
 				Double quantity = Double.parseDouble(detail.getQuantity());
 				DocumentDetailLot detailLotDefault = detailLotList.get(0);
-				// if (quantity > detailLotDefault.getLot().getQuantity()) {
+				if (quantity > detailLotDefault.getLot().getQuantity()) {
 
-				log.info(strLog + "El lote escogido es menor para la cantidad seleccionada");
+					log.info(strLog + "El lote escogido inicialmente es menor para la cantidad seleccionada");
 
-				for (DocumentDetailLot detailLot : detailLotList) {
-					// Se elimina del map de lotes los lotes iniciales para recalcular
-					detailLotMap.remove(detailLot);
-				}
-
-				// Se bucan los nuevos lotes con stock ordenados de fecha de creación asc
-				List<Lot> lots = lotBll.selecLotWithStock(detail.getProduct());
-				lots = lots.stream().sorted(Comparator.comparing(Lot::getCreationDate).reversed())
-						.collect(Collectors.toList());
-
-				Double qtyTmp = quantity;
-				for (Lot lotTmp : lots) {
-					if (qtyTmp <= 0.0) {// Si la cant a validar es 0 o negativo pq sobra del lote, Siempre se resta al
-										// cant de tx - cant lote
-						break;
-					} else {
-						DocumentDetailLot detLot = DocumentDetailLot.builder().documentDetail(detail).lot(lotTmp)
-								.initialStockLot(lotTmp.getQuantity()).build();
-
-						// La nueva cantidad a buscar es la dif entre el lote y la cantidad inicial
-						Double diff = qtyTmp - lotTmp.getQuantity();
-
-						// Si sobra del lote, la cant de la tx es la de la venta, sino es la del lote
-						// Si sobra del lote, el final es la dif entre lote y la cant de la tx
-						Double qtyLot = 0.0;
-						Double finalStockLot = 0.0;
-						if (diff > 0) {
-							qtyLot = lotTmp.getQuantity();
-							finalStockLot = 0.0;
-						} else {
-							qtyLot = qtyTmp;
-							finalStockLot = lotTmp.getQuantity() - qtyTmp;
-						}
-
-						detLot = DocumentDetailLot.builder().quantity(qtyLot).finalStockLot(finalStockLot).build();
-						qtyTmp = diff;
-
-						detailLotMap.add(detLot);
+					for (DocumentDetailLot detailLot : detailLotList) {
+						// Se elimina del map de lotes los lotes iniciales para recalcular
+						detailLotMap.remove(detailLot);
 					}
+
+					// Se bucan los nuevos lotes con stock ordenados de fecha de creación asc
+					List<Lot> lots = lotBll.selecLotWithStock(detail.getProduct());
+					lots = lots.stream().sorted(Comparator.comparing(Lot::getCreationDate))
+							.collect(Collectors.toList());
+
+					Double qtyTmp = quantity;
+					for (Lot lotTmp : lots) {
+						if (qtyTmp <= 0.0) {// Si la cant a validar es 0 o negativo pq sobra del lote, Siempre se resta
+											// al
+											// cant de tx - cant lote
+							break;
+						} else {
+							DocumentDetailLot detLot = DocumentDetailLot.builder().documentDetail(detail).lot(lotTmp)
+									.initialStockLot(lotTmp.getQuantity()).build();
+
+							// La nueva cantidad a buscar es la dif entre el lote y la cantidad inicial
+							Double diff = qtyTmp - lotTmp.getQuantity();
+
+							// Si sobra del lote, la cant de la tx es la de la venta, sino es la del lote
+							// Si sobra del lote, el final es la dif entre lote y la cant de la tx
+							Double qtyLot = 0.0;
+							Double finalStockLot = 0.0;
+							if (diff > 0) {
+								qtyLot = lotTmp.getQuantity();
+								finalStockLot = 0.0;
+							} else {
+								qtyLot = qtyTmp;
+								finalStockLot = lotTmp.getQuantity() - qtyTmp;
+							}
+
+							detLot = DocumentDetailLot.builder(detLot).quantity(qtyLot).finalStockLot(finalStockLot)
+									.build();
+							qtyTmp = diff;
+
+							detailLotMap.add(detLot);
+						}
+					}
+
+				} else {
+
+					log.info(strLog + "El lote escogido está ok para la cantidad seleccionada");
+
+					int pos = detailLotMap.indexOf(detailLotDefault);
+
+					detailLotDefault.setQuantity(quantity);
+					Double finalStockLot = detailLotDefault.getInitialStockLot() - quantity;
+					detailLotDefault.setFinalStockLot(finalStockLot);
+
+					detailLotMap.set(pos, detailLotDefault);
+
+					/*
+					 * for (DocumentDetailLot detailLot : detailLotList) {
+					 * 
+					 * // Se elimina del map de lotes los lotes iniciales para recalcular
+					 * detailLotMap.remove(detailLot);
+					 * 
+					 * }
+					 */
+
 				}
-
-				// DocumentDetailLot detailLot =
-				// DocumentDetailLot.builder().documentDetail(docDetail).lot(selectedLot)
-				// .initialStockLot(quantity).build();
-				// detailLotMap.put(detail, detailLot);
-
-				// Obtener lote más antiguo, sobr el cual se descuenta la cantidad vendida
-
-				// Lot lastLot = lotBll.getOlderLotWithStockByProduct(product);
-				// selectLot(docDetail, lastLot);
-				/*
-				 * } else {
-				 * 
-				 * log.info(strLog + "El lote escogido está ok para la cantidad seleccionada");
-				 * 
-				 * int pos = detailLotList.indexOf(detailLotDefault);
-				 * 
-				 * detailLotDefault.setQuantity(quantity); Double finalStockLot =
-				 * detailLotDefault.getInitialStockLot() - quantity;
-				 * detailLotDefault.setFinalStockLot(finalStockLot);
-				 * 
-				 * detailLotList.set(pos, detailLotDefault);
-				 * 
-				 * /* for (DocumentDetailLot detailLot : detailLotList) {
-				 * 
-				 * // Se elimina del map de lotes los lotes iniciales para recalcular
-				 * detailLotMap.remove(detailLot);
-				 * 
-				 * }
-				 */
-
-				// }
 			}
 		} catch (Exception e) {
 			log.error(strLog + "[Exception]" + e.getMessage());
@@ -1332,12 +1331,21 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		if (lot != null) {
 			// Para las compras el stock inicial del lote es 0, pq es nuevo
 			Double quantity = 0.0;
+			Double initialStock = 0.0;
+			Double finalStock = 0.0;
 
 			if (transactionType.equals(ETransactionType.SALIDA)) {
+				initialStock = lot.getQuantity();
+				quantity = null;
+				finalStock = null;
+			} else if (transactionType.equals(ETransactionType.ENTRADA)) {
+				initialStock = 0.0;
 				quantity = lot.getQuantity();
+				finalStock = lot.getQuantity();
 			}
 			DocumentDetailLot detailLot = DocumentDetailLot.builder().documentDetail(detail).lot(lot)
-					.initialStockLot(quantity).build();
+					.initialStockLot(initialStock).quantity(quantity).finalStockLot(finalStock).build();
+
 			detailLotMap.add(detailLot);
 		}
 	}
@@ -1485,7 +1493,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 							// Actualizar conciliación (cuadre de caja) por día y empleado
 							if (this.document != null) {
-								saveConciliation();
+								// saveConciliation();
 							}
 						}
 					});
@@ -1560,218 +1568,319 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	 */
 	public void saveInvoice(Document document) {
 		String strLog = "[saveInvoice] ";
-		Document documentEntity = saveInvoiceHeader(document);
-		log.info(strLog + "Document saved:" + documentEntity);
+		try {
+			Document documentEntity = saveInvoiceHeader(document);
+			log.info(strLog + "Document saved: " + documentEntity);
 
-		if (documentEntity != null) {
-			boolean hasErrors = false;
-			for (DocumentDetail detail : documentEntity.getDetails()) {
+			if (documentEntity != null) {
+				boolean hasErrors = false;
+				// Por cada item del detalle de factura
+				for (DocumentDetail detail : documentEntity.getDetails()) {
+					try {
 
-				log.info(strLog + "transactionType: " + transactionType);
+						log.info(strLog + "transactionType: " + transactionType);
 
-				DocumentDetail.Builder detailBuilder = DocumentDetail.builder();
+						// Guardar inventario
+						InventoryTransaction inventory = saveInventory(documentEntity, detail);
+						if (inventory != null) {
+							// Actualizar stock del producto
+							Product product = saveProduct(inventory);
+							if (product != null) {
+								hasErrors = saveLot(documentEntity, detail);
+								closeWindow(cashChangeWindow);
 
-				// Detail sin relacion al documento
-				DocumentDetail detailTmp = detailBuilder.product(detail.getProduct()).quantity(detail.getQuantity())
-						.description(detail.getDescription()).subtotal(detail.getSubtotal())
-						.measurementUnit(detail.getMeasurementUnit())
-						.measurementUnitProduct(detail.getMeasurementUnitProduct()).price(detail.getPrice())
-						.tax(detail.getTax()).discount(detail.getDiscount()).build();
-
-				// Buscar los detailsLot de un detail
-				List<DocumentDetailLot> detailLotList = getDetailLotsByDetail(detailTmp);
-
-				// Relacion detail con lote. Se busca DetailLot a partir del Detail
-				DocumentDetailLot detailLot = null;
-				Lot lotTmp = null;
-				if (transactionType.equals(ETransactionType.ENTRADA)) {
-					detailLot = detailLotList.get(0);
-					// Actualizar cantidad y stock final de detailLot
-					lotTmp = detailLot.getLot();
-					lotTmp.setNew(false);
-					log.info(strLog + "Lote a actualizar stock:" + detailLot.getLot());
-				}
-
-				// Detail con relacion al documento
-				detailTmp = detailBuilder.document(documentEntity).build();
-
-				// Se actualiza el detail del objeto DetailLot
-				if (detailLot != null) {
-					detailLot = DocumentDetailLot.builder(detailLot).documentDetail(detail).build();
-				}
-
-				// Consultat UM x Product
-				MeasurementUnitProduct muProduct = detail.getMeasurementUnitProduct();
-				log.info(strLog + "muProduct. MU: " + muProduct.getMeasurementUnit());
-
-				Double initialStock = 0.0;
-				Double quantity = 0.0;
-				Double finalStock = 0.0;
-				Double finalStockMU = 0.0;
-				Double initialStockLot = 0.0;
-				Double quantityLot = 0.0;
-				Double finalStockLot = 0.0;
-
-				quantity = Double.parseDouble(detail.getQuantity());
-				log.info(strLog + "quantity ingresado: " + quantity);
-
-				// Actualizar stock para la UM escogida
-				finalStockMU = muProduct.getStock();
-				log.info(strLog + "Stock actual para la UM: " + finalStockMU);
-
-				// El stock en la UM por defecto del producto
-				initialStock = muProduct.getStock() != null ? muProduct.getStock() : 0;
-				log.info(strLog + "initialStock total en UM pral. : " + initialStock);
-
-				// Para las compras la cantidad es la misma del lote
-				// al crear el lote
-				if (transactionType.equals(ETransactionType.ENTRADA)) {
-					// Para el inventario general
-					finalStock = initialStock + quantity;
-					finalStockMU = finalStock;
-					log.info(strLog + "finalStock: " + finalStock);
-					// Si la UM es diferente a la UM principal se debe convertir
-					if (!detail.getMeasurementUnit().equals(detail.getProduct().getMeasurementUnit())) {
-						quantity = convertStockXMU(quantity, detail.getMeasurementUnit(),
-								detail.getProduct().getMeasurementUnit());
-						log.info(strLog + "quantity convertido: " + quantity);
-					}
-
-					// Para el lote
-					initialStockLot = 0.0;
-					finalStockLot = lotTmp.getQuantity();
-					quantityLot = quantity;
-
-					// Actualizar movimiento del lote
-					detailLot.setQuantity(quantityLot);
-					detailLot.setFinalStockLot(finalStockLot);
-
-					// Actualizar cantidad del lote
-					lotTmp.setQuantity(finalStockLot);
-
-				} else if (transactionType.equals(ETransactionType.SALIDA)) {
-					finalStockMU = finalStockMU - quantity;
-					// Para inventario general
-					if (!detail.getMeasurementUnit().equals(detail.getProduct().getMeasurementUnit())) {
-						// Si la UM es diferente a la UM principal se debe convertir
-						initialStock = convertStockXMU(initialStock, detail.getMeasurementUnit(),
-								detail.getProduct().getMeasurementUnit());
-						log.info(strLog + "initialStock convertido: " + quantity);
-
-						quantity = convertStockXMU(quantity, detail.getMeasurementUnit(),
-								detail.getProduct().getMeasurementUnit());
-						log.info(strLog + "quantity convertido: " + quantity);
-					}
-					finalStock = initialStock != 0 ? initialStock - quantity : quantity;
-
-					// Para el lote
-					/*
-					 * initialStockLot = lotTmp.getQuantity(); quantityLot = quantity; finalStockLot
-					 * = initialStockLot - quantityLot;
-					 */
-				}
-
-				log.info(strLog + "finalStockMU: " + finalStockMU);
-				log.info(strLog + "initialStockLot: " + initialStockLot);
-				log.info(strLog + "quantityLot:" + quantityLot);
-				log.info(strLog + "finalStockLot :" + finalStockLot);
-
-				// Crear objeto de inventario
-				InventoryTransaction inventoryTransaction = InventoryTransaction.builder().product(detail.getProduct())
-						.transactionType(transactionType).initialStock(initialStock).quantity(quantity)
-						.finalStock(finalStock).document(documentEntity).build();
-
-				// Actualizar stock total del producto
-				Product product = productBll.select(detail.getProduct().getCode());
-				product.setStock(finalStock);
-				product.setStockDate(new Date());
-
-				try {
-
-					// Guardar movimiento de inventario
-					inventoryBll.save(inventoryTransaction, false);
-					log.info(strLog + "inventoryTransaction saved:" + inventoryTransaction);
-
-					// if (transactionType.equals(ETransactionType.SALIDA)) {
-
-					// Actualizar stock producto
-					productBll.save(product, false);
-					log.info("product saved:" + product);
-
-					// Actualizar stock de lote
-					if (transactionType.equals(ETransactionType.ENTRADA)) {
-						lotBll.save(lotTmp, false);
-						log.info(strLog + "lot saved:" + lotTmp);
-
-						Lot lotEntity = lotBll.select(lotTmp.getCode(), product);
-
-						// Guardar relación item factura con lote
-						detailLot.setLot(lotEntity);
-						if (detailLot != null) {
-							detailLotBll.save(detailLot, false);
-						}
-						log.info(strLog + "detailLot saved:" + detailLot);
-
-					} else if (transactionType.equals(ETransactionType.SALIDA)) {
-						for (DocumentDetailLot detLot : detailLotList) {
-							lotTmp = detLot.getLot();
-							lotTmp.setNew(false);
-							lotBll.save(lotTmp, false);
-							log.info(strLog + "lot saved:" + detLot.getLot());
-
-							Lot lotEntity = lotBll.select(lotTmp.getCode(), product);
-
-							// Guardar relación item factura con lote
-							detLot.setLot(lotEntity);
-							if (detLot != null) {
-								detailLotBll.save(detLot, false);
 							}
-							log.info(strLog + "detailLot saved:" + detLot);
 						}
+
+					} catch (Exception ex) {
+						hasErrors = true;
+						documentEntity = null;
+						log.error(strLog + "[Exception]" + ex.getMessage());
+						ex.printStackTrace();
+						ViewHelper.showNotification(
+								"Los datos no pudieron ser salvados, contacte al administrador del sistema",
+								Notification.Type.ERROR_MESSAGE);
 					}
+				}
 
-					// Actualizar el stock para la UM escogida
-					muProduct.setStock(finalStockMU);
-
-					// Actualizar precio del producto
-					updatePrice(muProduct, detail);
-
-					// Actualizar stock de cada UM asociada al producto
-					updateStockByMU(detail.getProduct(), muProduct);
-					// }
-
-					closeWindow(cashChangeWindow);
-				} catch (ModelValidationException ex) {
-					hasErrors = true;
-					documentEntity = null;
-					log.error(strLog + "[ModelValidationException]" + ex);
-					ViewHelper.showNotification(ex.getMessage(), Notification.Type.ERROR_MESSAGE);
-				} catch (HibernateException ex) {
-					hasErrors = true;
-					documentEntity = null;
-					log.error(strLog + "[HibernateException]" + ex);
+				if (!hasErrors) {
+					documentTypeBll.commit();
+					// Actualizar consecutivo de tipo de factura
+					documentTypeBll.save(documentType);
+					log.info(strLog + "documentType saved:" + documentType);
+					log.info(strLog + "document saved:" + documentEntity);
+					this.document = documentEntity;
+					ViewHelper.showNotification("Factura guardada con exito", Notification.Type.WARNING_MESSAGE);
+					disableComponents(true);
+					if (transactionType.equals(ETransactionType.SALIDA)) {
+						printInvoice();
+					}
+				} else {
+					documentBll.rollback();
 					ViewHelper.showNotification(
 							"Los datos no pudieron ser salvados, contacte al administrador del sistema",
 							Notification.Type.ERROR_MESSAGE);
 				}
 			}
-
-			if (!hasErrors) {
-				// Actualizar consecutivo de tipo de factura
-				documentTypeBll.save(documentType, false);
-				log.info(strLog + "documentType saved:" + documentType);
-				log.info(strLog + "document saved:" + documentEntity);
-				documentTypeBll.commit();
-				this.document = documentEntity;
-				ViewHelper.showNotification("Factura guardada con exito", Notification.Type.WARNING_MESSAGE);
-				disableComponents(true);
-				if (transactionType.equals(ETransactionType.SALIDA)) {
-					printInvoice();
-				}
-			} else {
-				documentBll.rollback();
-			}
+		} catch (Exception e) {
+			documentBll.rollback();
+			e.printStackTrace();
+			ViewHelper.showNotification("Los datos no pudieron ser salvados, contacte al administrador del sistema",
+					Notification.Type.ERROR_MESSAGE);
 		}
+
+	}
+
+	/**
+	 * Método para guardar el inventario actualizado por la transacción de venta o
+	 * compra
+	 * 
+	 * @param detail
+	 * @return
+	 */
+
+	private InventoryTransaction saveInventory(Document document, DocumentDetail detail) {
+		String strLog = "[saveInventory] ";
+		Double initialStock = 0.0;
+		Double quantity = 0.0;
+		Double finalStock = 0.0;
+		Double finalStockMU = 0.0;
+
+		InventoryTransaction inventoryTransaction = null;
+		try {
+			log.info(strLog + "[parameters] detail: " + detail);
+
+			// Consultar UM x Product
+			MeasurementUnitProduct muProduct = detail.getMeasurementUnitProduct();
+			log.info(strLog + "muProduct. MU: " + muProduct.getMeasurementUnit());
+
+			quantity = Double.parseDouble(detail.getQuantity());
+			log.info(strLog + "quantity ingresado: " + quantity);
+
+			// Consultar stock para la UM escogida
+			finalStockMU = muProduct.getStock();
+			log.info(strLog + "Stock actual para la UM: " + finalStockMU);
+
+			// El stock en la UM por defecto del producto
+			initialStock = muProduct.getStock() != null ? muProduct.getStock() : 0;
+			log.info(
+					strLog + "initialStock total en UM pral. : " + muProduct.getMeasurementUnit() + " " + initialStock);
+
+			if (transactionType.equals(ETransactionType.ENTRADA)) {
+				// Para el inventario general
+				finalStock = initialStock + quantity;// Se suma al inventario
+				finalStockMU = finalStock; // UM
+
+				log.info(strLog + "finalStock: " + finalStock);
+
+				// Si la UM es diferente a la UM principal se debe convertir
+				if (!detail.getMeasurementUnit().equals(detail.getProduct().getMeasurementUnit())) {
+					quantity = convertStockXMU(quantity, detail.getMeasurementUnit(),
+							detail.getProduct().getMeasurementUnit());
+					log.info(strLog + "quantity convertido: " + quantity);
+				}
+
+			} else if (transactionType.equals(ETransactionType.SALIDA)) {
+				finalStockMU = finalStockMU - quantity;// Se resta al inventario
+
+				log.info(strLog + "finalStockMU: " + finalStock);
+
+				// Para inventario general
+				if (!detail.getMeasurementUnit().equals(detail.getProduct().getMeasurementUnit())) {
+					// Si la UM es diferente a la UM principal se debe convertir
+					initialStock = convertStockXMU(initialStock, detail.getMeasurementUnit(),
+							detail.getProduct().getMeasurementUnit());
+					log.info(strLog + "initialStock convertido: " + quantity);
+
+					quantity = convertStockXMU(quantity, detail.getMeasurementUnit(),
+							detail.getProduct().getMeasurementUnit());
+					log.info(strLog + "quantity convertido: " + quantity);
+				}
+
+				finalStock = initialStock != 0 ? initialStock - quantity : quantity; // Se resta al inventario
+
+			}
+
+			// Crear objeto de inventario
+			inventoryTransaction = InventoryTransaction.builder().product(detail.getProduct())
+					.transactionType(transactionType).initialStock(initialStock).quantity(quantity)
+					.finalStock(finalStock).document(document).build();
+
+			// Guardar movimiento de inventario
+			inventoryBll.save(inventoryTransaction, false);
+
+			log.info(strLog + "inventoryTransaction saved: " + inventoryTransaction);
+
+			// Actualizar el stock para la UM escogida
+			muProduct.setStock(finalStockMU);
+
+			// Actualizar precio del producto
+			updatePrice(muProduct, detail);
+
+			// Actualizar stock de cada UM asociada al producto
+			updateStockByMU(detail.getProduct(), muProduct);
+
+		} catch (ModelValidationException ex) {
+			inventoryTransaction = null;
+			log.error(strLog + "[ModelValidationException]" + ex);
+		} catch (HibernateException ex) {
+			inventoryTransaction = null;
+			log.error(strLog + "[HibernateException]" + ex);
+		} catch (Exception e) {
+			log.error(strLog + "[Exception]" + e.getMessage());
+		}
+
+		return inventoryTransaction;
+	}
+
+	/**
+	 * Metodo para actualizar el stock del producto de acuerdo a la tx de venta o
+	 * compra
+	 * 
+	 * @param inventoryTransaction
+	 */
+	private Product saveProduct(InventoryTransaction inventoryTransaction) {
+		String strLog = "[saveProduct] ";
+		Product product = null;
+		try {
+			log.info(strLog + "[parameters] " + inventoryTransaction);
+			product = productBll.select(inventoryTransaction.getProduct().getCode());
+			product.setStock(inventoryTransaction.getFinalStock());
+			product.setStockDate(new Date());
+
+			// Actualizar stock producto
+			productBll.save(product, false);
+			log.info("product saved:" + product);
+
+		} catch (Exception e) {
+			product = null;
+			inventoryBll.rollback();
+			log.error(strLog + "[Exception]" + e.getMessage());
+		}
+
+		return product;
+
+	}
+
+	/**
+	 * Actualizar el stock del lote de acuerdo a la tx venta o compra
+	 * 
+	 * @param document
+	 * @param detail
+	 */
+	private boolean saveLot(Document document, DocumentDetail detail) {
+		String strLog = "[saveLot] ";
+		Lot lot = null;
+		Double quantity = Double.parseDouble(detail.getQuantity());
+		Double initialStockLot = 0.0;
+		Double quantityLot = 0.0;
+		Double finalStockLot = 0.0;
+		boolean hasErrors = false;
+		try {
+
+			// Buscar la lista de lotes asociados a un detail
+			// DocumentDetail detailTmp = DocumentDetail.builder().document(null).build();
+
+			DocumentDetail.Builder detailBuilder = DocumentDetail.builder();
+
+			// Detail sin relacion al documento
+			DocumentDetail detailTmp = detailBuilder.product(detail.getProduct()).quantity(detail.getQuantity())
+					.description(detail.getDescription()).subtotal(detail.getSubtotal())
+					.measurementUnit(detail.getMeasurementUnit())
+					.measurementUnitProduct(detail.getMeasurementUnitProduct()).price(detail.getPrice())
+					.tax(detail.getTax()).discount(detail.getDiscount()).build();
+
+			List<DocumentDetailLot> detailLotList = getDetailLotsByDetail(detailTmp);
+
+			for (DocumentDetailLot detailLot : detailLotList) {
+				// Consultar lote
+				lot = detailLot.getLot();
+				log.info(strLog + "Lote a actualizar: " + lot);
+
+				if (transactionType.equals(ETransactionType.ENTRADA)) {
+					// Si la UM es diferente a la UM del lote se debe convertir
+					if (!detail.getMeasurementUnit().equals(lot.getMeasurementUnit())) {
+						quantity = convertStockXMU(quantity, detail.getMeasurementUnit(), lot.getMeasurementUnit());
+						log.info(strLog + "quantity convertido: " + quantity);
+					}
+
+					// Para el lote
+					initialStockLot = 0.0;
+					finalStockLot = quantity;
+					quantityLot = quantity;
+
+				} else if (transactionType.equals(ETransactionType.SALIDA)) {
+					initialStockLot = lot.getQuantity();// stock del lote
+
+					if (!detail.getMeasurementUnit().equals(lot.getMeasurementUnit())) {
+						// Si la UM es diferente a la UM principal se debe convertir
+						// Convertir stock del lote
+						initialStockLot = convertStockXMU(initialStockLot, detail.getMeasurementUnit(),
+								lot.getMeasurementUnit());
+						log.info(strLog + "initialStock del lote convertido: " + lot);
+
+						// Convertir quantity de la tx
+						quantity = convertStockXMU(quantity, detail.getMeasurementUnit(), lot.getMeasurementUnit());
+						log.info(strLog + "quantity convertido: " + quantity);
+					}
+
+					finalStockLot = initialStockLot - quantity;
+				}
+
+				log.info(strLog + "initialStockLot: " + initialStockLot);
+				log.info(strLog + "quantityLot:" + quantityLot);
+				log.info(strLog + "finalStockLot :" + finalStockLot);
+
+				// Actualizar la cantidad del lote
+				lot.setQuantity(finalStockLot);
+				lot.setNew(false);
+
+				lotBll.save(lot, false);
+				log.info(strLog + "lot saved:" + lot);
+
+				Lot lotEntity = lotBll.select(lot.getCode(), lot.getProduct());
+
+				// Actualizar lot en el detail
+
+				detailLot = DocumentDetailLot.builder(detailLot).lot(lotEntity).documentDetail(detail).build();
+				hasErrors = saveDetailLot(detailLot);
+
+				if (hasErrors) {
+					break;
+				}
+
+			}
+
+		} catch (Exception e) {
+			hasErrors = true;
+			log.error(strLog + "[Exception]" + e.getMessage());
+		}
+
+		return hasErrors;
+	}
+
+	/**
+	 * Guardar la relación de detalle de factura con lote
+	 * 
+	 * @param detailLot
+	 */
+	private boolean saveDetailLot(DocumentDetailLot detailLot) {
+		String strLog = "[saveDetailLot] ";
+		boolean hasErrors = false;
+		try {
+			log.info(strLog + "[parameters]" + detailLot);
+
+			detailLotBll.save(detailLot, false);
+
+			log.info(strLog + "detailLot saved:" + detailLot);
+
+		} catch (Exception e) {
+			hasErrors = true;
+			detailLotBll.rollback();
+			log.error(strLog + "[Exception]" + e.getMessage());
+			e.printStackTrace();
+		}
+		return hasErrors;
 	}
 
 	/**
