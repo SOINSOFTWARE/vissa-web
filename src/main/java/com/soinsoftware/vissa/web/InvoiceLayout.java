@@ -849,7 +849,6 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			message = "Formato de cantidad no valido";
 		} catch (Exception e) {
 			log.error(strLog + "[Exception]" + e.getMessage());
-
 			message = e.getMessage();
 			e.printStackTrace();
 		} finally {
@@ -1233,6 +1232,10 @@ public class InvoiceLayout extends VerticalLayout implements View {
 							qtyTmp = diff;
 
 							detailLotMap.add(detLot);
+
+							log.info(strLog + "DetailLot actualizado. initialStockLot: " + detLot.getInitialStockLot()
+									+ ", quantity: " + detLot.getQuantity() + ", finalStockLot"
+									+ detLot.getFinalStockLot());
 						}
 					}
 
@@ -1240,22 +1243,17 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 					log.info(strLog + "El lote escogido está ok para la cantidad seleccionada");
 
-					int pos = detailLotMap.indexOf(detailLotDefault);
+					int pos = detailLotMap.lastIndexOf(detailLotDefault);
 
 					detailLotDefault.setQuantity(quantity);
 					Double finalStockLot = detailLotDefault.getInitialStockLot() - quantity;
 					detailLotDefault.setFinalStockLot(finalStockLot);
-
+					
 					detailLotMap.set(pos, detailLotDefault);
-
-					/*
-					 * for (DocumentDetailLot detailLot : detailLotList) {
-					 * 
-					 * // Se elimina del map de lotes los lotes iniciales para recalcular
-					 * detailLotMap.remove(detailLot);
-					 * 
-					 * }
-					 */
+					
+					log.info(strLog + "DetailLot actualizado. initialStockLot: " + detailLotDefault.getInitialStockLot()
+					+ ", quantity: " + detailLotDefault.getQuantity() + ", finalStockLot"
+					+ detailLotDefault.getFinalStockLot());
 
 				}
 			}
@@ -1825,6 +1823,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 					}
 
 					finalStockLot = initialStockLot - quantity;
+					quantityLot = finalStockLot;
 				}
 
 				log.info(strLog + "initialStockLot: " + initialStockLot);
@@ -2506,6 +2505,15 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	public void exit() {
 		log.info("Exit");
 		Commons.LAYOUT_MODE = null;
+		/*
+		 * if (document != null) {
+		 * 
+		 * ConfirmDialog.show(Page.getCurrent().getUI(), "Confirmar",
+		 * "Saldrá de la factura sin guardar los cambios", "Si", "No", e -> { if
+		 * (e.isConfirmed()) { document = null; getUI().close();
+		 * 
+		 * } }); }
+		 */
 	}
 
 	public Double getPayValue() {
