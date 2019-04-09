@@ -25,6 +25,7 @@ import com.soinsoftware.vissa.model.Collection;
 import com.soinsoftware.vissa.model.Document;
 import com.soinsoftware.vissa.model.DocumentType;
 import com.soinsoftware.vissa.model.EPaymemtType;
+import com.soinsoftware.vissa.model.EPaymentStatus;
 import com.soinsoftware.vissa.model.ETransactionType;
 import com.soinsoftware.vissa.model.PaymentType;
 import com.soinsoftware.vissa.model.Person;
@@ -33,6 +34,7 @@ import com.soinsoftware.vissa.model.User;
 import com.soinsoftware.vissa.util.Commons;
 import com.soinsoftware.vissa.util.DateUtil;
 import com.soinsoftware.vissa.util.NumericUtil;
+import com.soinsoftware.vissa.util.StringUtil;
 import com.soinsoftware.vissa.util.ViewHelper;
 import com.vaadin.data.provider.ListDataProvider;
 import com.vaadin.data.provider.Query;
@@ -40,6 +42,7 @@ import com.vaadin.server.FontAwesome;
 import com.vaadin.ui.AbstractOrderedLayout;
 import com.vaadin.ui.Alignment;
 import com.vaadin.ui.Button;
+import com.vaadin.ui.CheckBox;
 import com.vaadin.ui.Component;
 import com.vaadin.ui.DateTimeField;
 import com.vaadin.ui.FormLayout;
@@ -87,6 +90,7 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 	private TextField txtFilterByPerson;
 	private DateTimeField dtfFilterIniDate;
 	private DateTimeField dtfFilterEndDate;
+	private CheckBox checkFilterBalance;
 	private TextField txtQuantity;
 	private TextField txtTotal;
 
@@ -291,8 +295,11 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 
 	}
 
+	/**
+	 * Calcular el saldo
+	 */
 	private void setFinalBalance() {
-		String strLog = "[]setFinalBalance";
+		String strLog = "[setFinalBalance]";
 		try {
 			String fee = txtFee.getValue();
 			String initialBalance = txtInitialBalance.getValue();
@@ -333,7 +340,7 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 			// Guardar recaudo
 			saveCollection(entity);
 			// Actualizar conciliación (cuadre de caja) por día y empleado
-			saveConciliation();
+			// saveConciliation();
 		}
 	}
 
@@ -348,18 +355,47 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 			}
 
 			Date collectionDate = DateUtil.localDateTimeToDate(dtfCollectionDate.getValue());
+			BigDecimal finalBalance = NumericUtil.stringToBigDecimal(txtFinalBalance.getValue());
+			BigDecimal fee = NumericUtil.stringToBigDecimal(txtFee.getValue());
 
 			entity = collectionBuilder.document(selectedDocument).collectionDate(collectionDate)
-					.initialBalance(NumericUtil.stringToBigDecimal(txtInitialBalance.getValue()))
-					.fee(NumericUtil.stringToBigDecimal(txtFee.getValue()))
-					.finalBalance(NumericUtil.stringToBigDecimal(txtFinalBalance.getValue())).archived(false).build();
+					.initialBalance(NumericUtil.stringToBigDecimal(txtInitialBalance.getValue())).fee(fee)
+					.finalBalance(finalBalance).archived(false).build();
 
 			save(collectionBll, entity, "Recaudo guardado");
+
+			// Actualizar monto pagado y estado de la factura
+			if (finalBalance.equals(new BigDecimal(0.0))) {
+				log.info(strLog + "Se actualiza estado de la factura a PAGADA");
+				selectedDocument.setPaymentStatus(EPaymentStatus.PAYED.getName());
+			}
+			log.info(strLog + "Se actualiza el total pagado de la factura");
+			BigDecimal payValue = selectedDocument.getPayValue() != null
+					? NumericUtil.doubleToBigDecimal(selectedDocument.getPayValue())
+					: BigDecimal.ZERO;
+			selectedDocument.setPayValue(NumericUtil.bigDecimalToDouble(payValue.add(fee)));
+
+			updateDocument(selectedDocument);
 
 		} catch (Exception e) {
 			log.error(strLog + "[Exception]" + e.getMessage());
 			e.printStackTrace();
 			ViewHelper.showNotification("Se generó un error al guardar el recaudo", Notification.Type.ERROR_MESSAGE);
+		}
+
+	}
+
+	/*
+	 * Metodo para actualizar el estado de pago de la factura
+	 */
+	private void updateDocument(Document document) {
+		String strLog = "[updateDocument] ";
+		try {
+			documentBll.save(document);
+			log.info(strLog + "Documento actualizado: " + document);
+
+		} catch (Exception e) {
+			log.error(strLog + "[Exception]" + e.getMessage());
 		}
 
 	}
@@ -468,8 +504,14 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 		dtfFilterEndDate.setRequiredIndicatorVisible(true);
 		dtfFilterEndDate.addValueChangeListener(e -> refreshGrid());
 
-		layout.addComponents(txtFilterByPerson, searchPersonBtn, dtfFilterIniDate, dtfFilterEndDate);
+		checkFilterBalance = new CheckBox("Saldo 0");
+		checkFilterBalance.setStyleName(ValoTheme.CHECKBOX_SMALL);
+		checkFilterBalance.addValueChangeListener(e -> refreshGrid());
+
+		layout.addComponents(txtFilterByPerson, searchPersonBtn, dtfFilterIniDate, dtfFilterEndDate,
+				checkFilterBalance);
 		layout.setComponentAlignment(searchPersonBtn, Alignment.BOTTOM_CENTER);
+		layout.setComponentAlignment(checkFilterBalance, Alignment.BOTTOM_CENTER);
 		return ViewHelper.buildPanel("Buscar por", layout);
 	}
 
@@ -495,12 +537,20 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 				throw new Exception("La fecha final debe ser mayor que la inicial");
 			}
 
-			Person personFilter = !txtFilterByPerson.isEmpty() ? personSelected : null;
+			// Person personFilter = !txtFilterByPerson.isEmpty() ? personSelected : null;
+			String personFilter = txtFilterByPerson.getValue().toUpperCase();
 
-			result = personFilter != null ? collection.getDocument().getPerson().equals(personFilter)
-					: true && collection.getCollectionDate().before(endDateFilter)
-							&& collection.getCollectionDate().after(iniDateFilter)
-							&& collection.getFinalBalance().compareTo(BigDecimal.ZERO) == 1;
+			boolean isZero = checkFilterBalance.getValue();
+
+			result = collection.getCollectionDate().before(endDateFilter)
+					&& collection.getCollectionDate().after(iniDateFilter)
+					&& (!isZero ? (collection.getFinalBalance().compareTo(BigDecimal.ZERO) == 1) : true);
+
+			if (personFilter != null && !personFilter.isEmpty()) {
+				Person person = collection.getDocument().getPerson();
+				result = result
+						&& (StringUtil.concatName(person.getName(), person.getLastName())).contains(personFilter);
+			}
 
 		} catch (Exception e) {
 			ViewHelper.showNotification(e.getMessage(), Notification.Type.ERROR_MESSAGE);
@@ -517,8 +567,8 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 
 	private void builInvoiceWindow(String invoiceFilter) {
 
-		invoiceWindow = ViewHelper.buildSubwindow("75%", null);
-		invoiceWindow.setCaption("Facturas");
+		invoiceWindow = ViewHelper.buildSubwindow("80%", null);
+		invoiceWindow.setCaption("Facturas pendientes");
 
 		invoiceWindow.addCloseListener(e -> closeWindow(invoiceWindow));
 		VerticalLayout subContent = ViewHelper.buildVerticalLayout(true, true);
@@ -529,9 +579,6 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 
 			invoicListLayout.getGrid().addItemClickListener(listener -> {
 				if (listener.getMouseEventDetails().isDoubleClick())
-					// pass the row/item that the user double clicked
-					// to method doStuff.
-					// doStuff(l.getItem());
 					selectDocument(listener.getItem());
 			});
 

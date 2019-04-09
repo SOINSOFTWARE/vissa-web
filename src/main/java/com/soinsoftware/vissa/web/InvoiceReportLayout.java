@@ -28,6 +28,7 @@ import com.soinsoftware.vissa.model.Person;
 import com.soinsoftware.vissa.model.PersonType;
 import com.soinsoftware.vissa.util.Commons;
 import com.soinsoftware.vissa.util.DateUtil;
+import com.soinsoftware.vissa.util.StringUtil;
 import com.soinsoftware.vissa.util.ViewHelper;
 import com.vaadin.data.provider.ListDataProvider;
 import com.vaadin.data.provider.Query;
@@ -189,21 +190,20 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 
 			personColumn = grid.addColumn(document -> {
 				if (document.getPerson() != null) {
-					return document.getPerson().getName() + " " + document.getPerson().getLastName();
+					return StringUtil.concatName(document.getPerson().getName(), document.getPerson().getLastName());
 				} else {
 					return null;
 				}
 			}).setCaption(Commons.PERSON_TYPE);
 
-			grid.addColumn(document -> {
-				if (document.getPerson() != null) {
-					return document.getPaymentStatus();
-				} else {
-					return null;
-				}
-			}).setCaption("Estado");
-
+			grid.addColumn(Document::getPaymentStatus).setCaption("Estado");
 			totalColumn = grid.addColumn(Document::getTotalValue).setCaption("Total");
+
+			grid.addColumn(document -> {
+				Double payValue = document.getPayValue() != null ? document.getPayValue() : document.getTotalValue();
+				Double balance = document.getTotalValue() - payValue;				
+				return (Math.round(balance));
+			}).setCaption("Saldo");
 
 			footer = grid.prependFooterRow();
 			footer.getCell(personColumn).setHtml("<b>Total:</b>");

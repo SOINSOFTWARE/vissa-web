@@ -1248,12 +1248,12 @@ public class InvoiceLayout extends VerticalLayout implements View {
 					detailLotDefault.setQuantity(quantity);
 					Double finalStockLot = detailLotDefault.getInitialStockLot() - quantity;
 					detailLotDefault.setFinalStockLot(finalStockLot);
-					
+
 					detailLotMap.set(pos, detailLotDefault);
-					
+
 					log.info(strLog + "DetailLot actualizado. initialStockLot: " + detailLotDefault.getInitialStockLot()
-					+ ", quantity: " + detailLotDefault.getQuantity() + ", finalStockLot"
-					+ detailLotDefault.getFinalStockLot());
+							+ ", quantity: " + detailLotDefault.getQuantity() + ", finalStockLot"
+							+ detailLotDefault.getFinalStockLot());
 
 				}
 			}
@@ -1935,8 +1935,12 @@ public class InvoiceLayout extends VerticalLayout implements View {
 				// Si el tipo de pago es crédito el pago queda pendiente
 				if (paymentType.getCode().equals(EPaymemtType.CREDIT.getName())) {
 					paymentStatus = EPaymentStatus.PENDING.getName();
+					payValue = 0.0;
 				} else {
 					paymentStatus = EPaymentStatus.PAYED.getName();
+					if (payValue == null) {
+						payValue = total;
+					}
 				}
 				documentEntity = docBuilder.code(txtDocNumber.getValue())
 						.reference(txtReference.getValue() != null ? txtReference.getValue() : "")
