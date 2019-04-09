@@ -4,6 +4,7 @@ import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.Calendar;
 import java.util.Date;
 
@@ -78,6 +79,26 @@ public class DateUtil {
 	}
 
 	/**
+	 * Metodo para convertir una fecha LocalDateTime a String
+	 * 
+	 * @param date
+	 * @return
+	 */
+	public static String localDateTimeToString(LocalDateTime date) {
+		String dateStr = null;
+		try {
+			if (date != null) {
+				DateTimeFormatter formatter = DateTimeFormatter.ofPattern(Commons.FORMAT_DATE_TIME);
+				dateStr = date.format(formatter);
+			}
+		} catch (Exception e) {
+			log.error("Error al convertir Date " + date + " a String");
+		}
+		return dateStr;
+
+	}
+
+	/**
 	 * Metodo para convertir una fecha Date a String indicando el formato
 	 * 
 	 * @param date
@@ -109,6 +130,26 @@ public class DateUtil {
 			if (dateStr != null) {
 				SimpleDateFormat sdf = new SimpleDateFormat(Commons.FORMAT_DATE_TIME);
 				date = sdf.parse(dateStr);
+			}
+		} catch (Exception e) {
+			log.error("Error al convertir String " + dateStr + " a Date");
+		}
+		return date;
+
+	}
+
+	/**
+	 * Metodo para convertir un Strig a LocalDateTime
+	 * 
+	 * @param date
+	 * @return
+	 */
+	public static LocalDateTime stringToLocalDateTime(String dateStr) {
+		LocalDateTime date = null;
+		try {
+			if (dateStr != null) {
+				DateTimeFormatter formatter = DateTimeFormatter.ofPattern(Commons.FORMAT_DATE_TIME);
+				date = LocalDateTime.parse(dateStr, formatter);
 			}
 		} catch (Exception e) {
 			log.error("Error al convertir String " + dateStr + " a Date");
@@ -156,12 +197,21 @@ public class DateUtil {
 	}
 
 	/**
+	 * Retorna la fecha fin LocalDate para reportes, hasta las 23:59:59
+	 * 
+	 * @return
+	 */
+	public static LocalDate getDefaultEndLocalDate() {
+		return LocalDate.now();
+	}
+
+	/**
 	 * Retorna la fecha fin Date para reportes, hasta las 23:59:59
 	 * 
 	 * @return
 	 */
-	public static LocalDate getDefaultEndDate() {
-		return LocalDate.now();
+	public static Date getDefaultEndDate() {
+		return localDateTimeToDate(getDefaultEndDateTime());
 	}
 
 	/**
@@ -179,7 +229,7 @@ public class DateUtil {
 	 * @return
 	 */
 	public static LocalDate getDefaultIniMonthDate() {
-		return LocalDate.now().minusDays(30);
+		return LocalDate.now().minusMonths(1);
 	}
 
 	/**

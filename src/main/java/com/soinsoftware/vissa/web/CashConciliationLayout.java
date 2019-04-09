@@ -1112,8 +1112,8 @@ public class CashConciliationLayout extends AbstractEditableLayout<CashConciliat
 
 			log.info(strLog + " iniDateFilter: " + iniDateFilter + ", endDateFilter:" + endDateFilter);
 
-			result = collection.getCollectionDate().before(endDateFilter)
-					&& collection.getCollectionDate().after(iniDateFilter);
+			result = collection.getCollectionDate().isBefore(DateUtil.dateToLocalDateTime(endDateFilter))
+					&& collection.getCollectionDate().isAfter(DateUtil.dateToLocalDateTime(iniDateFilter));
 
 		} catch (Exception e) {
 			log.error(strLog + e.getMessage());

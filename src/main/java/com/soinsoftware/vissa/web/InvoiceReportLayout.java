@@ -28,6 +28,7 @@ import com.soinsoftware.vissa.model.Person;
 import com.soinsoftware.vissa.model.PersonType;
 import com.soinsoftware.vissa.util.Commons;
 import com.soinsoftware.vissa.util.DateUtil;
+import com.soinsoftware.vissa.util.ELayoutMode;
 import com.soinsoftware.vissa.util.StringUtil;
 import com.soinsoftware.vissa.util.ViewHelper;
 import com.vaadin.data.provider.ListDataProvider;
@@ -75,12 +76,11 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 	private DateTimeField dtfFilterEndDate;
 	private TextField txtQuantity;
 	private TextField txtTotal;
-	private ComboBox<PaymentDocumentType> cbPaymentType;
-	private ComboBox<EPaymentStatus> cbPaymentStatus;
+	private ComboBox<PaymentDocumentType> cbFilterPaymentType;
+	private ComboBox<EPaymentStatus> cbFilterPaymentStatus;
 	private Grid<Document> grid;
 	private Button printBtn;
 
-	private boolean listMode;
 	private ETransactionType transactionType;
 
 	private Window personSubwindow;
@@ -90,6 +90,7 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 	private FooterRow footer;
 	private Column<?, ?> personColumn;
 	private Column<?, ?> totalColumn;
+	private ELayoutMode layoutMode;
 
 	private ListDataProvider<Document> dataProvider;
 
@@ -100,6 +101,7 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 		documentTypeBll = DocumentTypeBll.getInstance();
 		paymentDocumentTypeBll = PaymentDocumentTypeBll.getInstance();
 		transactionType = ETransactionType.valueOf(CommonsUtil.TRANSACTION_TYPE);
+		this.layoutMode = ELayoutMode.ALL;
 
 		if (transactionType.equals(ETransactionType.ENTRADA)) {
 			Commons.PERSON_TYPE = PersonType.SUPPLIER.getName();
@@ -111,10 +113,10 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 		}
 	}
 
-	public InvoiceReportLayout(boolean listMode) throws IOException {
+	public InvoiceReportLayout(ELayoutMode layoutMode) throws IOException {
 		super("", KEY_REPORTS);
 
-		this.listMode = listMode;
+		this.layoutMode = layoutMode;
 		documentBll = DocumentBll.getInstance();
 		documentTypeBll = DocumentTypeBll.getInstance();
 		paymentDocumentTypeBll = PaymentDocumentTypeBll.getInstance();
@@ -201,7 +203,7 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 
 			grid.addColumn(document -> {
 				Double payValue = document.getPayValue() != null ? document.getPayValue() : document.getTotalValue();
-				Double balance = document.getTotalValue() - payValue;				
+				Double balance = document.getTotalValue() - payValue;
 				return (Math.round(balance));
 			}).setCaption("Saldo");
 
@@ -215,7 +217,7 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 				}
 			});
 			fillGridData();
-			if (!listMode) {
+			if (!layoutMode.equals(ELayoutMode.LIST)) {
 				refreshGrid();
 			}
 
@@ -351,34 +353,34 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 		dtfFilterEndDate.setRequiredIndicatorVisible(true);
 		dtfFilterEndDate.addValueChangeListener(e -> refreshGrid());
 
-		cbPaymentType = new ComboBox<>("Forma de pago");
-		cbPaymentType.setEmptySelectionAllowed(true);
-		cbPaymentType.setEmptySelectionCaption("Seleccione");
-		cbPaymentType.setStyleName(ValoTheme.COMBOBOX_TINY);
+		cbFilterPaymentType = new ComboBox<>("Forma de pago");
+		cbFilterPaymentType.setEmptySelectionAllowed(true);
+		cbFilterPaymentType.setEmptySelectionCaption("Seleccione");
+		cbFilterPaymentType.setStyleName(ValoTheme.COMBOBOX_TINY);
 
 		ListDataProvider<PaymentDocumentType> payTypeDataProv = new ListDataProvider<>(
 				paymentDocumentTypeBll.select(documentType));
-		cbPaymentType.setDataProvider(payTypeDataProv);
-		cbPaymentType.setItemCaptionGenerator(paymentDocumentType -> {
+		cbFilterPaymentType.setDataProvider(payTypeDataProv);
+		cbFilterPaymentType.setItemCaptionGenerator(paymentDocumentType -> {
 			if (paymentDocumentType != null && paymentDocumentType.getPaymentType() != null) {
 				return paymentDocumentType.getPaymentType().getName();
 			} else {
 				return null;
 			}
 		});
-		cbPaymentType.addValueChangeListener(e -> refreshGrid());
+		cbFilterPaymentType.addValueChangeListener(e -> refreshGrid());
 
-		cbPaymentStatus = new ComboBox<>("Estado de pago");
-		cbPaymentStatus.setEmptySelectionAllowed(true);
-		cbPaymentStatus.setEmptySelectionCaption("Seleccione");
-		cbPaymentStatus.setStyleName(ValoTheme.COMBOBOX_TINY);
+		cbFilterPaymentStatus = new ComboBox<>("Estado de pago");
+		cbFilterPaymentStatus.setEmptySelectionAllowed(true);
+		cbFilterPaymentStatus.setEmptySelectionCaption("Seleccione");
+		cbFilterPaymentStatus.setStyleName(ValoTheme.COMBOBOX_TINY);
 		ListDataProvider<EPaymentStatus> payStatusDate = new ListDataProvider<>(Arrays.asList(EPaymentStatus.values()));
-		cbPaymentStatus.setDataProvider(payStatusDate);
-		cbPaymentStatus.setItemCaptionGenerator(EPaymentStatus::getName);
-		cbPaymentStatus.addValueChangeListener(e -> refreshGrid());
+		cbFilterPaymentStatus.setDataProvider(payStatusDate);
+		cbFilterPaymentStatus.setItemCaptionGenerator(EPaymentStatus::getName);
+		cbFilterPaymentStatus.addValueChangeListener(e -> refreshGrid());
 
-		layout.addComponents(txtFilterByPerson, searchPersonBtn, dtfFilterIniDate, dtfFilterEndDate, cbPaymentType,
-				cbPaymentStatus);
+		layout.addComponents(txtFilterByPerson, searchPersonBtn, dtfFilterIniDate, dtfFilterEndDate, cbFilterPaymentType,
+				cbFilterPaymentStatus);
 		layout.setComponentAlignment(searchPersonBtn, Alignment.BOTTOM_CENTER);
 		return ViewHelper.buildPanel("Buscar por", layout);
 	}
@@ -430,11 +432,11 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 
 			Date iniDateFilter = dtfFilterIniDate.getValue() != null
 					? DateUtil.localDateTimeToDate(dtfFilterIniDate.getValue())
-					: DateUtil.stringToDate("01-01-2000 00:00:00");
+					: DateUtil.localDateToDate(DateUtil.getDefaultIniMonthDate());
 
 			Date endDateFilter = dtfFilterEndDate.getValue() != null
 					? DateUtil.localDateTimeToDate(dtfFilterEndDate.getValue())
-					: new Date();
+					: DateUtil.getDefaultEndDate();
 
 			if (endDateFilter.before(iniDateFilter)) {
 				throw new Exception("La fecha final debe ser mayor que la inicial");
@@ -444,13 +446,13 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 			Person personFilter = !txtFilterByPerson.isEmpty() ? personSelected : null;
 
 			PaymentType paymentTypeFilter = null;
-			if (cbPaymentType.getSelectedItem().isPresent()) {
-				paymentTypeFilter = cbPaymentType.getSelectedItem().get().getPaymentType();
+			if (cbFilterPaymentType.getSelectedItem().isPresent()) {
+				paymentTypeFilter = cbFilterPaymentType.getSelectedItem().get().getPaymentType();
 			}
 
 			EPaymentStatus paymentStatusFilter = null;
-			if (cbPaymentStatus.getSelectedItem().isPresent()) {
-				paymentStatusFilter = cbPaymentStatus.getSelectedItem().get();
+			if (cbFilterPaymentStatus.getSelectedItem().isPresent()) {
+				paymentStatusFilter = cbFilterPaymentStatus.getSelectedItem().get();
 			}
 
 			result = personFilter != null ? document.getPerson().equals(personFilter)
@@ -464,7 +466,8 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 
 			// Filtrar por estado del pago
 			if (paymentStatusFilter != null) {
-				result = result && document.getPaymentStatus().equals(paymentStatusFilter.getName());
+				result = result && (document.getPaymentStatus() != null
+						&& document.getPaymentStatus().equals(paymentStatusFilter.getName()));
 			}
 		} catch (Exception e) {
 			ViewHelper.showNotification(e.getMessage(), Notification.Type.WARNING_MESSAGE);
@@ -546,4 +549,31 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 			e.printStackTrace();
 		}
 	}
+
+	public ComboBox<EPaymentStatus> getCbFilterPaymentStatus() {
+		return cbFilterPaymentStatus;
+	}
+
+	public void setCbFilterPaymentStatus(ComboBox<EPaymentStatus> cbFilterPaymentStatus) {
+		this.cbFilterPaymentStatus = cbFilterPaymentStatus;
+	}
+
+	public DateTimeField getDtfFilterIniDate() {
+		return dtfFilterIniDate;
+	}
+
+	public void setDtfFilterIniDate(DateTimeField dtfFilterIniDate) {
+		this.dtfFilterIniDate = dtfFilterIniDate;
+	}
+
+	public DateTimeField getDtfFilterEndDate() {
+		return dtfFilterEndDate;
+	}
+
+	public void setDtfFilterEndDate(DateTimeField dtfFilterEndDate) {
+		this.dtfFilterEndDate = dtfFilterEndDate;
+	}
+	
+	
+
 }

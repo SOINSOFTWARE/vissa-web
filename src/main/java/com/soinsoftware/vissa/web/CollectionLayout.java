@@ -33,6 +33,7 @@ import com.soinsoftware.vissa.model.PersonType;
 import com.soinsoftware.vissa.model.User;
 import com.soinsoftware.vissa.util.Commons;
 import com.soinsoftware.vissa.util.DateUtil;
+import com.soinsoftware.vissa.util.ELayoutMode;
 import com.soinsoftware.vissa.util.NumericUtil;
 import com.soinsoftware.vissa.util.StringUtil;
 import com.soinsoftware.vissa.util.ViewHelper;
@@ -527,11 +528,11 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 
 			Date iniDateFilter = dtfFilterIniDate.getValue() != null
 					? DateUtil.localDateTimeToDate(dtfFilterIniDate.getValue())
-					: DateUtil.stringToDate("01-01-2000");
+					: DateUtil.localDateToDate(DateUtil.getDefaultIniMonthDate());
 
 			Date endDateFilter = dtfFilterEndDate.getValue() != null
 					? DateUtil.localDateTimeToDate(dtfFilterEndDate.getValue())
-					: new Date();
+					: DateUtil.getDefaultEndDate();
 
 			if (endDateFilter.before(iniDateFilter)) {
 				throw new Exception("La fecha final debe ser mayor que la inicial");
@@ -575,7 +576,11 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 
 		try {
 			CommonsUtil.TRANSACTION_TYPE = ETransactionType.SALIDA.getName();
-			invoicListLayout = new InvoiceReportLayout(true);
+
+			invoicListLayout = new InvoiceReportLayout(ELayoutMode.LIST);
+			invoicListLayout.getCbFilterPaymentStatus().setValue(EPaymentStatus.PENDING);
+			invoicListLayout.getDtfFilterIniDate().setValue(null);
+			invoicListLayout.getDtfFilterEndDate().setValue(null);
 
 			invoicListLayout.getGrid().addItemClickListener(listener -> {
 				if (listener.getMouseEventDetails().isDoubleClick())

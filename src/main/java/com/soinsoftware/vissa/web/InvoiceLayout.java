@@ -582,6 +582,8 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	 */
 	@SuppressWarnings("unchecked")
 	private Component builGridPanel() {
+		String strLog = "[builGridPanel] ";
+
 		detailGrid = ViewHelper.buildGrid(SelectionMode.SINGLE);
 		detailGrid.setEnabled(true);
 
@@ -639,12 +641,6 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			}
 		}).setCaption("Subtotal");
 
-		detailGrid.getEditor().addOpenListener(e -> {
-
-			log.info("CURRENT DETAIL-" + CommonsUtil.CURRENT_DOCUMENT_DETAIL);
-			// fillDetailGridData(itemsList);
-		});
-
 		// Evento de enter para cmpo de persona
 		txtPerson.addShortcutListener(new ShortcutListener("search person", ShortcutAction.KeyCode.ENTER, null) {
 
@@ -694,10 +690,6 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			txtQuantity.setReadOnly(true);
 		}
 
-		// txtQuantity.addBlurListener(e -> changeQuantity(txtQuantity.getValue()));
-		// txtQuantity.addValueChangeListener(e ->
-		// changeQuantity(txtQuantity.getValue()));
-
 		footer = detailGrid.prependFooterRow();
 		if (columnDiscount != null) {
 			footer.getCell(columnDiscount).setHtml("<b>Total IVA:</b>");
@@ -708,9 +700,16 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 		detailGrid.getEditor().setEnabled(true);
 
-		detailGrid.getEditor().addSaveListener(e -> changeQuantity(txtQuantity.getValue()));
+		// Eventos
+		detailGrid.getEditor().addOpenListener(e -> {
+			log.info(strLog + "CURRENT_DOCUMENT_DETAIL : " + CommonsUtil.CURRENT_DOCUMENT_DETAIL);
+			// fillDetailGridData(itemsList);
+		});
 
-		// initializeGrid();
+		//EVENTOS
+		detailGrid.getEditor().addSaveListener(e -> changeQuantity(e.getBean().getQuantity()));
+		// txtQuantity.addValueChangeListener(e -> changeQuantity(e.getValue()));
+		// txtQuantity.addBlurListener(e -> changeQuantity(txtQuantity.getValue()));
 
 		HorizontalLayout itemsLayout = ViewHelper.buildHorizontalLayout(false, false);
 		itemsLayout.setSizeFull();
