@@ -26,6 +26,7 @@ import com.soinsoftware.vissa.model.Document;
 import com.soinsoftware.vissa.model.DocumentType;
 import com.soinsoftware.vissa.model.EPaymemtType;
 import com.soinsoftware.vissa.model.EPaymentStatus;
+import com.soinsoftware.vissa.model.EPendingPayment;
 import com.soinsoftware.vissa.model.ETransactionType;
 import com.soinsoftware.vissa.model.PaymentType;
 import com.soinsoftware.vissa.model.Person;
@@ -108,15 +109,26 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 	private FooterRow footer;
 
 	private ListDataProvider<Document> documentDataProvider;
-	ListDataProvider<Collection> collectionDataProvider;
+	private ListDataProvider<Collection> collectionDataProvider;
+	private String transactionType;
+	private String pendingPaymentType;
 
 	public CollectionLayout() throws IOException {
-		super("Recaudo", KEY_COLLECTION);
+		super("", KEY_COLLECTION);
 		collectionBll = CollectionBll.getInstance();
 		documentBll = DocumentBll.getInstance();
 		documentTypeBll = DocumentTypeBll.getInstance();
 		paymentTypeBll = PaymentTypeBll.getInstance();
-
+		transactionType = CommonsUtil.TRANSACTION_TYPE;
+		if (transactionType.equals(ETransactionType.ENTRADA.getName())) {
+			this.setCaption("Pago a proveedores");
+			pendingPaymentType = EPendingPayment.PAYMENT_SUPPLIER.getName();
+			Commons.PERSON_TYPE = PersonType.SUPPLIER.getName();
+		} else {
+			this.setCaption("Recaudos");
+			pendingPaymentType = EPendingPayment.COLLECTION.getName();
+			Commons.PERSON_TYPE = PersonType.CUSTOMER.getName();
+		}
 	}
 
 	@Override
@@ -319,7 +331,7 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 
 	@Override
 	protected void fillGridData() {
-		List<Collection> collectionList = collectionBll.selectAll();
+		List<Collection> collectionList = collectionBll.select(pendingPaymentType);
 
 		collectionList = collectionList.stream().sorted(Comparator.comparing(Collection::getCollectionDate).reversed())
 				.collect(Collectors.toList());
@@ -361,9 +373,9 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 
 			entity = collectionBuilder.document(selectedDocument).collectionDate(collectionDate)
 					.initialBalance(NumericUtil.stringToBigDecimal(txtInitialBalance.getValue())).fee(fee)
-					.finalBalance(finalBalance).archived(false).build();
+					.finalBalance(finalBalance).type(pendingPaymentType).archived(false).build();
 
-			save(collectionBll, entity, "Recaudo guardado");
+			save(collectionBll, entity, "Pago guardado");
 
 			// Actualizar monto pagado y estado de la factura
 			if (finalBalance.equals(new BigDecimal(0.0))) {
@@ -482,7 +494,7 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 		txFilterByCode = new TextField("Código");
 		txFilterByCode.addValueChangeListener(e -> refreshGrid());
 
-		txtFilterByPerson = new TextField("Cliente");
+		txtFilterByPerson = new TextField(Commons.PERSON_TYPE);
 		txtFilterByPerson.addValueChangeListener(e -> refreshGrid());
 		txtFilterByPerson.setStyleName(ValoTheme.TEXTFIELD_TINY);
 		txtFilterByPerson.focus();
@@ -547,6 +559,7 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 					&& collection.getCollectionDate().after(iniDateFilter)
 					&& (!isZero ? (collection.getFinalBalance().compareTo(BigDecimal.ZERO) == 1) : true);
 
+			/// Filtro por el nombre del cliente
 			if (personFilter != null && !personFilter.isEmpty()) {
 				Person person = collection.getDocument().getPerson();
 				result = result
@@ -575,12 +588,10 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 		VerticalLayout subContent = ViewHelper.buildVerticalLayout(true, true);
 
 		try {
-			CommonsUtil.TRANSACTION_TYPE = ETransactionType.SALIDA.getName();
+			CommonsUtil.TRANSACTION_TYPE = transactionType;
 
 			invoicListLayout = new InvoiceReportLayout(ELayoutMode.LIST);
 			invoicListLayout.getCbFilterPaymentStatus().setValue(EPaymentStatus.PENDING);
-			invoicListLayout.getDtfFilterIniDate().setValue(null);
-			invoicListLayout.getDtfFilterEndDate().setValue(null);
 
 			invoicListLayout.getGrid().addItemClickListener(listener -> {
 				if (listener.getMouseEventDetails().isDoubleClick())
@@ -749,14 +760,20 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 	private void buildPersonWindow(String personFiltter) {
 
 		personSubwindow = ViewHelper.buildSubwindow("75%", null);
-		personSubwindow.setCaption("Personas");
+		String label = "";
+
+		if (transactionType.equals(ETransactionType.ENTRADA.getName())) {
+			label = "Proveedores";			
+		} else {
+			label = "Clientes";			
+		}
+		personSubwindow.setCaption(label);
 		personSubwindow.addCloseListener(e -> closeWindow(personSubwindow));
 
 		VerticalLayout subContent = ViewHelper.buildVerticalLayout(true, true);
 
 		try {
 
-			Commons.PERSON_TYPE = PersonType.CUSTOMER.getName();
 			personLayout = new PersonLayout(true);
 
 			personLayout.getGrid().addItemClickListener(listener -> {

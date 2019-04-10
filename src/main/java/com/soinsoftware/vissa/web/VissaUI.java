@@ -95,6 +95,7 @@ public class VissaUI extends UI {
 	protected static final String KEY_SALESMAN_CONCILIATION = "Cuadre vendedor";
 	protected static final String KEY_ADMIN_CONCILIATION = "Cuadre administrador";
 	protected static final String KEY_COLLECTION = "Recaudos";
+	protected static final String KEY_SUPPLIER_PAYMENTS = "Pago a proveedores";
 	protected static final String KEY_EGRESS = "Egresos";
 
 	private PermissionUtil permissionUtil;
@@ -179,7 +180,7 @@ public class VissaUI extends UI {
 			if (permissionUtil.canView(KEY_PRODUCTS_REPORT)) {
 				treeData.addItem(KEY_REPORTS, KEY_PRODUCTS_REPORT);
 			}
-			// treeData.addItem(KEY_REPORTS, "test");
+			
 		}
 
 		if (permissionUtil.canView(KEY_CONCILIATION)) {
@@ -193,7 +194,13 @@ public class VissaUI extends UI {
 		}
 
 		if (permissionUtil.canView(KEY_COLLECTION)) {
+			CommonsUtil.TRANSACTION_TYPE = ETransactionType.SALIDA.getName();
 			treeData.addItem(null, KEY_COLLECTION);
+		}
+		
+		if (permissionUtil.canView(KEY_SUPPLIER_PAYMENTS)) {
+			CommonsUtil.TRANSACTION_TYPE = ETransactionType.ENTRADA.getName();
+			treeData.addItem(null, KEY_SUPPLIER_PAYMENTS);
 		}
 
 		if (permissionUtil.canView(KEY_EGRESS)) {
@@ -357,6 +364,7 @@ public class VissaUI extends UI {
 		navigator.addView(KEY_SALESMAN_CONCILIATION, CashConciliationLayout.class);
 		navigator.addView(KEY_ADMIN_CONCILIATION, CashConciliationLayout.class);
 		navigator.addView(KEY_COLLECTION, CollectionLayout.class);
+		navigator.addView(KEY_SUPPLIER_PAYMENTS, CollectionLayout.class);
 		navigator.addView(KEY_EGRESS, EgressLayout.class);
 		navigator.addView(KEY_RETURNS, ReturnLayout.class);
 		navigator.setErrorView(DefaultView.class);

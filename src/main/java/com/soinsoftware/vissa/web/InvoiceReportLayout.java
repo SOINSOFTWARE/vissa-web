@@ -5,6 +5,7 @@ import static com.soinsoftware.vissa.web.VissaUI.KEY_REPORTS;
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
 import java.util.Set;
@@ -257,7 +258,11 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 		String strLog = "[fillGridData] ";
 		try {
 			List<DocumentType> types = documentTypeBll.select(transactionType);
-			dataProvider = new ListDataProvider<>(documentBll.select(types));
+			//Consultar los documentospor los tipos del tipo de tx
+			List<Document> documents = documentBll.select(types);
+			documents = documents.stream().sorted(Comparator.comparing(Document::getDocumentDate).reversed())
+				.collect(Collectors.toList());
+			dataProvider = new ListDataProvider<>(documents);
 
 			grid.setDataProvider(dataProvider);
 			dataProvider.addDataProviderListener(
@@ -337,7 +342,7 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 
 		dtfFilterIniDate = new DateTimeField("Fecha inicial");
 		dtfFilterIniDate.setResolution(DateTimeResolution.SECOND);
-		dtfFilterIniDate.setValue(DateUtil.getDefaultIniDate());
+		dtfFilterIniDate.setValue(DateUtil.getDefaultIniMonthDateTime());
 		dtfFilterIniDate.setDateFormat(Commons.FORMAT_DATE_TIME);
 		dtfFilterIniDate.setStyleName(ValoTheme.DATEFIELD_TINY);
 		dtfFilterIniDate.setWidth("184px");
@@ -443,7 +448,8 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 			} else {
 
 			}
-			Person personFilter = !txtFilterByPerson.isEmpty() ? personSelected : null;
+			//Person personFilter = !txtFilterByPerson.isEmpty() ? personSelected : null;
+			String personFilter = txtFilterByPerson.getValue().toUpperCase();
 
 			PaymentType paymentTypeFilter = null;
 			if (cbFilterPaymentType.getSelectedItem().isPresent()) {
@@ -455,8 +461,7 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 				paymentStatusFilter = cbFilterPaymentStatus.getSelectedItem().get();
 			}
 
-			result = personFilter != null ? document.getPerson().equals(personFilter)
-					: true && document.getDocumentDate().before(endDateFilter)
+			result =  document.getDocumentDate().before(endDateFilter)
 							&& document.getDocumentDate().after(iniDateFilter);
 
 			// Filtrar por tipo de pago
@@ -468,6 +473,13 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 			if (paymentStatusFilter != null) {
 				result = result && (document.getPaymentStatus() != null
 						&& document.getPaymentStatus().equals(paymentStatusFilter.getName()));
+			}
+			
+			//Filtrar por el nombre del cliente/proveedor
+			if (personFilter != null && !personFilter.isEmpty()) {
+				Person person = document.getPerson();
+				result = result
+						&& (StringUtil.concatName(person.getName(), person.getLastName())).contains(personFilter);
 			}
 		} catch (Exception e) {
 			ViewHelper.showNotification(e.getMessage(), Notification.Type.WARNING_MESSAGE);

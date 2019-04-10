@@ -706,7 +706,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			// fillDetailGridData(itemsList);
 		});
 
-		//EVENTOS
+		// EVENTOS
 		detailGrid.getEditor().addSaveListener(e -> changeQuantity(e.getBean().getQuantity()));
 		// txtQuantity.addValueChangeListener(e -> changeQuantity(e.getValue()));
 		// txtQuantity.addBlurListener(e -> changeQuantity(txtQuantity.getValue()));
@@ -1406,7 +1406,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 			// Lote seleccionado en la grid
 			// selectedProduct = detail.getProduct();
-			selectedLot = lot != null ? lot : lotLayout.getSelected();
+			selectedLot = lot;
 
 			// log.info(strLog + "selectedLot:" + selectedLot);
 
