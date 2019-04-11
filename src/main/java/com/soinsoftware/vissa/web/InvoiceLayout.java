@@ -147,6 +147,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	private Window personSubwindow;
 	private Window productSubwindow;
 	private Window lotSubwindow;
+	private Button saveBtn;
 
 	private Person selectedPerson = null;
 	private Product selectedProduct = null;
@@ -308,7 +309,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			newBtn.addClickListener(e -> cleanButtonAction());
 			layout.addComponents(newBtn);
 
-			Button saveBtn = new Button("Guardar", FontAwesome.SAVE);
+			saveBtn = new Button("Guardar", FontAwesome.SAVE);
 			saveBtn.addStyleName("mystyle-btn");
 			saveBtn.addClickListener(e -> saveButtonAction(document));
 			layout.addComponents(saveBtn);
@@ -1186,7 +1187,16 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		try {
 			if (detailLotList.size() > 0) {
 				Double quantity = Double.parseDouble(detail.getQuantity());
+				log.info(strLog + "quantity: " + quantity);
+				
 				DocumentDetailLot detailLotDefault = detailLotList.get(0);
+				// Si la UM del item es diferente a la del lote, se convierte a la del lote				
+				if (!detail.getMeasurementUnit().equals(detailLotDefault.getLot().getMeasurementUnit())) {
+					quantity = convertStockXMU(quantity, detail.getMeasurementUnit(),
+							detailLotDefault.getLot().getMeasurementUnit());
+
+				}
+				
 				if (quantity > detailLotDefault.getLot().getQuantity()) {
 
 					log.info(strLog + "El lote escogido inicialmente es menor para la cantidad seleccionada");
@@ -1204,8 +1214,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 					Double qtyTmp = quantity;
 					for (Lot lotTmp : lots) {
 						if (qtyTmp <= 0.0) {// Si la cant a validar es 0 o negativo pq sobra del lote, Siempre se resta
-											// al
-											// cant de tx - cant lote
+											// al cant de tx - cant lote
 							break;
 						} else {
 							DocumentDetailLot detLot = DocumentDetailLot.builder().documentDetail(detail).lot(lotTmp)
@@ -1233,7 +1242,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 							detailLotMap.add(detLot);
 
 							log.info(strLog + "DetailLot actualizado. initialStockLot: " + detLot.getInitialStockLot()
-									+ ", quantity: " + detLot.getQuantity() + ", finalStockLot"
+									+ ", quantity: " + detLot.getQuantity() + ", finalStockLot: "
 									+ detLot.getFinalStockLot());
 						}
 					}
@@ -1251,7 +1260,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 					detailLotMap.set(pos, detailLotDefault);
 
 					log.info(strLog + "DetailLot actualizado. initialStockLot: " + detailLotDefault.getInitialStockLot()
-							+ ", quantity: " + detailLotDefault.getQuantity() + ", finalStockLot"
+							+ ", quantity: " + detailLotDefault.getQuantity() + ", finalStockLot: "
 							+ detailLotDefault.getFinalStockLot());
 
 				}
@@ -2098,6 +2107,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		addProductBtn.setEnabled(!disable);
 		deleteProductBtn.setEnabled(!disable);
 		detailGrid.getEditor().setEnabled(!disable);
+		saveBtn.setEnabled(!disable);
 	}
 
 	/**
