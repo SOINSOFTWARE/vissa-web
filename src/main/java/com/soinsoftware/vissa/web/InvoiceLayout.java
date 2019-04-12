@@ -1188,21 +1188,22 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			if (detailLotList.size() > 0) {
 				Double quantity = Double.parseDouble(detail.getQuantity());
 				log.info(strLog + "quantity: " + quantity);
-				
+
 				DocumentDetailLot detailLotDefault = detailLotList.get(0);
-				// Si la UM del item es diferente a la del lote, se convierte a la del lote				
+				// Si la UM del item es diferente a la del lote, se convierte a la del lote
 				if (!detail.getMeasurementUnit().equals(detailLotDefault.getLot().getMeasurementUnit())) {
 					quantity = convertStockXMU(quantity, detail.getMeasurementUnit(),
 							detailLotDefault.getLot().getMeasurementUnit());
 
 				}
-				
+
 				if (quantity > detailLotDefault.getLot().getQuantity()) {
 
 					log.info(strLog + "El lote escogido inicialmente es menor para la cantidad seleccionada");
 
 					for (DocumentDetailLot detailLot : detailLotList) {
 						// Se elimina del map de lotes los lotes iniciales para recalcular
+						int pos = detailLotMap.lastIndexOf(detailLot);
 						detailLotMap.remove(detailLot);
 					}
 
@@ -1251,7 +1252,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 					log.info(strLog + "El lote escogido está ok para la cantidad seleccionada");
 
-					int pos = detailLotMap.lastIndexOf(detailLotDefault);
+					int pos = detailLotMap.indexOf(detailLotDefault);
 
 					detailLotDefault.setQuantity(quantity);
 					Double finalStockLot = detailLotDefault.getInitialStockLot() - quantity;
@@ -1585,6 +1586,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 					try {
 
 						log.info(strLog + "transactionType: " + transactionType);
+						log.info(strLog + "product: " + detail.getProduct().getName());
 
 						// Guardar inventario
 						InventoryTransaction inventory = saveInventory(documentEntity, detail);
@@ -1799,6 +1801,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			List<DocumentDetailLot> detailLotList = getDetailLotsByDetail(detailTmp);
 
 			for (DocumentDetailLot detailLot : detailLotList) {
+				Double qty = detailLot.getQuantity();
 				// Consultar lote
 				lot = detailLot.getLot();
 				log.info(strLog + "Lote a actualizar: " + lot);
@@ -1806,14 +1809,14 @@ public class InvoiceLayout extends VerticalLayout implements View {
 				if (transactionType.equals(ETransactionType.ENTRADA)) {
 					// Si la UM es diferente a la UM del lote se debe convertir
 					if (!detail.getMeasurementUnit().equals(lot.getMeasurementUnit())) {
-						quantity = convertStockXMU(quantity, detail.getMeasurementUnit(), lot.getMeasurementUnit());
+						qty = convertStockXMU(qty, detail.getMeasurementUnit(), lot.getMeasurementUnit());
 						log.info(strLog + "quantity convertido: " + quantity);
 					}
 
 					// Para el lote
 					initialStockLot = 0.0;
-					finalStockLot = quantity;
-					quantityLot = quantity;
+					finalStockLot = detailLot.getQuantity();
+					quantityLot = qty;
 
 				} else if (transactionType.equals(ETransactionType.SALIDA)) {
 					initialStockLot = lot.getQuantity();// stock del lote
@@ -1826,16 +1829,16 @@ public class InvoiceLayout extends VerticalLayout implements View {
 						log.info(strLog + "initialStock del lote convertido: " + lot);
 
 						// Convertir quantity de la tx
-						quantity = convertStockXMU(quantity, detail.getMeasurementUnit(), lot.getMeasurementUnit());
+						quantity = convertStockXMU(qty, detail.getMeasurementUnit(), lot.getMeasurementUnit());
 						log.info(strLog + "quantity convertido: " + quantity);
 					}
 
-					finalStockLot = initialStockLot - quantity;
-					quantityLot = finalStockLot;
+					finalStockLot = initialStockLot - qty;
+					quantityLot = qty;
 				}
 
 				log.info(strLog + "initialStockLot: " + initialStockLot);
-				log.info(strLog + "quantityLot:" + quantityLot);
+				log.info(strLog + "quantity del movimiento Lot:" + quantityLot);
 				log.info(strLog + "finalStockLot :" + finalStockLot);
 
 				// Actualizar la cantidad del lote
