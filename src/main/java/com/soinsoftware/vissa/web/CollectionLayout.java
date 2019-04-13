@@ -592,6 +592,8 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 
 			invoicListLayout = new InvoiceReportLayout(ELayoutMode.LIST);
 			invoicListLayout.getCbFilterPaymentStatus().setValue(EPaymentStatus.PENDING);
+			invoicListLayout.getDtfFilterIniDate().setValue(DateUtil.getDefaultIniMonthDateTime());
+			invoicListLayout.refreshGrid();
 
 			invoicListLayout.getGrid().addItemClickListener(listener -> {
 				if (listener.getMouseEventDetails().isDoubleClick())
