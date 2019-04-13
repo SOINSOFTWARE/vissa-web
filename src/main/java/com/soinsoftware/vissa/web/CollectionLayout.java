@@ -528,11 +528,20 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 		return ViewHelper.buildPanel("Buscar por", layout);
 	}
 
+	// Metodo para recargar los registros de la grid
 	private void refreshGrid() {
-		collectionDataProvider.setFilter(collection -> filterGrid(collection));
-		// collectionGrid.getDataProvider().refreshAll();
+		if (collectionDataProvider != null) {
+			collectionDataProvider.setFilter(collection -> filterGrid(collection));
+			// collectionGrid.getDataProvider().refreshAll();
+		}
 	}
 
+	/**
+	 * Metodo para fitrar los registros de la grid
+	 * 
+	 * @param collection
+	 * @return
+	 */
 	private boolean filterGrid(Collection collection) {
 
 		boolean result = false;
@@ -765,9 +774,9 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 		String label = "";
 
 		if (transactionType.equals(ETransactionType.ENTRADA.getName())) {
-			label = "Proveedores";			
+			label = "Proveedores";
 		} else {
-			label = "Clientes";			
+			label = "Clientes";
 		}
 		personSubwindow.setCaption(label);
 		personSubwindow.addCloseListener(e -> closeWindow(personSubwindow));

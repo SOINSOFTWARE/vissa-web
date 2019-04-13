@@ -3,24 +3,30 @@ package com.soinsoftware.vissa.web;
 import static com.soinsoftware.vissa.web.VissaUI.KEY_INVENTORY;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.List;
-import java.util.stream.Collectors;
+
+import org.jsoup.helper.StringUtil;
 
 import com.soinsoftware.vissa.bll.InventoryTransactionBll;
-import com.soinsoftware.vissa.model.Collection;
+import com.soinsoftware.vissa.model.ETransactionType;
 import com.soinsoftware.vissa.model.InventoryTransaction;
 import com.soinsoftware.vissa.model.Product;
+import com.soinsoftware.vissa.util.Commons;
 import com.soinsoftware.vissa.util.DateUtil;
 import com.soinsoftware.vissa.util.ViewHelper;
-import com.vaadin.data.provider.ConfigurableFilterDataProvider;
 import com.vaadin.data.provider.ListDataProvider;
-import com.vaadin.server.SerializablePredicate;
+import com.vaadin.shared.ui.datefield.DateTimeResolution;
 import com.vaadin.ui.AbstractOrderedLayout;
+import com.vaadin.ui.ComboBox;
 import com.vaadin.ui.Component;
+import com.vaadin.ui.DateTimeField;
 import com.vaadin.ui.Grid;
 import com.vaadin.ui.Grid.SelectionMode;
 import com.vaadin.ui.HorizontalLayout;
+import com.vaadin.ui.Notification;
 import com.vaadin.ui.Panel;
 import com.vaadin.ui.TextField;
 import com.vaadin.ui.VerticalLayout;
@@ -32,12 +38,16 @@ public class InventoryLayout extends AbstractEditableLayout<Product> {
 
 	InventoryTransaction invTransaction;
 	private Grid<InventoryTransaction> inventoryGrid;
-	private TextField txtFilterByProdCode;
-	private ConfigurableFilterDataProvider<InventoryTransaction, Void, SerializablePredicate<InventoryTransaction>> filterInvDataProvider;
+	private TextField txtFilterCode;
+	private TextField txtFilterName;
+	private DateTimeField dtfFilterIniDate;
+	private DateTimeField dtfFilterEndDate;
+	private ComboBox<ETransactionType> cbTransactionTypeFilter;
+
+	private ListDataProvider<InventoryTransaction> dataProvider;
 
 	public InventoryLayout() throws IOException {
 		super("Transacciones de inventario", KEY_INVENTORY);
-
 		inventoryBll = InventoryTransactionBll.getInstance();
 	}
 
@@ -49,7 +59,7 @@ public class InventoryLayout extends AbstractEditableLayout<Product> {
 	@Override
 	protected AbstractOrderedLayout buildListView() {
 		VerticalLayout layout = ViewHelper.buildVerticalLayout(false, false);
-		Panel buttonPanel = buildButtonPanelForLists();
+		// Panel buttonPanel = buildButtonPanelForLists();
 		Panel filterPanel = buildFilterPanel();
 		Panel dataPanel = buildGridPanel();
 		layout.addComponents(filterPanel, dataPanel);
@@ -130,9 +140,9 @@ public class InventoryLayout extends AbstractEditableLayout<Product> {
 
 		inventory.sort(comparator.reversed());
 
-		ListDataProvider<InventoryTransaction> dataProvider = new ListDataProvider<>(inventory);
-		filterInvDataProvider = dataProvider.withConfigurableFilter();
-		inventoryGrid.setDataProvider(filterInvDataProvider);
+		dataProvider = new ListDataProvider<>(inventory);
+
+		inventoryGrid.setDataProvider(dataProvider);
 
 	}
 
@@ -156,23 +166,109 @@ public class InventoryLayout extends AbstractEditableLayout<Product> {
 
 	private Panel buildFilterPanel() {
 		HorizontalLayout layout = ViewHelper.buildHorizontalLayout(true, true);
-		txtFilterByProdCode = new TextField("Codigo Producto");
-		txtFilterByProdCode.addStyleName(ValoTheme.TEXTFIELD_TINY);
-		txtFilterByProdCode.addValueChangeListener(e -> refreshGrid());
-		layout.addComponent(txtFilterByProdCode);
+		txtFilterCode = new TextField("Codigo producto");
+		txtFilterCode.addStyleName(ValoTheme.TEXTFIELD_TINY);
+		txtFilterCode.addValueChangeListener(e -> refreshGrid());
+
+		txtFilterName = new TextField("Nombre Producto");
+		txtFilterName.addStyleName(ValoTheme.TEXTFIELD_TINY);
+		txtFilterName.addValueChangeListener(e -> refreshGrid());
+
+		dtfFilterIniDate = new DateTimeField("Fecha inicial");
+		dtfFilterIniDate.setResolution(DateTimeResolution.SECOND);
+		dtfFilterIniDate.setValue(DateUtil.getDefaultIniMonthDateTime());
+		dtfFilterIniDate.setDateFormat(Commons.FORMAT_DATE_TIME);
+		dtfFilterIniDate.setStyleName(ValoTheme.DATEFIELD_TINY);
+		dtfFilterIniDate.setWidth("184px");
+		dtfFilterIniDate.setRequiredIndicatorVisible(true);
+		dtfFilterIniDate.addValueChangeListener(e -> refreshGrid());
+
+		dtfFilterEndDate = new DateTimeField("Fecha final");
+		dtfFilterEndDate.setResolution(DateTimeResolution.SECOND);
+		dtfFilterEndDate.setValue(DateUtil.getDefaultEndDateTime());
+		dtfFilterEndDate.setDateFormat(Commons.FORMAT_DATE_TIME);
+		dtfFilterEndDate.setStyleName(ValoTheme.DATEFIELD_TINY);
+		dtfFilterEndDate.setWidth("184px");
+		dtfFilterEndDate.setRequiredIndicatorVisible(true);
+		dtfFilterEndDate.addValueChangeListener(e -> refreshGrid());
+
+		cbTransactionTypeFilter = new ComboBox<>("Tipo de transacción");
+		cbTransactionTypeFilter.setEmptySelectionAllowed(true);
+		cbTransactionTypeFilter.setEmptySelectionCaption("Seleccione");
+		cbTransactionTypeFilter.setStyleName(ValoTheme.COMBOBOX_TINY);
+		ListDataProvider<ETransactionType> transactionType = new ListDataProvider<>(
+				Arrays.asList(ETransactionType.values()));
+		cbTransactionTypeFilter.setDataProvider(transactionType);
+		cbTransactionTypeFilter.setItemCaptionGenerator(ETransactionType::getName);
+		cbTransactionTypeFilter.addValueChangeListener(e -> refreshGrid());
+
+		layout.addComponents(txtFilterCode, txtFilterName, dtfFilterIniDate, dtfFilterEndDate, cbTransactionTypeFilter);
 		return ViewHelper.buildPanel("Filtrar por", layout);
 	}
 
+	/**
+	 * Metodo para refrescar los registros de la grid
+	 */
 	private void refreshGrid() {
-		filterInvDataProvider.setFilter(filterGrid());
-		inventoryGrid.getDataProvider().refreshAll();
+		if (dataProvider != null) {
+			dataProvider.setFilter(inventory -> filterGrid(inventory));
+		}
 	}
 
-	private SerializablePredicate<InventoryTransaction> filterGrid() {
-		SerializablePredicate<InventoryTransaction> columnPredicate = null;
-		columnPredicate = inventoryTransaction -> (inventoryTransaction.getProduct().getCode().toLowerCase().contains(
-				txtFilterByProdCode.getValue().toLowerCase()) || txtFilterByProdCode.getValue().trim().isEmpty());
-		return columnPredicate;
+	/**
+	 * Metodo para filtrar los registros de la grid
+	 * 
+	 * @param inventory
+	 * @return
+	 */
+	private boolean filterGrid(InventoryTransaction inventory) {
+
+		boolean result = false;
+		try {
+
+			Date iniDateFilter = dtfFilterIniDate.getValue() != null
+					? DateUtil.localDateTimeToDate(dtfFilterIniDate.getValue())
+					: DateUtil.localDateToDate(DateUtil.getDefaultIniMonthDate());
+
+			Date endDateFilter = dtfFilterEndDate.getValue() != null
+					? DateUtil.localDateTimeToDate(dtfFilterEndDate.getValue())
+					: DateUtil.getDefaultEndDate();
+
+			if (endDateFilter.before(iniDateFilter)) {
+				throw new Exception("La fecha final debe ser mayor que la inicial");
+			}
+
+			// Filtro por defecto con fechas
+			result = inventory.getDocument().getDocumentDate().before(endDateFilter)
+					&& inventory.getDocument().getDocumentDate().after(iniDateFilter);
+
+			// Filtrar por código del producto
+			String codeFilter = txtFilterCode.getValue().toUpperCase();
+			if (!StringUtil.isBlank(codeFilter)) {
+				result = result && inventory.getProduct().getName().contains(codeFilter);
+			}
+
+			// Filtrar por nombre del producto
+			String nameFilter = txtFilterName.getValue().toUpperCase();
+			if (!StringUtil.isBlank(nameFilter)) {
+				result = result && inventory.getProduct().getName().contains(nameFilter);
+			}
+
+			// Filtrar por el tipo de transacción
+			ETransactionType transactionFilter = null;
+			if (cbTransactionTypeFilter.getSelectedItem().isPresent()) {
+				transactionFilter = cbTransactionTypeFilter.getSelectedItem().get();
+				if (transactionFilter != null) {
+					result = result && inventory.getTransactionType().equals(transactionFilter);
+				}
+			}
+
+		} catch (Exception e) {
+			ViewHelper.showNotification(e.getMessage(), Notification.Type.WARNING_MESSAGE);
+			e.printStackTrace();
+		}
+		return result;
+
 	}
 
 }

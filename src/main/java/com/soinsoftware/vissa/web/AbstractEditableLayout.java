@@ -102,6 +102,12 @@ public abstract class AbstractEditableLayout<E> extends VerticalLayout implement
 		button.addClickListener(e -> editButtonAction());
 		return button;
 	}
+	
+	protected Button buildButtonForEditAction(String style, String label) {
+		Button button = ViewHelper.buildButton(label, FontAwesome.EDIT, style);
+		button.addClickListener(e -> editButtonAction(label));
+		return button;
+	}
 
 	protected Button buildButtonForDeleteAction(String style) {
 		Button button = ViewHelper.buildButton("Borrar", FontAwesome.ERASER, style);
@@ -129,6 +135,15 @@ public abstract class AbstractEditableLayout<E> extends VerticalLayout implement
 		E entity = getSelected();
 		if (entity != null) {
 			showEditionTab(entity, "Editar", FontAwesome.EDIT);
+		} else {
+			ViewHelper.showNotification("No has seleccionado ningún registro", Notification.Type.WARNING_MESSAGE);
+		}
+	}
+	
+	protected void editButtonAction(String  label) {
+		E entity = getSelected();
+		if (entity != null) {
+			showEditionTab(entity, label, FontAwesome.EDIT);
 		} else {
 			ViewHelper.showNotification("No has seleccionado ningún registro", Notification.Type.WARNING_MESSAGE);
 		}

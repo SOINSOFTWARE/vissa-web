@@ -7,11 +7,14 @@ import java.math.BigInteger;
 import java.util.Set;
 
 import org.apache.log4j.Logger;
+import org.jsoup.helper.StringUtil;
 
 import com.soinsoftware.vissa.bll.TableSequenceBll;
 import com.soinsoftware.vissa.bll.WarehouseBll;
 import com.soinsoftware.vissa.model.TableSequence;
 import com.soinsoftware.vissa.model.Warehouse;
+import com.soinsoftware.vissa.util.Commons;
+import com.soinsoftware.vissa.util.ELayoutMode;
 import com.soinsoftware.vissa.util.ViewHelper;
 import com.vaadin.data.provider.ConfigurableFilterDataProvider;
 import com.vaadin.data.provider.ListDataProvider;
@@ -23,6 +26,7 @@ import com.vaadin.ui.FormLayout;
 import com.vaadin.ui.Grid;
 import com.vaadin.ui.Grid.SelectionMode;
 import com.vaadin.ui.HorizontalLayout;
+import com.vaadin.ui.Label;
 import com.vaadin.ui.Notification;
 import com.vaadin.ui.Panel;
 import com.vaadin.ui.TextField;
@@ -112,6 +116,14 @@ public class WarehouseLayout extends AbstractEditableLayout<Warehouse> {
 
 		layout.addComponent(ViewHelper.buildPanel(null, warehouseGrid));
 		fillGridData();
+
+		warehouseGrid.addItemClickListener(listener -> {
+			if (listener.getMouseEventDetails().isDoubleClick()) {
+				warehouseGrid.select(listener.getItem());
+				editButtonAction();
+			}
+		});
+
 		return ViewHelper.buildPanel(null, layout);
 	}
 
@@ -119,7 +131,7 @@ public class WarehouseLayout extends AbstractEditableLayout<Warehouse> {
 	protected Component buildEditionComponent(Warehouse warehouse) {
 		// Cosultar consecutivo de productos
 		getSequence();
-		VerticalLayout layout = ViewHelper.buildVerticalLayout(true, true);
+		VerticalLayout layout = ViewHelper.buildVerticalLayout(false, false);
 		/// 1. Informacion producto
 		txtCode = new TextField("Código de bodega");
 		txtCode.setWidth("50%");
@@ -131,38 +143,59 @@ public class WarehouseLayout extends AbstractEditableLayout<Warehouse> {
 		txtName = new TextField("Nombre de bodega");
 		txtName.setWidth("50%");
 		txtName.focus();
+		txtName.setRequiredIndicatorVisible(true);
 		txtName.setValue(warehouse != null ? warehouse.getName() : "");
 
 		// ----------------------------------------------------------------------------------
 
 		final FormLayout form = new FormLayout();
 		form.setMargin(true);
-		form.setCaption("Datos del producto");
+
 		form.setCaptionAsHtml(true);
 		form.setSizeFull();
 		form.setWidth("50%");
 		form.addStyleName(ValoTheme.FORMLAYOUT_LIGHT);
 
 		form.addComponents(txtCode, txtName);
+
 		// ---Panel de lotes
+		LotLayout lotPanel = buildLotPanel(warehouse);
+
+		Label whLabel = new Label("Datos de la bodega");
+		whLabel.setStyleName(ValoTheme.LABEL_SMALL);
+
+		Label lotLabel = new Label("Lotes");
+		lotLabel.setStyleName(ValoTheme.LABEL_SMALL);
+
+		layout.addComponents(whLabel, form, lotLabel, lotPanel);
+		return layout;
+	}
+
+	/**
+	 * Metodo para construir panel con lista de lotes
+	 * 
+	 * @return
+	 */
+	private LotLayout buildLotPanel(Warehouse warehouse) {
+		String strLog = "[buildLotPanel] ";
 		LotLayout lotPanel = null;
 
 		try {
-			lotPanel = new LotLayout(warehouse);
-			lotPanel.setCaption("Lotes");
+			Commons.LAYOUT_MODE = ELayoutMode.REPORT;
+			lotPanel = new LotLayout(warehouse);			
 			lotPanel.setMargin(false);
 			lotPanel.setSpacing(false);
 		} catch (IOException e) {
-			log.error("Error al cargar lotes del producto. Exception: " + e);
+			log.error(strLog + "[IOException] " + e);
+			e.printStackTrace();
 		}
 
-		layout.addComponents(form, lotPanel);
-		return layout;
+		return lotPanel;
 	}
 
 	protected Panel buildButtonPanelListMode() {
 		HorizontalLayout layout = ViewHelper.buildHorizontalLayout(true, true);
-		Button btNew = buildButtonForNewAction("");
+		Button btNew = buildButtonForNewAction("mystyle-btn");
 		Button btEdit = buildButtonForEditAction("mystyle-btn");
 		Button btDelete = buildButtonForDeleteAction("mystyle-btn");
 		layout.addComponents(btNew, btEdit, btDelete);
@@ -178,16 +211,64 @@ public class WarehouseLayout extends AbstractEditableLayout<Warehouse> {
 
 	@Override
 	protected void saveButtonAction(Warehouse entity) {
-		Warehouse.Builder warehouseBuilder = null;
-		if (entity == null) {
-			warehouseBuilder = Warehouse.builder();
+		String message = validateRequiredFields();
+		if (!message.isEmpty()) {
+			ViewHelper.showNotification(message, Notification.Type.WARNING_MESSAGE);
 		} else {
-			warehouseBuilder = Warehouse.builder(entity);
+			saveWarehouse(entity);
+		}
+	}
+
+	/**
+	 * Metodo para guardar datos de la bodega
+	 * 
+	 * @param entity
+	 */
+	private void saveWarehouse(Warehouse entity) {
+		String strLog = "[saveWarehouse] ";
+		try {
+			Warehouse.Builder warehouseBuilder = null;
+			if (entity == null) {
+				warehouseBuilder = Warehouse.builder();
+			} else {
+				warehouseBuilder = Warehouse.builder(entity);
+			}
+
+			entity = warehouseBuilder.code(txtCode.getValue()).name(txtName.getValue()).archived(false).build();
+			save(warehouseBll, entity, "Bodega guardada");
+
+			tableSequenceBll.save(tableSequence);
+
+		} catch (Exception e) {
+			log.error(strLog + "[Exception] " + e.getMessage());
+			e.printStackTrace();
+		}
+	}
+
+	/**
+	 * Metodo para validar los campos obligatorios para guardar una bodega
+	 * 
+	 * @return
+	 */
+	private String validateRequiredFields() {
+		String message = "";
+		String character = "|";
+
+		if (StringUtil.isBlank(txtCode.getValue())) {
+			if (!message.isEmpty()) {
+				message = message.concat(character);
+			}
+			message = message.concat("El código es obligatorio");
 		}
 
-		entity = warehouseBuilder.code(txtCode.getValue()).name(txtName.getValue()).archived(false).build();
-		save(warehouseBll, entity, "Bodega guardada");
-		tableSequenceBll.save(tableSequence);
+		if (StringUtil.isBlank(txtName.getValue())) {
+			if (!message.isEmpty()) {
+				message = message.concat(character);
+			}
+			message = message.concat("El nombre es obligatorio");
+		}
+
+		return message;
 	}
 
 	@Override
@@ -206,12 +287,22 @@ public class WarehouseLayout extends AbstractEditableLayout<Warehouse> {
 		save(warehouseBll, entity, "Bodega borrada");
 	}
 
+	/**
+	 * Metodo para construir los campos de filtro
+	 * 
+	 * @return
+	 */
 	private Panel buildFilterPanel() {
 		HorizontalLayout layout = ViewHelper.buildHorizontalLayout(true, true);
-		txFilterByName = new TextField("Nombre");
-		txFilterByName.addValueChangeListener(e -> refreshGrid());
+
 		txFilterByCode = new TextField("Código");
+		txFilterByCode.setStyleName(ValoTheme.TEXTFIELD_TINY);
 		txFilterByCode.addValueChangeListener(e -> refreshGrid());
+
+		txFilterByName = new TextField("Nombre");
+		txFilterByName.setStyleName(ValoTheme.TEXTFIELD_TINY);
+		txFilterByName.addValueChangeListener(e -> refreshGrid());
+
 		layout.addComponents(txFilterByCode, txFilterByName);
 		return ViewHelper.buildPanel("Filtrar por", layout);
 	}

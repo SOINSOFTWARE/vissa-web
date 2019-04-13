@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Set;
 
 import org.apache.log4j.Logger;
+import org.jsoup.helper.StringUtil;
 import org.vaadin.ui.NumberField;
 
 import com.soinsoftware.vissa.bll.DocumentDetailLotBll;
@@ -32,7 +33,9 @@ import com.soinsoftware.vissa.util.ViewHelper;
 import com.vaadin.data.provider.ListDataProvider;
 import com.vaadin.data.provider.Query;
 import com.vaadin.ui.AbstractOrderedLayout;
+import com.vaadin.ui.Alignment;
 import com.vaadin.ui.Button;
+import com.vaadin.ui.CheckBox;
 import com.vaadin.ui.ComboBox;
 import com.vaadin.ui.Component;
 import com.vaadin.ui.DateField;
@@ -76,6 +79,8 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 	private ComboBox<Warehouse> cbWarehouse;
 	private ComboBox<MeasurementUnit> cbMeasurementUnit;
 	private TextField txtProductNameFilter;
+	private ComboBox<Warehouse> txtWarehouseFilter;
+	private CheckBox checkStockFilter;
 
 	private Product product;
 	private Warehouse warehouse;
@@ -136,6 +141,7 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 		muEquivalencesBll = MuEquivalenceBll.getInstance();
 		documentDetailLotBll = DocumentDetailLotBll.getInstance();
 		modeLayout = Commons.LAYOUT_MODE;
+		addListTab();
 
 	}
 
@@ -199,7 +205,8 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 				}).setCaption("Producto");
 			}
 
-			lotGrid.addColumn(Lot::getCode).setCaption("Código");
+			lotGrid.addColumn(Lot::getCode).setCaption("Código Lote");
+
 			columnWarehouse = lotGrid.addColumn(lot -> {
 				if (lot != null && lot.getWarehouse() != null) {
 					return lot.getWarehouse().getName();
@@ -232,8 +239,7 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 
 			lotGrid.addItemClickListener(listener -> {
 				if (listener.getMouseEventDetails().isDoubleClick()) {
-
-					mouseAction(listener.getItem());
+					clickAction(listener.getItem());
 				}
 			});
 
@@ -245,7 +251,7 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 		return ViewHelper.buildPanel(null, lotGrid);
 	}
 
-	private void mouseAction(Lot lot) {
+	private void clickAction(Lot lot) {
 		if (modeLayout.equals(ELayoutMode.NEW)) {
 			if (invoiceLayout != null) {
 				invoiceLayout.selectLot(CommonsUtil.CURRENT_DOCUMENT_DETAIL, lot);
@@ -253,9 +259,8 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 		}
 		if (modeLayout.equals(ELayoutMode.REPORT)) {
 			lotGrid.select(lot);
-			editButtonAction();
+			editButtonAction("Movimientos del lote");
 		}
-
 	}
 
 	protected Panel buildDetailLotGridPanel(Lot lot) {
@@ -299,12 +304,28 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 	}
 
 	private Panel buildFilterPanel() {
-		HorizontalLayout layout = ViewHelper.buildHorizontalLayout(false, true);
+		HorizontalLayout layout = ViewHelper.buildHorizontalLayout(true, true);
 		txtProductNameFilter = new TextField("Nombre producto");
 		txtProductNameFilter.setStyleName(ValoTheme.TEXTFIELD_TINY);
 		txtProductNameFilter.addValueChangeListener(e -> refreshGrid());
 
-		layout.addComponent(txtProductNameFilter);
+		txtWarehouseFilter = new ComboBox<Warehouse>("Bodega");
+		txtWarehouseFilter.setEmptySelectionAllowed(true);
+		txtWarehouseFilter.setEmptySelectionCaption("Seleccione");
+		txtWarehouseFilter.setStyleName(ValoTheme.COMBOBOX_TINY);
+
+		ListDataProvider<Warehouse> warehouseData = new ListDataProvider<>(warehouseBll.selectAll(false));
+		txtWarehouseFilter.setDataProvider(warehouseData);
+		txtWarehouseFilter.setItemCaptionGenerator(Warehouse::getName);
+		txtWarehouseFilter.addValueChangeListener(e -> refreshGrid());
+
+		checkStockFilter = new CheckBox("Stock 0");
+		checkStockFilter.setStyleName(ValoTheme.CHECKBOX_SMALL);
+		checkStockFilter.addValueChangeListener(e -> refreshGrid());
+
+		layout.addComponents(txtProductNameFilter, txtWarehouseFilter, checkStockFilter);
+		layout.setComponentAlignment(checkStockFilter, Alignment.BOTTOM_CENTER);
+
 		return ViewHelper.buildPanel("Filtrar por", layout);
 	}
 
@@ -404,7 +425,7 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 
 	@Override
 	protected void fillGridData() {
-		String strLog = "[fillGridData]";
+		String strLog = "[fillGridData] ";
 		try {
 			List<Lot> lots = null;
 			if (product != null) {
@@ -421,6 +442,7 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 				Comparator<Lot> comparator = (h1, h2) -> new Integer((h1.getCode()))
 						.compareTo(new Integer(h2.getCode()));
 				lots.sort(comparator.reversed());
+
 				dataProvider = new ListDataProvider<>(lots);
 				if (dataProvider != null) {
 					lotGrid.setDataProvider(dataProvider);
@@ -618,7 +640,7 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 
 	@Override
 	protected void delete(Lot entity) {
-		String strLog = "[delete]";
+		String strLog = "[delete] ";
 		try {
 			entity = Lot.builder(entity).archived(true).build();
 			save(lotBll, entity, "Lote borrado");
@@ -628,12 +650,21 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 		}
 	}
 
+	/**
+	 * Metodo para recargar los registros de la grid
+	 */
 	private void refreshGrid() {
 		if (dataProvider != null) {
 			dataProvider.setFilter(lot -> filterGrid(lot));
 		}
 	}
 
+	/**
+	 * Metodo para filtrar los registros de la grid
+	 * 
+	 * @param lot
+	 * @return
+	 */
 	private boolean filterGrid(Lot lot) {
 		String strLog = "[filterGrid] ";
 		boolean result = false;
@@ -641,10 +672,25 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 
 			result = lot.getQuantity() > 0;
 
-			String productNameFilter = txtProductNameFilter != null ? txtProductNameFilter.getValue().trim() : "";
-			result = lot.getQuantity() > 0 && (productNameFilter != null && !productNameFilter.isEmpty()
-					? lot.getProduct().getName().contains(productNameFilter)
-					: true);
+			boolean isZero = checkStockFilter.getValue();
+
+			result = (isZero ? (lot.getQuantity().equals(0.0)) : lot.getQuantity() > 0);
+
+			// Filtro por nombre del producto
+			String productNameFilter = !StringUtil.isBlank(txtProductNameFilter.getValue())
+					? txtProductNameFilter.getValue()
+					: "";
+			if (!StringUtil.isBlank(productNameFilter)) {
+				result = result && lot.getProduct().getName().toUpperCase().contains(productNameFilter.toUpperCase());
+			}
+
+			// Filtro por bodega
+			if (txtWarehouseFilter.getSelectedItem().isPresent()) {
+				Warehouse warehouseFilter = txtWarehouseFilter.getSelectedItem().get();
+				if (warehouseFilter != null) {
+					result = result && lot.getWarehouse().equals(warehouseFilter);
+				}
+			}
 
 		} catch (Exception e) {
 			log.error(strLog + "[Exception]" + e.getMessage());

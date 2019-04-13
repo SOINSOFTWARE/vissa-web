@@ -66,10 +66,12 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 
 	protected static final Logger log = Logger.getLogger(InvoiceReportLayout.class);
 
+	// Bll
 	private final DocumentBll documentBll;
 	private final DocumentTypeBll documentTypeBll;
 	private final PaymentDocumentTypeBll paymentDocumentTypeBll;
 
+	// Components
 	private TextField txtFilterByCode;
 	private ComboBox<DocumentType> cbFilterByType;
 	private TextField txtFilterByPerson;
@@ -81,11 +83,10 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 	private ComboBox<EPaymentStatus> cbFilterPaymentStatus;
 	private Grid<Document> grid;
 	private Button printBtn;
-
-	private ETransactionType transactionType;
-
 	private Window personSubwindow;
 	private PersonLayout personLayout = null;
+
+	private ETransactionType transactionType;
 	private Person personSelected = null;
 	private DocumentType documentType;
 	private FooterRow footer;
@@ -258,10 +259,10 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 		String strLog = "[fillGridData] ";
 		try {
 			List<DocumentType> types = documentTypeBll.select(transactionType);
-			//Consultar los documentospor los tipos del tipo de tx
+			// Consultar los documentospor los tipos del tipo de tx
 			List<Document> documents = documentBll.select(types);
 			documents = documents.stream().sorted(Comparator.comparing(Document::getDocumentDate).reversed())
-				.collect(Collectors.toList());
+					.collect(Collectors.toList());
 			dataProvider = new ListDataProvider<>(documents);
 
 			grid.setDataProvider(dataProvider);
@@ -384,8 +385,8 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 		cbFilterPaymentStatus.setItemCaptionGenerator(EPaymentStatus::getName);
 		cbFilterPaymentStatus.addValueChangeListener(e -> refreshGrid());
 
-		layout.addComponents(txtFilterByPerson, searchPersonBtn, dtfFilterIniDate, dtfFilterEndDate, cbFilterPaymentType,
-				cbFilterPaymentStatus);
+		layout.addComponents(txtFilterByPerson, searchPersonBtn, dtfFilterIniDate, dtfFilterEndDate,
+				cbFilterPaymentType, cbFilterPaymentStatus);
 		layout.setComponentAlignment(searchPersonBtn, Alignment.BOTTOM_CENTER);
 		return ViewHelper.buildPanel("Buscar por", layout);
 	}
@@ -424,12 +425,21 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 		return ViewHelper.buildPanel(null, layout);
 	}
 
+	/**
+	 * Metodo para refrescar los registros de la grid
+	 */
 	public void refreshGrid() {
 		if (dataProvider != null) {
 			dataProvider.setFilter(document -> filterGrid(document));
 		}
 	}
 
+	/**
+	 * Metodo para filtrar los registros de la grid
+	 * 
+	 * @param document
+	 * @return
+	 */
 	private boolean filterGrid(Document document) {
 
 		boolean result = false;
@@ -445,38 +455,35 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 
 			if (endDateFilter.before(iniDateFilter)) {
 				throw new Exception("La fecha final debe ser mayor que la inicial");
-			} else {
-
 			}
-			//Person personFilter = !txtFilterByPerson.isEmpty() ? personSelected : null;
-			String personFilter = txtFilterByPerson.getValue().toUpperCase();
 
-			PaymentType paymentTypeFilter = null;
+			// Por defecto se filtra por fecha
+			result = document.getDocumentDate().before(endDateFilter)
+					&& document.getDocumentDate().after(iniDateFilter);
+
+			// Filtro por tipo de pago			
 			if (cbFilterPaymentType.getSelectedItem().isPresent()) {
-				paymentTypeFilter = cbFilterPaymentType.getSelectedItem().get().getPaymentType();
+				PaymentType paymentTypeFilter = cbFilterPaymentType.getSelectedItem().get().getPaymentType();
+
+				if (paymentTypeFilter != null) {
+					result = result && document.getPaymentType().equals(paymentTypeFilter);
+				}
+
 			}
 
-			EPaymentStatus paymentStatusFilter = null;
+			// Filtro por estado del pago
 			if (cbFilterPaymentStatus.getSelectedItem().isPresent()) {
-				paymentStatusFilter = cbFilterPaymentStatus.getSelectedItem().get();
+				EPaymentStatus paymentStatusFilter = cbFilterPaymentStatus.getSelectedItem().get();
+
+				if (paymentStatusFilter != null) {
+					result = result && (document.getPaymentStatus() != null
+							&& document.getPaymentStatus().equals(paymentStatusFilter.getName()));
+				}
 			}
 
-			result =  document.getDocumentDate().before(endDateFilter)
-							&& document.getDocumentDate().after(iniDateFilter);
-
-			// Filtrar por tipo de pago
-			if (paymentTypeFilter != null) {
-				result = result && document.getPaymentType().equals(paymentTypeFilter);
-			}
-
-			// Filtrar por estado del pago
-			if (paymentStatusFilter != null) {
-				result = result && (document.getPaymentStatus() != null
-						&& document.getPaymentStatus().equals(paymentStatusFilter.getName()));
-			}
-			
-			//Filtrar por el nombre del cliente/proveedor
-			if (personFilter != null && !personFilter.isEmpty()) {
+			// Filtrar por el nombre del cliente/proveedor
+			String personFilter = txtFilterByPerson.getValue().toUpperCase();
+			if (!org.jsoup.helper.StringUtil.isBlank(personFilter)) {
 				Person person = document.getPerson();
 				result = result
 						&& (StringUtil.concatName(person.getName(), person.getLastName())).contains(personFilter);
@@ -585,7 +592,5 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 	public void setDtfFilterEndDate(DateTimeField dtfFilterEndDate) {
 		this.dtfFilterEndDate = dtfFilterEndDate;
 	}
-	
-	
 
 }

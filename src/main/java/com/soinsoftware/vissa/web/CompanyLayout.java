@@ -196,7 +196,12 @@ public class CompanyLayout extends VerticalLayout implements View {
 	private void saveButtonAction(Company entity) {
 		String strLog = "[saveButtonAction] ";
 		try {
-			saveCompany(company);
+			String message = validateRequiredFields();
+			if (!message.isEmpty()) {
+				ViewHelper.showNotification(message, Notification.Type.WARNING_MESSAGE);
+			} else {
+				saveCompany(company);
+			}
 		} catch (Exception e) {
 			log.error(strLog + "[Exception] " + e.getMessage());
 		}
@@ -210,27 +215,23 @@ public class CompanyLayout extends VerticalLayout implements View {
 	private void saveCompany(Company entity) {
 		String strLog = "[saveCompany] ";
 		try {
-			String message = validateRequiredFields();
-			if (!message.isEmpty()) {
-				ViewHelper.showNotification(message, Notification.Type.WARNING_MESSAGE);
+
+			Company.Builder companyBuilder = null;
+			if (entity == null) {
+				companyBuilder = Company.builder();
 			} else {
-				Company.Builder companyBuilder = null;
-				if (entity == null) {
-					companyBuilder = Company.builder();
-				} else {
-					companyBuilder = Company.builder(entity);
-				}
-
-
-				entity = companyBuilder.nit(txtNit.getValue()).name(txtName.getValue())
-						.invoiceResolution(txtInvoiceResolution.getValue()).regimeType(txtRegimeType.getValue())
-						.address(txtAddress.getValue()).phone(txtPhone.getValue()).mobile(txtMobile.getValue())
-						.email(txtEmail.getValue()).website(txtWebsite.getValue()).archived(false).build();
-
-				companyBll.save(entity);
-
-				ViewHelper.showNotification("Datos de la companía guardados", Notification.Type.WARNING_MESSAGE);
+				companyBuilder = Company.builder(entity);
 			}
+
+			entity = companyBuilder.nit(txtNit.getValue()).name(txtName.getValue())
+					.invoiceResolution(txtInvoiceResolution.getValue()).regimeType(txtRegimeType.getValue())
+					.address(txtAddress.getValue()).phone(txtPhone.getValue()).mobile(txtMobile.getValue())
+					.email(txtEmail.getValue()).website(txtWebsite.getValue()).archived(false).build();
+
+			companyBll.save(entity);
+
+			ViewHelper.showNotification("Datos de la companía guardados", Notification.Type.WARNING_MESSAGE);
+
 		} catch (Exception e) {
 			log.error(strLog + "[Exception] " + e.getMessage());
 			e.printStackTrace();
