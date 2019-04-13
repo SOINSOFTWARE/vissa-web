@@ -142,19 +142,32 @@ public class RoleLayout extends AbstractEditableLayout<Role> {
 			}
 		}).setCaption("Menu");
 
-		// Columna cantidad editable
+		//
 		CheckBox checkView = new CheckBox("SI", false);
 		checkView.setStyleName("checked-checkbox");
 
 		Binder<Permission> binder = permissionGrid.getEditor().getBinder();
 		Binding<Permission, Boolean> doneBinding = binder.bind(checkView, Permission::canView, Permission::setView);
-		 permissionGrid.addColumn(Permission::canView).setCaption("Ver").setEditorBinding(doneBinding);
-	//	permissionGrid.addColumn(Permission::canView).setCaption("Ver")
-		//		.setEditorComponent(new CheckBox(), Permission::setView).setEditable(true);
+		permissionGrid.addColumn(Permission::canView).setCaption("Ver").setEditorBinding(doneBinding);
+		// permissionGrid.addColumn(Permission::canView).setCaption("Ver")
+		// .setEditorComponent(new CheckBox(), Permission::setView).setEditable(true);
 
 		// permissionGrid.addColumn(Permission::canView).setCaption("Ver");
-		permissionGrid.addColumn(Permission::canEdit).setCaption("Editar");
-		permissionGrid.addColumn(Permission::canDelete).setCaption("Eliminar");
+
+		//
+		CheckBox checkEdit = new CheckBox("SI", false);
+		checkEdit.setStyleName("checked-checkbox");
+		Binder<Permission> editBinder = permissionGrid.getEditor().getBinder();
+		Binding<Permission, Boolean> editBinding = editBinder.bind(checkEdit, Permission::canEdit, Permission::setEdit);
+		permissionGrid.addColumn(Permission::canEdit).setCaption("Editar").setEditorBinding(editBinding);
+
+		CheckBox checkDelete = new CheckBox("SI", false);
+		checkEdit.setStyleName("checked-checkbox");
+		Binder<Permission> deleteBinder = permissionGrid.getEditor().getBinder();
+		Binding<Permission, Boolean> deleteBinding = deleteBinder.bind(checkDelete, Permission::canDelete,
+				Permission::setDelete);
+		permissionGrid.addColumn(Permission::canDelete).setCaption("Eliminar").setEditorBinding(deleteBinding);
+
 		permissionGrid.getEditor().setEnabled(true);
 
 		layout.addComponents(ViewHelper.buildPanel(null, permissionGrid));
@@ -216,16 +229,15 @@ public class RoleLayout extends AbstractEditableLayout<Role> {
 
 	@Override
 	protected void saveButtonAction(Role entity) {
-		Role.Builder warehouseBuilder = null;
+		Role.Builder roleBuilder = null;
 		if (entity == null) {
-			warehouseBuilder = Role.builder();
+			roleBuilder = Role.builder();
 		} else {
-			warehouseBuilder = Role.builder(entity);
+			roleBuilder = Role.builder(entity);
 		}
 
-		entity = warehouseBuilder.name(txtName.getValue()).archived(false).build();
+		entity = roleBuilder.name(txtName.getValue()).archived(false).build();
 		save(roleBll, entity, "Rol guardado");
-		tableSequenceBll.save(tableSequence);
 
 	}
 

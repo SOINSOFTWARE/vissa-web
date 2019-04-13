@@ -342,7 +342,7 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 
 		dtfFilterIniDate = new DateTimeField("Fecha inicial");
 		dtfFilterIniDate.setResolution(DateTimeResolution.SECOND);
-		dtfFilterIniDate.setValue(DateUtil.getDefaultIniMonthDateTime());
+		dtfFilterIniDate.setValue(DateUtil.getDefaultIniDate());
 		dtfFilterIniDate.setDateFormat(Commons.FORMAT_DATE_TIME);
 		dtfFilterIniDate.setStyleName(ValoTheme.DATEFIELD_TINY);
 		dtfFilterIniDate.setWidth("184px");
@@ -424,7 +424,7 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 		return ViewHelper.buildPanel(null, layout);
 	}
 
-	private void refreshGrid() {
+	public void refreshGrid() {
 		if (dataProvider != null) {
 			dataProvider.setFilter(document -> filterGrid(document));
 		}

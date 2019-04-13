@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Calendar;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
@@ -18,7 +17,6 @@ import java.util.stream.Collectors;
 
 import javax.persistence.PersistenceException;
 
-import org.apache.commons.lang.time.DateUtils;
 import org.apache.log4j.Logger;
 import org.hibernate.HibernateException;
 import org.springframework.transaction.annotation.Transactional;
@@ -230,7 +228,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 		this.user = getSession().getAttribute(User.class);
 		this.role = user.getRole();
-		this.permissionUtil = new PermissionUtil(user.getRole().getPermissions());
+		this.permissionUtil = new PermissionUtil(this.role.getPermissions());
 		// setMargin(true);
 		String title = "";
 		if (transactionType.equals(ETransactionType.ENTRADA)) {
@@ -989,6 +987,26 @@ public class InvoiceLayout extends VerticalLayout implements View {
 					selectPerson(listener.getItem());
 			});
 
+			// Evento de enter para grid
+			personLayout.getGrid()
+					.addShortcutListener(new ShortcutListener("search person", ShortcutAction.KeyCode.ENTER, null) {
+						private static final long serialVersionUID = 8741523733731956234L;
+
+						@SuppressWarnings("unchecked")
+						@Override
+						public void handleAction(Object sender, Object target) {
+							try {
+								if (((Grid<Person>) target).equals(personLayout.getGrid())) {
+									selectPerson(personLayout.getSelected());
+								}
+
+							} catch (Exception e) {
+								log.error(
+										"[search person][ShortcutListener][handleAction][Exception] " + e.getMessage());
+							}
+						}
+					});
+
 		} catch (IOException e) {
 			log.error("Error al cargar lista de personas. Exception:" + e);
 		}
@@ -1203,7 +1221,6 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 					for (DocumentDetailLot detailLot : detailLotList) {
 						// Se elimina del map de lotes los lotes iniciales para recalcular
-						int pos = detailLotMap.lastIndexOf(detailLot);
 						detailLotMap.remove(detailLot);
 					}
 
@@ -1533,13 +1550,13 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			if (!message.isEmpty()) {
 				message = message.concat(character);
 			}
-			message = message.concat("El tercero obligatorio");
+			message = message.concat("El tercero es obligatorio");
 		}
 		if (dtfDocumentDate.getValue() == null) {
 			if (!message.isEmpty()) {
 				message = message.concat(character);
 			}
-			message = message.concat("La fecha obligatoria");
+			message = message.concat("La fecha es obligatoria");
 		}
 
 		if (!cbPaymentType.getSelectedItem().isPresent()) {
@@ -2506,17 +2523,16 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	 * 
 	 * Actualizar conciliación (cuadre de caja) por día y empleado
 	 */
-	private void saveConciliation() {
-		String strLog = "[saveConciliation] ";
-		try {
-			Date conciliationDate = DateUtil.localDateTimeToDate(dtfDocumentDate.getValue());
-			conciliationDate = DateUtils.truncate(conciliationDate, Calendar.DATE);
-			new CashConciliationLayout().saveDailyConciliation(user, conciliationDate);
-		} catch (IOException e) {
-			log.error(strLog + "Error al actualizar conciliación: " + e.getMessage());
-			e.printStackTrace();
-		}
-	}
+	/*
+	 * private void saveConciliation() { String strLog = "[saveConciliation] "; try
+	 * { Date conciliationDate =
+	 * DateUtil.localDateTimeToDate(dtfDocumentDate.getValue()); conciliationDate =
+	 * DateUtils.truncate(conciliationDate, Calendar.DATE); new
+	 * CashConciliationLayout().saveDailyConciliation(user, conciliationDate); }
+	 * catch (IOException e) { log.error(strLog +
+	 * "Error al actualizar conciliación: " + e.getMessage()); e.printStackTrace();
+	 * } }
+	 */
 
 	public void exit() {
 		log.info("Exit");
