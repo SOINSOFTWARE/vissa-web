@@ -24,6 +24,8 @@ import com.vaadin.annotations.Theme;
 import com.vaadin.annotations.VaadinServletConfiguration;
 import com.vaadin.data.TreeData;
 import com.vaadin.data.provider.TreeDataProvider;
+import com.vaadin.event.ShortcutAction;
+import com.vaadin.event.ShortcutListener;
 import com.vaadin.navigator.Navigator;
 import com.vaadin.server.FileResource;
 import com.vaadin.server.FontAwesome;
@@ -156,10 +158,10 @@ public class VissaUI extends UI {
 
 		if (permissionUtil.canView(KEY_INVENTORY)) {
 			treeData.addItem(null, KEY_INVENTORY);
-			if (permissionUtil.canView(KEY_PRODUCTS)) {				
+			if (permissionUtil.canView(KEY_PRODUCTS)) {
 				treeData.addItem(KEY_INVENTORY, KEY_PRODUCTS);
 			}
-			if (permissionUtil.canView(KEY_LOTS)) {				
+			if (permissionUtil.canView(KEY_LOTS)) {
 				treeData.addItem(KEY_INVENTORY, KEY_LOTS);
 			}
 			if (permissionUtil.canView(KEY_WAREHOUSE)) {
@@ -193,7 +195,7 @@ public class VissaUI extends UI {
 			}
 		}
 
-		if (permissionUtil.canView(KEY_COLLECTION)) {			
+		if (permissionUtil.canView(KEY_COLLECTION)) {
 			treeData.addItem(null, KEY_COLLECTION);
 		}
 
@@ -355,7 +357,7 @@ public class VissaUI extends UI {
 		if (item.equals(KEY_COLLECTION)) {
 			CommonsUtil.TRANSACTION_TYPE = ETransactionType.SALIDA.getName();
 		}
-		
+
 		if (item.equals(KEY_PRODUCTS)) {
 			Commons.LAYOUT_MODE = ELayoutMode.ALL;
 		}
@@ -436,9 +438,50 @@ public class VissaUI extends UI {
 		contentLayout.addComponent(layout);
 		contentLayout.setComponentAlignment(layout, Alignment.TOP_CENTER);
 
-		Panel loginPanel = new Panel("<center><h1>Inicio de sesión - Vissa</h1></center>");
+		Panel loginPanel = new Panel("<center><h1>Vissa</h1></center>");
 		loginPanel.addStyleName("well");
 		loginPanel.setContent(contentLayout);
+
+		txtPassword.addShortcutListener(new ShortcutListener("Enter form", ShortcutAction.KeyCode.ENTER, null) {
+			private static final long serialVersionUID = 7141523733731956234L;
+
+			@Override
+			public void handleAction(Object sender, Object target) {
+				try {
+
+					if (((PasswordField) target).equals(txtPassword)) {
+						authenticate(txtUsername.getValue(), txtPassword.getValue());
+					}
+					if (((Panel) target).equals(loginPanel)) {
+						authenticate(txtUsername.getValue(), txtPassword.getValue());
+					}
+
+				} catch (Exception e) {
+					log.error("[FormLogin][Enter][Exception] " + e.getMessage());
+				}
+			}
+		});
+
+		loginPanel.addShortcutListener(new ShortcutListener("Enter form", ShortcutAction.KeyCode.ENTER, null) {
+			private static final long serialVersionUID = 7141523733631956234L;
+
+			@Override
+			public void handleAction(Object sender, Object target) {
+				try {
+					if (((Panel) target).equals(loginPanel)) {
+						authenticate(txtUsername.getValue(), txtPassword.getValue());
+					}
+
+					if (((PasswordField) target).equals(txtPassword)) {
+						authenticate(txtUsername.getValue(), txtPassword.getValue());
+					}
+
+				} catch (Exception e) {
+					log.error("[FormLogin][Enter][Exception] " + e.getMessage());
+				}
+			}
+		});
+
 		setContent(loginPanel);
 	}
 

@@ -11,6 +11,8 @@ import com.soinsoftware.vissa.bll.UserBll;
 import com.soinsoftware.vissa.exception.ModelValidationException;
 import com.soinsoftware.vissa.model.User;
 import com.soinsoftware.vissa.util.ViewHelper;
+import com.vaadin.event.ShortcutAction;
+import com.vaadin.event.ShortcutListener;
 import com.vaadin.navigator.View;
 import com.vaadin.navigator.ViewChangeListener.ViewChangeEvent;
 import com.vaadin.server.FontAwesome;
@@ -20,6 +22,7 @@ import com.vaadin.ui.HorizontalLayout;
 import com.vaadin.ui.Label;
 import com.vaadin.ui.Notification;
 import com.vaadin.ui.Panel;
+import com.vaadin.ui.TextField;
 import com.vaadin.ui.VerticalLayout;
 import com.vaadin.ui.themes.ValoTheme;
 
@@ -96,8 +99,6 @@ public class CashChangeLayout extends VerticalLayout implements View {
 
 	public void buildComponents() {
 
-		System.out.println("enter");
-
 		VerticalLayout layout = ViewHelper.buildVerticalLayout(false, false);
 
 		Label tittle = new Label("Cambio");
@@ -166,6 +167,21 @@ public class CashChangeLayout extends VerticalLayout implements View {
 		setFieldValues();
 		FormLayout changeForm = ViewHelper.buildForm("Cambio", false, false);
 		changeForm.addComponents(txtTotalInvoice, txtPaidAmount, txtChange);
+		
+		changeForm.addShortcutListener(new ShortcutListener("Enter for", ShortcutAction.KeyCode.ENTER, null) {
+			private static final long serialVersionUID = 7441523733731956234L;
+			@Override
+			public void handleAction(Object sender, Object target) {
+				try {
+					if (((TextField) target).equals(txtPaidAmount)) {
+						saveButtonAction();
+					}
+				} catch (Exception e) {
+					log.error("[Form][ShortcutListener][handleAction][Exception] " + e.getMessage());
+				}
+			}
+		});
+		
 		Panel userPanel = ViewHelper.buildPanel("", changeForm);
 
 		return userPanel;
