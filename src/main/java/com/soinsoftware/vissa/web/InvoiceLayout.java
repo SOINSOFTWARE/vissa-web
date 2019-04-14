@@ -161,7 +161,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 	private PdfGenerator pdfGenerator = null;
 
-	private List<DocumentDetailLot> detailLotMap;
+	private List<DocumentDetailLot> detailLotCollection;
 
 	private ETransactionType transactionType;
 
@@ -214,7 +214,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		itemsList = new ArrayList<DocumentDetail>();
 		transactionType = ETransactionType.valueOf(CommonsUtil.TRANSACTION_TYPE);
 		company = companyBll.selectAll().get(0);
-		detailLotMap = new ArrayList<DocumentDetailLot>();
+		detailLotCollection = new ArrayList<DocumentDetailLot>();
 
 	}
 
@@ -377,7 +377,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		cbDocumentType.setDataProvider(docTypeDataProv);
 		cbDocumentType.setItemCaptionGenerator(DocumentType::getName);
 		cbDocumentType.addValueChangeListener(e -> {
-			getNextDocumentNumber(cbDocumentType.getValue());
+			getNextDocumentNumber(e.getValue());
 		});
 
 		txtDocNumber = new TextField("N° de factura");
@@ -824,8 +824,8 @@ public class InvoiceLayout extends VerticalLayout implements View {
 								Double finalStockLot = qty;
 								DocumentDetailLot detailLotTmp = DocumentDetailLot.builder(detailLot).quantity(qty)
 										.finalStockLot(finalStockLot).build();
-								int pos = detailLotMap.indexOf(detailLot);
-								detailLotMap.set(pos, detailLotTmp);
+								int pos = detailLotList.indexOf(detailLot);
+								detailLotList.set(pos, detailLotTmp);
 								correct = true;
 							} else if (transactionType.equals(ETransactionType.SALIDA)) {
 								currentDetail.setQuantity(quantity);
@@ -864,14 +864,14 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	 * @return
 	 */
 	private List<DocumentDetailLot> getDetailLotsByDetail(DocumentDetail detail) {
-		List<DocumentDetailLot> detailLotList = new ArrayList<>();
-		for (DocumentDetailLot detailLot : detailLotMap) {
+		List<DocumentDetailLot> detailLots = new ArrayList<>();
+		for (DocumentDetailLot detailLot : detailLotCollection) {
 			if (detail.equals(detailLot.getDocumentDetail())) {
-				detailLotList.add(detailLot);
+				detailLots.add(detailLot);
 			}
 		}
 
-		return detailLotList;
+		return detailLots;
 	}
 
 	/**
@@ -1007,14 +1007,15 @@ public class InvoiceLayout extends VerticalLayout implements View {
 						}
 					});
 
+			Panel personPanel = ViewHelper.buildPanel(null, personLayout);
+			subContent.addComponents(personPanel);
+
+			personSubwindow.setContent(subContent);
+			getUI().addWindow(personSubwindow);
+
 		} catch (IOException e) {
 			log.error("Error al cargar lista de personas. Exception:" + e);
 		}
-		Panel personPanel = ViewHelper.buildPanel(null, personLayout);
-		subContent.addComponents(personPanel);
-
-		personSubwindow.setContent(subContent);
-		getUI().addWindow(personSubwindow);
 
 	}
 
@@ -1048,7 +1049,9 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	private void getNextDocumentNumber(DocumentType docType) {
 		if (docType != null) {
 			DocumentType.Builder docTypeBuilder = DocumentType.builder(docType);
+			//Obtener tipo de documento
 			documentType = docTypeBuilder.sequence(docType.getSequence() + 1).build();
+			//Obtener siguiente documento
 			Document document = documentBll.select(String.valueOf(documentType.getSequence()), docType);
 			if (document == null) {
 				txtDocNumber.setValue(String.valueOf(documentType.getSequence()));
@@ -1200,6 +1203,11 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		}
 	}
 
+	/**
+	 * Metodo para validar el lote asociado a un item de factura
+	 * @param detail
+	 * @param detailLotList
+	 */
 	private void validateLot(DocumentDetail detail, List<DocumentDetailLot> detailLotList) {
 		String strLog = "[validateLot] ";
 		try {
@@ -1207,6 +1215,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 				Double quantity = Double.parseDouble(detail.getQuantity());
 				log.info(strLog + "quantity: " + quantity);
 
+				//Primer lote por defecto para validar el stock
 				DocumentDetailLot detailLotDefault = detailLotList.get(0);
 				// Si la UM del item es diferente a la del lote, se convierte a la del lote
 				if (!detail.getMeasurementUnit().equals(detailLotDefault.getLot().getMeasurementUnit())) {
@@ -1221,7 +1230,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 					for (DocumentDetailLot detailLot : detailLotList) {
 						// Se elimina del map de lotes los lotes iniciales para recalcular
-						detailLotMap.remove(detailLot);
+						detailLotCollection.remove(detailLot);
 					}
 
 					// Se bucan los nuevos lotes con stock ordenados de fecha de creación asc
@@ -1257,7 +1266,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 									.build();
 							qtyTmp = diff;
 
-							detailLotMap.add(detLot);
+							detailLotCollection.add(detLot);
 
 							log.info(strLog + "DetailLot actualizado. initialStockLot: " + detLot.getInitialStockLot()
 									+ ", quantity: " + detLot.getQuantity() + ", finalStockLot: "
@@ -1269,13 +1278,13 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 					log.info(strLog + "El lote escogido está ok para la cantidad seleccionada");
 
-					int pos = detailLotMap.indexOf(detailLotDefault);
+					int pos = detailLotCollection.indexOf(detailLotDefault);
 
 					detailLotDefault.setQuantity(quantity);
 					Double finalStockLot = detailLotDefault.getInitialStockLot() - quantity;
 					detailLotDefault.setFinalStockLot(finalStockLot);
 
-					detailLotMap.set(pos, detailLotDefault);
+					detailLotCollection.set(pos, detailLotDefault);
 
 					log.info(strLog + "DetailLot actualizado. initialStockLot: " + detailLotDefault.getInitialStockLot()
 							+ ", quantity: " + detailLotDefault.getQuantity() + ", finalStockLot: "
@@ -1370,7 +1379,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			DocumentDetailLot detailLot = DocumentDetailLot.builder().documentDetail(detail).lot(lot)
 					.initialStockLot(initialStock).quantity(quantity).finalStockLot(finalStock).build();
 
-			detailLotMap.add(detailLot);
+			detailLotCollection.add(detailLot);
 		}
 	}
 
@@ -2373,6 +2382,12 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 	}
 
+	/**
+	 * Metodo para actualizar el campo cantidad en el detalle de factura
+	 * @param value
+	 * @param sourceMU
+	 * @param targetMU
+	 */
 	private void setQuantityComponent(Double value, MeasurementUnit sourceMU, MeasurementUnit targetMU) {
 		// Binding de cantidad
 
