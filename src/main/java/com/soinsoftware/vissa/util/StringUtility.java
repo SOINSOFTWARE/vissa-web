@@ -1,6 +1,6 @@
 package com.soinsoftware.vissa.util;
 
-public class StringUtil {
+public class StringUtility {
 
 	/**
 	 * Metodo para concatenar nombre y apellido
