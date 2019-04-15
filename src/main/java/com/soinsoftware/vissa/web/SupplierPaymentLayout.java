@@ -35,7 +35,7 @@ import com.soinsoftware.vissa.util.Commons;
 import com.soinsoftware.vissa.util.DateUtil;
 import com.soinsoftware.vissa.util.ELayoutMode;
 import com.soinsoftware.vissa.util.NumericUtil;
-import com.soinsoftware.vissa.util.StringUtil;
+import com.soinsoftware.vissa.util.StringUtility;
 import com.soinsoftware.vissa.util.ViewHelper;
 import com.vaadin.data.provider.ListDataProvider;
 import com.vaadin.data.provider.Query;
@@ -551,7 +551,7 @@ public class SupplierPaymentLayout extends AbstractEditableLayout<Collection> {
 			if (personFilter != null && !personFilter.isEmpty()) {
 				Person person = collection.getDocument().getPerson();
 				result = result
-						&& (StringUtil.concatName(person.getName(), person.getLastName())).contains(personFilter);
+						&& (StringUtility.concatName(person.getName(), person.getLastName())).contains(personFilter);
 			}
 
 		} catch (Exception e) {

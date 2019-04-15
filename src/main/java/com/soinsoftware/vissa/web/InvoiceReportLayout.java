@@ -30,7 +30,7 @@ import com.soinsoftware.vissa.model.PersonType;
 import com.soinsoftware.vissa.util.Commons;
 import com.soinsoftware.vissa.util.DateUtil;
 import com.soinsoftware.vissa.util.ELayoutMode;
-import com.soinsoftware.vissa.util.StringUtil;
+import com.soinsoftware.vissa.util.StringUtility;
 import com.soinsoftware.vissa.util.ViewHelper;
 import com.vaadin.data.provider.ListDataProvider;
 import com.vaadin.data.provider.Query;
@@ -194,7 +194,7 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 
 			personColumn = grid.addColumn(document -> {
 				if (document.getPerson() != null) {
-					return StringUtil.concatName(document.getPerson().getName(), document.getPerson().getLastName());
+					return StringUtility.concatName(document.getPerson().getName(), document.getPerson().getLastName());
 				} else {
 					return null;
 				}
@@ -486,7 +486,7 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 			if (!org.jsoup.helper.StringUtil.isBlank(personFilter)) {
 				Person person = document.getPerson();
 				result = result
-						&& (StringUtil.concatName(person.getName(), person.getLastName())).contains(personFilter);
+						&& (StringUtility.concatName(person.getName(), person.getLastName())).contains(personFilter);
 			}
 		} catch (Exception e) {
 			ViewHelper.showNotification(e.getMessage(), Notification.Type.WARNING_MESSAGE);

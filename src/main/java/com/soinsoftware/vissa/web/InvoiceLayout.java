@@ -1705,7 +1705,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 				finalStock = initialStock + quantity;// Se suma al inventario
 				finalStockMU = finalStock; // UM
 
-				log.info(strLog + "finalStock: " + finalStock);
+				log.info(strLog + "finalStock: " + finalStockMU);
 
 				// Si la UM es diferente a la UM principal se debe convertir
 				if (!detail.getMeasurementUnit().equals(detail.getProduct().getMeasurementUnit())) {

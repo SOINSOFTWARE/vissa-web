@@ -165,10 +165,11 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 			Panel buttonPanel = buildButtonPanelForLists();
 			layout.addComponent(buttonPanel);
 		}
-		if (modeLayout != null && modeLayout.equals(ELayoutMode.REPORT)) {
-			Panel filterPanel = buildFilterPanel();
-			layout.addComponent(filterPanel);
-		}
+		// if (modeLayout != null && modeLayout.equals(ELayoutMode.REPORT)) {
+		Panel filterPanel = buildFilterPanel();
+
+		// }
+		layout.addComponent(filterPanel);
 		Panel dataPanel = buildGridPanel();
 		layout.addComponent(dataPanel);
 		this.setSpacing(false);
@@ -479,7 +480,7 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 
 	@Override
 	protected void saveButtonAction(Lot entity) {
-		String strLog = "[saveButtonAction]";
+		String strLog = "[saveButtonAction] ";
 		String confirmMsg = null;
 		boolean isNew = false;
 		try {
@@ -513,27 +514,29 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 					invoiceLayout.getDetailGrid().focus();
 				} else {
 					// Guardar el lote
-					save(lotBll, lot, null);
-					log.info("Lote guardado: " + lot);
+					save(lotBll, lot, null);			
 
-					// Actualizar stock del product
-					product.setStock(totalStock);
-					product.setStockDate(new Date());
-					productBll.save(product);
-					log.info("Stock actualizado: " + totalStock);
+					if (!hasError) {
+						log.info(strLog + "Lote guardado: " + lot);
+						// Actualizar stock del product
+						product.setStock(totalStock);
+						product.setStockDate(new Date());
+						productBll.save(product);
+						log.info(strLog + "Stock actualizado: " + totalStock);
 
-					// Actualizar el stock por cada UM del producto
-					updateStockByMU(measurementUnit);
+						// Actualizar el stock por cada UM del producto
+						updateStockByMU(measurementUnit);
 
-					if (productLayout != null && !productLayout.isShowConfirmMessage()) {
-						confirmMsg = "Producto guardado con éxito";
-					} else {
-						confirmMsg = "Lote guardado";
-					}
+						if (productLayout != null && !productLayout.isShowConfirmMessage()) {
+							confirmMsg = "Producto guardado con éxito";
+						} else {
+							confirmMsg = "Lote guardado";
+						}
 
-					ViewHelper.showNotification(confirmMsg, Notification.Type.WARNING_MESSAGE);
-					if (productLayout != null) {
-						productLayout.updateProductLayout(product);
+						ViewHelper.showNotification(confirmMsg, Notification.Type.WARNING_MESSAGE);
+						if (productLayout != null) {
+							productLayout.updateProductLayout(product);
+						}
 					}
 
 				}
@@ -542,6 +545,7 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 
 		} catch (Exception e) {
 			log.error(strLog + "[Exception]" + e.getMessage());
+			e.printStackTrace();
 			ViewHelper.showNotification("Se generó un error al guardar el lote", Notification.Type.ERROR_MESSAGE);
 		}
 	}
@@ -672,7 +676,11 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 
 			result = lot.getQuantity() > 0;
 
-			boolean isZero = checkStockFilter.getValue();
+			boolean isZero = false;
+
+			if (checkStockFilter != null) {
+				isZero = checkStockFilter.getValue();
+			}
 
 			result = (isZero ? (lot.getQuantity().equals(0.0)) : lot.getQuantity() > 0);
 
