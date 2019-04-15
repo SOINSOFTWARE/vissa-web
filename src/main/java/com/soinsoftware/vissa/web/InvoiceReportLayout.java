@@ -401,8 +401,9 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 			txtQuantity.setStyleName(ValoTheme.TEXTFIELD_TINY);
 
 			txtTotal = new TextField("Total:");
-			txtTotal.setReadOnly(true);
+			txtTotal.setReadOnly(true);			
 			txtTotal.setStyleName(ValoTheme.TEXTFIELD_TINY);
+			
 
 			String fileName = "Reporte" + documentType.getName().replaceAll(" ", "");
 			File fileTemp = File.createTempFile(fileName, ".xlsx");

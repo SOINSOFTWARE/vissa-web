@@ -235,6 +235,9 @@ public class VissaUI extends UI {
 		menu.addComponent(buildTopLayout());
 		menu.addComponent(buildShowMenuButton(menu));
 		menu.addComponent(buildMenuBar());
+		Label label = new Label("Punto de venta 1: Salsamentaria");
+		label.addStyleName("user-menu");		
+		menu.addComponent(label);
 		menu.addComponent(menuItemsLayout);
 
 		menu.setWidth("100%");
