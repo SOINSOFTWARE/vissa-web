@@ -254,7 +254,7 @@ public class EgressLayout extends AbstractEditableLayout<Egress> {
 			// Guardar egreso (gasto)
 			saveEgress(entity);
 			// Actualizar conciliación (cuadre de caja) por día y empleado
-			saveConciliation();
+			//saveConciliation();
 		}
 
 	}
@@ -441,16 +441,15 @@ public class EgressLayout extends AbstractEditableLayout<Egress> {
 	 * 
 	 * Actualizar conciliación (cuadre de caja) por día y empleado
 	 */
-	private void saveConciliation() {
-		String strLog = "[saveConciliation] ";
-		try {
-			Date conciliationDate = DateUtil.localDateTimeToDate(dtfEgressDate.getValue());
-			conciliationDate = DateUtils.truncate(conciliationDate, Calendar.DATE);
-			new CashConciliationLayout().saveDailyConciliation(user, conciliationDate);
-		} catch (IOException e) {
-			log.error(strLog + "Error al actualizar conciliación: " + e.getMessage());
-			e.printStackTrace();
-		}
-	}
+	/*
+	 * private void saveConciliation() { String strLog = "[saveConciliation] "; try
+	 * { Date conciliationDate =
+	 * DateUtil.localDateTimeToDate(dtfEgressDate.getValue()); conciliationDate =
+	 * DateUtils.truncate(conciliationDate, Calendar.DATE); new
+	 * CashConciliationLayout().saveDailyConciliation(user, conciliationDate); }
+	 * catch (IOException e) { log.error(strLog +
+	 * "Error al actualizar conciliación: " + e.getMessage()); e.printStackTrace();
+	 * } }
+	 */
 
 }

@@ -36,7 +36,7 @@ import com.soinsoftware.vissa.util.Commons;
 import com.soinsoftware.vissa.util.DateUtil;
 import com.soinsoftware.vissa.util.ELayoutMode;
 import com.soinsoftware.vissa.util.NumericUtil;
-import com.soinsoftware.vissa.util.StringUtil;
+import com.soinsoftware.vissa.util.StringUtility;
 import com.soinsoftware.vissa.util.ViewHelper;
 import com.vaadin.data.provider.ListDataProvider;
 import com.vaadin.data.provider.Query;
@@ -445,17 +445,16 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 	 * 
 	 * Actualizar conciliación (cuadre de caja) por día y empleado
 	 */
-	private void saveConciliation() {
-		String strLog = "[saveConciliation] ";
-		try {
-			Date conciliationDate = DateUtil.localDateTimeToDate(dtfCollectionDate.getValue());
-			conciliationDate = DateUtils.truncate(conciliationDate, Calendar.DATE);
-			new CashConciliationLayout().saveDailyConciliation(user, conciliationDate);
-		} catch (IOException e) {
-			log.error(strLog + "Error al actualizar conciliación: " + e.getMessage());
-			e.printStackTrace();
-		}
-	}
+	/*
+	 * private void saveConciliation() { String strLog = "[saveConciliation] "; try
+	 * { Date conciliationDate =
+	 * DateUtil.localDateTimeToDate(dtfCollectionDate.getValue()); conciliationDate
+	 * = DateUtils.truncate(conciliationDate, Calendar.DATE); new
+	 * CashConciliationLayout().saveDailyConciliation(user, conciliationDate); }
+	 * catch (IOException e) { log.error(strLog +
+	 * "Error al actualizar conciliación: " + e.getMessage()); e.printStackTrace();
+	 * } }
+	 */
 
 	@Override
 	public Collection getSelected() {
@@ -572,7 +571,7 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 			if (personFilter != null && !personFilter.isEmpty()) {
 				Person person = collection.getDocument().getPerson();
 				result = result
-						&& (StringUtil.concatName(person.getName(), person.getLastName())).contains(personFilter);
+						&& (StringUtility.concatName(person.getName(), person.getLastName())).contains(personFilter);
 			}
 
 		} catch (Exception e) {
