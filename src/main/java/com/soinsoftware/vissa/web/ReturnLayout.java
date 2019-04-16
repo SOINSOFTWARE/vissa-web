@@ -27,7 +27,6 @@ import com.soinsoftware.report.dynamic.GeneratorException;
 import com.soinsoftware.report.dynamic.PdfGenerator;
 import com.soinsoftware.vissa.bll.CompanyBll;
 import com.soinsoftware.vissa.bll.DocumentBll;
-import com.soinsoftware.vissa.bll.DocumentDetailBll;
 import com.soinsoftware.vissa.bll.DocumentDetailLotBll;
 import com.soinsoftware.vissa.bll.DocumentStatusBll;
 import com.soinsoftware.vissa.bll.DocumentTypeBll;
@@ -692,7 +691,8 @@ public class ReturnLayout extends VerticalLayout implements View {
 		});
 
 		// EVENTOS
-		detailGrid.getEditor().addSaveListener(e -> changeQuantity(e.getBean().getQuantity()));
+		detailGrid.getEditor()
+				.addSaveListener(e -> saveEditorAction(e.getBean().getQuantity(), e.getBean().getPrice()));
 		// txtQuantity.addValueChangeListener(e -> changeQuantity(e.getValue()));
 		// txtQuantity.addBlurListener(e -> changeQuantity(txtQuantity.getValue()));
 
@@ -749,97 +749,105 @@ public class ReturnLayout extends VerticalLayout implements View {
 	}
 
 	/**
-	 * Metodo que valida la cantidad ingresada por cada item
+	 * Metodo que valida la cantidad y precio ingresado por cada item
 	 * 
 	 * @param quantity
 	 */
-	private void changeQuantity(String quantity) {
+	private void saveEditorAction(String quantity, Double price) {
 		String strLog = "[changeQuantity] ";
 		dataProvider.refreshAll();
 		String message = "";
 		boolean correct = false;
 		Double qty;
 		DocumentDetail currentDetail = null;
-		DocumentDetail initialCurrentDetail = null;
+
 		try {
 			if (CommonsUtil.CURRENT_DOCUMENT_DETAIL.getProduct() != null && quantity != null && !quantity.isEmpty()) {
+				// Validar que la cantidad no es nula
+				if (StringUtil.isBlank(quantity)) {
+					message = "La cantidad debe ser mayor a 0";
+					throw new Exception(message);
+				}
+
+				// Validar el precio
+				if (price == null || price.equals(0.0)) {
+					message = "Precio no valido";
+					throw new Exception(message);
+				}
+
 				qty = Double.parseDouble(quantity);
 
-				if (CommonsUtil.CURRENT_DOCUMENT_DETAIL.getProduct() != null && qty > 0) {
+				// Validar la cantidad mayor a 0
+				if (qty <= 0) {
+					message = "La cantidad debe ser mayor a 0";
+					throw new Exception(message);
+				}
 
-					currentDetail = CommonsUtil.CURRENT_DOCUMENT_DETAIL;
-					initialCurrentDetail = CommonsUtil.CURRENT_DOCUMENT_DETAIL;
-					initialCurrentDetail.setQuantity(null);
-					log.info(strLog + "currentDetail:" + currentDetail);
+				currentDetail = CommonsUtil.CURRENT_DOCUMENT_DETAIL;
+				log.info(strLog + "currentDetail: " + currentDetail);
 
-					if (transactionType.equals(ETransactionType.SALIDA)) {
-						// Validar que la cantidad ingresada esté dentro del stock del producto
-						if (qty > currentDetail.getProduct().getStock()) {
-							message = "Cantidad ingresada es mayor al stock total del producto";
-							throw new Exception(message);
-						}
-
-						// Validar que la cantidad sea mayor a la ingresada en la factura original
-						if (qty <= currentDetail.getOldQuantity()) {
-							message = "Cantidad del producto menor a la cantidad original";
-							throw new Exception(message);
-						}
+				if (transactionType.equals(ETransactionType.SALIDA)) {
+					// Validar que la cantidad ingresada esté dentro del stock del producto
+					if (qty > currentDetail.getProduct().getStock()) {
+						message = "Cantidad ingresada es mayor al stock total del producto";
+						throw new Exception(message);
 					}
 
-					// Validar los lotes asociados al detail
-					List<DocumentDetailLot> detailLotList = getDetailLotsByDetail(currentDetail);
-					log.info(strLog + "detailLotList: " + detailLotList.size() + detailLotList);
-
-					if (detailLotList.size() > 0) {
-						// Para la compra es un solo lote, para la venta por defecto es el más viejo
-						DocumentDetailLot detailLot = detailLotList.get(0);
-						if (transactionType.equals(ETransactionType.ENTRADA)) {
-
-							Double finalStockLot = qty;
-							DocumentDetailLot detailLotTmp = DocumentDetailLot.builder(detailLot).quantity(qty)
-									.finalStockLot(finalStockLot).build();
-							int pos = detailLotList.indexOf(detailLot);
-							detailLotList.set(pos, detailLotTmp);
-							correct = true;
-						} else if (transactionType.equals(ETransactionType.SALIDA)) {
-
-							// Actualizar la cantidad del ítem
-							currentDetail.setQuantity(quantity);
-							// Se actualiza la diferencia entre la cant origina y el cambio
-							currentDetail.setDiffQuantity(qty - currentDetail.getOldQuantity());
-							currentDetail = documentDetail(currentDetail);
-
-							validateLot(currentDetail, detailLotList);
-
-							// Agregar item a nueva lista de detalles
-							int pos = itemList.indexOf(currentDetail);
-							if (pos < 0) {
-								itemList.add(currentDetail);
-							} else {
-								itemList.set(pos, currentDetail);
-							}
-
-							Double returnTotal = !StringUtil.isBlank(txtReturnTotal.getValue())
-									? Double.valueOf(txtReturnTotal.getValue())
-									: 0.0;
-							returnTotal += currentDetail.getSubtotal();
-							txtReturnTotal.setValue(returnTotal);
-
-							Double returnIVATotal = !StringUtil.isBlank(txtReturnTotalTax.getValue())
-									? Double.valueOf(txtReturnTotalTax.getValue())
-									: 0.0;
-							Double totalTax = currentDetail.getTotalTaxValue();
-							returnIVATotal += totalTax != null ? totalTax : 0.0;
-							txtReturnTotalTax.setValue(returnIVATotal);
-						}
-					}
-
-				} else {
-					if (qty <= 0) {
-						message = "La cantidad debe ser mayor a 0";
+					// Validar que la cantidad sea mayor a la ingresada en la factura original
+					if (qty <= currentDetail.getOldQuantity()) {
+						message = "Cantidad del producto menor a la cantidad original";
 						throw new Exception(message);
 					}
 				}
+
+				// Validar los lotes asociados al detail
+				List<DocumentDetailLot> detailLotList = getDetailLotsByDetail(currentDetail);
+				log.info(strLog + "detailLotList: " + detailLotList.size() + detailLotList);
+
+				if (detailLotList.size() > 0) {
+					// Para la compra es un solo lote, para la venta por defecto es el más viejo
+					DocumentDetailLot detailLot = detailLotList.get(0);
+					if (transactionType.equals(ETransactionType.ENTRADA)) {
+
+						Double finalStockLot = qty;
+						DocumentDetailLot detailLotTmp = DocumentDetailLot.builder(detailLot).quantity(qty)
+								.finalStockLot(finalStockLot).build();
+						int pos = detailLotList.indexOf(detailLot);
+						detailLotList.set(pos, detailLotTmp);
+						correct = true;
+					} else if (transactionType.equals(ETransactionType.SALIDA)) {
+
+						// Actualizar la cantidad del ítem
+						currentDetail.setQuantity(quantity);
+						// Se actualiza la diferencia entre la cant origina y el cambio
+						currentDetail.setDiffQuantity(qty - currentDetail.getOldQuantity());
+						currentDetail = documentDetail(currentDetail);
+
+						validateLot(currentDetail, detailLotList);
+
+						// Agregar item a nueva lista de detalles
+						int pos = itemList.indexOf(currentDetail);
+						if (pos < 0) {
+							itemList.add(currentDetail);
+						} else {
+							itemList.set(pos, currentDetail);
+						}
+
+						Double returnTotal = !StringUtil.isBlank(txtReturnTotal.getValue())
+								? Double.valueOf(txtReturnTotal.getValue())
+								: 0.0;
+						returnTotal += currentDetail.getSubtotal();
+						txtReturnTotal.setValue(returnTotal);
+
+						Double returnIVATotal = !StringUtil.isBlank(txtReturnTotalTax.getValue())
+								? Double.valueOf(txtReturnTotalTax.getValue())
+								: 0.0;
+						Double totalTax = currentDetail.getTotalTaxValue();
+						returnIVATotal += totalTax != null ? totalTax : 0.0;
+						txtReturnTotalTax.setValue(returnIVATotal);
+					}
+				}
+
 			}
 
 		} catch (NumberFormatException nfe) {
@@ -2359,8 +2367,7 @@ public class ReturnLayout extends VerticalLayout implements View {
 								? returnDocument.getPerson().getDocumentNumber()
 								: "");
 				parameters.put(Commons.PARAM_CUSTOMER_ADDRESS,
-						returnDocument.getPerson().getAddress() != null ? returnDocument.getPerson().getAddress()
-								: "");
+						returnDocument.getPerson().getAddress() != null ? returnDocument.getPerson().getAddress() : "");
 				parameters.put(Commons.PARAM_CUSTOMER_PHONE,
 						returnDocument.getPerson().getMobile() != null ? returnDocument.getPerson().getMobile() : "");
 				parameters.put(Commons.PARAM_CASH,

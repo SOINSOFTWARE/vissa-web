@@ -35,6 +35,7 @@ import com.soinsoftware.vissa.model.EgressType;
 import com.soinsoftware.vissa.model.PaymentType;
 import com.soinsoftware.vissa.model.Person;
 import com.soinsoftware.vissa.model.PersonType;
+import com.soinsoftware.vissa.model.Product;
 import com.soinsoftware.vissa.model.User;
 import com.soinsoftware.vissa.util.Commons;
 import com.soinsoftware.vissa.util.DateUtil;
@@ -609,15 +610,22 @@ public class CashConciliationLayout extends AbstractEditableLayout<CashConciliat
 			// save(conciliationBll, entity, "");
 			conciliationBll.save(entity, false);
 
-			CashConciliation cashConciliation = conciliationBll.select(entity.getPerson(),
+			List<CashConciliation> cashConciliationList = conciliationBll.select(entity.getPerson(),
 					entity.getConciliationDate());
 
-			if (autoSaved || employeeRole.equals(ERole.ADMINISTRATOR.getName())) {
-				saveAdminConciliation(cashConciliation);
-			}
+			if (cashConciliationList != null && !cashConciliationList.isEmpty()) {
+				// Si hay más de cuadre de caja se toma ell primero
+				CashConciliation cashConciliation = cashConciliationList.get(0);
+				if (autoSaved || employeeRole.equals(ERole.ADMINISTRATOR.getName())) {
+					saveAdminConciliation(cashConciliation);
+				}
 
-			if (autoSaved || employeeRole.equals(ERole.SALESMAN.getName())) {
-				saveSalesmanConciliation(cashConciliation);
+				if (autoSaved || employeeRole.equals(ERole.SALESMAN.getName())) {
+					saveSalesmanConciliation(cashConciliation);
+				}
+			} else {
+				ViewHelper.showNotification("Ya existe un cuadre de caja para el día. Por favor edite el cuadre",
+						Notification.Type.WARNING_MESSAGE);
 			}
 		} catch (Exception e) {
 			log.error(strLog + "[Exception]" + e.getMessage());
@@ -724,7 +732,10 @@ public class CashConciliationLayout extends AbstractEditableLayout<CashConciliat
 
 	@Override
 	protected void delete(CashConciliation entity) {
-
+		if (entity != null) {
+			entity = CashConciliation.builder(entity).archived(true).build();
+			save(conciliationBll, entity, "Cuadre borrado");
+		}
 	}
 
 	private Panel buildFilterPanel() {
@@ -1142,7 +1153,8 @@ public class CashConciliationLayout extends AbstractEditableLayout<CashConciliat
 			// Guardar las entradas
 			buildEditionComponent(null);
 
-			CashConciliation cashConciliation = conciliationBll.select(user.getPerson(), conciliationDate);
+			//Se toma el primer cuadre
+			CashConciliation cashConciliation = conciliationBll.select(user.getPerson(), conciliationDate).get(0);
 
 			// Guardar las salidas
 			loginRole = ERole.ADMINISTRATOR.getName();

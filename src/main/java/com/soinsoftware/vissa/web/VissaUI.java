@@ -234,10 +234,15 @@ public class VissaUI extends UI {
 		Component menuItemsLayout = buildMenuItemsLayout(root);
 		menu.addComponent(buildTopLayout());
 		menu.addComponent(buildShowMenuButton(menu));
-		menu.addComponent(buildMenuBar());
-		Label label = new Label("Punto de venta 1: Salsamentaria");
-		label.addStyleName("user-menu");		
-		menu.addComponent(label);
+		
+		menu.addComponent(buildMenuBar());		
+		
+		TextField txtSalePoint = new TextField();		
+		txtSalePoint.setValue("PUNTO DE VENTA 1");
+		txtSalePoint.setReadOnly(true);
+		txtSalePoint.addStyleNames(ValoTheme.TEXTFIELD_BORDERLESS, ValoTheme.TEXTFIELD_TINY, ValoTheme.TEXTFIELD_ALIGN_CENTER);		
+		menu.addComponent(txtSalePoint);
+		
 		menu.addComponent(menuItemsLayout);
 
 		menu.setWidth("100%");

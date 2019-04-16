@@ -26,7 +26,7 @@ import com.soinsoftware.vissa.bll.ProductTypeBll;
 import com.soinsoftware.vissa.bll.TableSequenceBll;
 import com.soinsoftware.vissa.bll.WarehouseBll;
 import com.soinsoftware.vissa.exception.ModelValidationException;
-import com.soinsoftware.vissa.model.Lot;
+import com.soinsoftware.vissa.model.DocumentDetail;
 import com.soinsoftware.vissa.model.MeasurementUnit;
 import com.soinsoftware.vissa.model.MeasurementUnitProduct;
 import com.soinsoftware.vissa.model.MuEquivalence;
@@ -34,7 +34,6 @@ import com.soinsoftware.vissa.model.Product;
 import com.soinsoftware.vissa.model.ProductCategory;
 import com.soinsoftware.vissa.model.ProductType;
 import com.soinsoftware.vissa.model.TableSequence;
-import com.soinsoftware.vissa.model.Warehouse;
 import com.soinsoftware.vissa.util.Commons;
 import com.soinsoftware.vissa.util.DateUtil;
 import com.soinsoftware.vissa.util.ELayoutMode;
@@ -176,6 +175,8 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		return layout;
 	}
 
+	
+	
 	@Override
 	protected Panel buildGridPanel() {
 		VerticalLayout layout = ViewHelper.buildVerticalLayout(true, true);
@@ -411,14 +412,14 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		// Panel de UM y precios
 		Panel pricePanel = buildMUGridPanel(product);
 
-		// PAnel de lotes
+		// Panel de lotes
 		LotLayout lotPanel = buildLotPanel();
 
 		layout.addComponents(formLayout, pricePanel);
 
 		// txtStock.setValue(lotPanel.getTotalStock());
 
-		if (!mode.equals(ELayoutMode.LIST)) {
+		if (!mode.equals(ELayoutMode.LIST) && !mode.equals(ELayoutMode.NEW)) {
 			layout.addComponents(lotPanel);
 		}
 		return layout;
@@ -483,13 +484,14 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 
 				// updateSalePriceWithTax();
 			} else {
-				getProductSequence();
-				txtCode.setValue(tableSequence != null ? String.valueOf(tableSequence.getSequence()) : "");
-				txtPurchaseTax.setValue("0");
-				txtSaleTax.setValue("0");
-				txtUtility.setValue("0");
-				txtSalePrice.setValue("0");
-				txtSalePriceWithTax.setValue("0");
+				if (getProductSequence()) {
+					txtCode.setValue(tableSequence != null ? String.valueOf(tableSequence.getSequence()) : "");
+					txtPurchaseTax.setValue("0");
+					txtSaleTax.setValue("0");
+					txtUtility.setValue("0");
+					txtSalePrice.setValue("0");
+					txtSalePriceWithTax.setValue("0");
+				}
 			}
 		} catch (Exception e) {
 			log.error(strLog + "[Exception]" + e.getMessage());
@@ -858,17 +860,29 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		return columnPredicate;
 	}
 
-	private void getProductSequence() {
+	private boolean getProductSequence() {
+		boolean result = false;
 		BigInteger seq = null;
 		TableSequence tableSeqObj = tableSequenceBll.select(Product.class.getSimpleName());
 		if (tableSeqObj != null) {
 			seq = tableSeqObj.getSequence().add(BigInteger.valueOf(1L));
-			TableSequence.Builder builder = TableSequence.builder(tableSeqObj);
-			tableSequence = builder.sequence(seq).build();
+			Product product = productBll.select(String.valueOf(seq));
+			// Se valida si el código del producto ya existe
+			if (product == null) {
+				TableSequence.Builder builder = TableSequence.builder(tableSeqObj);
+				tableSequence = builder.sequence(seq).build();
+				result = true;
+			} else {
+				ViewHelper.showNotification("Código de producto ya existe. Validar con el administrador",
+						Notification.Type.ERROR_MESSAGE);
+			}
+
 		} else {
 			ViewHelper.showNotification("No hay consecutivo configurado para los productos",
 					Notification.Type.ERROR_MESSAGE);
 		}
+
+		return result;
 	}
 
 	/*
