@@ -4,6 +4,7 @@ import com.vaadin.ui.Component;
 import com.vaadin.ui.ComponentContainer;
 import com.vaadin.ui.CssLayout;
 import com.vaadin.ui.HorizontalLayout;
+import com.vaadin.ui.Label;
 
 public class ValoMenuLayout extends HorizontalLayout { 
 	 
@@ -21,7 +22,7 @@ public class ValoMenuLayout extends HorizontalLayout {
         contentArea.setPrimaryStyleName("valo-content"); 
         contentArea.addStyleName("v-scrollable"); 
         contentArea.setSizeFull(); 
- 
+        contentArea.addComponent(new Label("prueba"));
         addComponents(menuArea, contentArea); 
         setExpandRatio(contentArea, 1); 
     } 

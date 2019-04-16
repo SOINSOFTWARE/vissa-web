@@ -38,7 +38,7 @@ import com.soinsoftware.vissa.bll.PaymentDocumentTypeBll;
 import com.soinsoftware.vissa.bll.PaymentMethodBll;
 import com.soinsoftware.vissa.bll.PersonBll;
 import com.soinsoftware.vissa.bll.ProductBll;
-import com.soinsoftware.vissa.common.CommonsUtil;
+import com.soinsoftware.vissa.common.CommonsConstants;
 import com.soinsoftware.vissa.exception.ModelValidationException;
 import com.soinsoftware.vissa.model.Company;
 import com.soinsoftware.vissa.model.Document;
@@ -225,7 +225,7 @@ public class ReturnLayout extends VerticalLayout implements View {
 		itemListOld = new ArrayList<DocumentDetail>();
 		itemList = new ArrayList<DocumentDetail>();
 
-		transactionType = ETransactionType.valueOf(CommonsUtil.TRANSACTION_TYPE);
+		transactionType = ETransactionType.valueOf(CommonsConstants.TRANSACTION_TYPE);
 		company = companyBll.selectAll().get(0);
 
 		detailLotCollectionOld = new ArrayList<DocumentDetailLot>();
@@ -686,7 +686,7 @@ public class ReturnLayout extends VerticalLayout implements View {
 
 		// Eventos
 		detailGrid.getEditor().addOpenListener(e -> {
-			log.info(strLog + "CURRENT_DOCUMENT_DETAIL : " + CommonsUtil.CURRENT_DOCUMENT_DETAIL);
+			log.info(strLog + "CURRENT_DOCUMENT_DETAIL : " + CommonsConstants.CURRENT_DOCUMENT_DETAIL);
 			// fillDetailGridData(itemsList);
 		});
 
@@ -762,7 +762,7 @@ public class ReturnLayout extends VerticalLayout implements View {
 		DocumentDetail currentDetail = null;
 
 		try {
-			if (CommonsUtil.CURRENT_DOCUMENT_DETAIL.getProduct() != null && quantity != null && !quantity.isEmpty()) {
+			if (CommonsConstants.CURRENT_DOCUMENT_DETAIL.getProduct() != null && quantity != null && !quantity.isEmpty()) {
 				// Validar que la cantidad no es nula
 				if (StringUtil.isBlank(quantity)) {
 					message = "La cantidad debe ser mayor a 0";
@@ -783,7 +783,7 @@ public class ReturnLayout extends VerticalLayout implements View {
 					throw new Exception(message);
 				}
 
-				currentDetail = CommonsUtil.CURRENT_DOCUMENT_DETAIL;
+				currentDetail = CommonsConstants.CURRENT_DOCUMENT_DETAIL;
 				log.info(strLog + "currentDetail: " + currentDetail);
 
 				if (transactionType.equals(ETransactionType.SALIDA)) {
@@ -1239,10 +1239,10 @@ public class ReturnLayout extends VerticalLayout implements View {
 			selectedProduct = product != null ? product : productLayout.getSelected();
 
 			if (product != null) {
-				pos = itemListOld.indexOf(CommonsUtil.CURRENT_DOCUMENT_DETAIL);
-				DocumentDetail docDetail = DocumentDetail.builder(CommonsUtil.CURRENT_DOCUMENT_DETAIL).product(product)
+				pos = itemListOld.indexOf(CommonsConstants.CURRENT_DOCUMENT_DETAIL);
+				DocumentDetail docDetail = DocumentDetail.builder(CommonsConstants.CURRENT_DOCUMENT_DETAIL).product(product)
 						.build();
-				CommonsUtil.CURRENT_DOCUMENT_DETAIL.setIndex(pos);
+				CommonsConstants.CURRENT_DOCUMENT_DETAIL.setIndex(pos);
 				detailGrid.getSelectionModel().select(docDetail);
 				detailGrid.focus();
 
@@ -1372,10 +1372,10 @@ public class ReturnLayout extends VerticalLayout implements View {
 			lotSubwindow.setContent(subContent);
 			lotSubwindow.addCloseListener(e -> {
 				if (selectedLot == null) {
-					if (CommonsUtil.CURRENT_DOCUMENT_DETAIL.getProduct() != null) {
-						CommonsUtil.CURRENT_DOCUMENT_DETAIL
-								.setCode(CommonsUtil.CURRENT_DOCUMENT_DETAIL.getProduct().getCode());
-						itemListOld.set(pos, CommonsUtil.CURRENT_DOCUMENT_DETAIL);
+					if (CommonsConstants.CURRENT_DOCUMENT_DETAIL.getProduct() != null) {
+						CommonsConstants.CURRENT_DOCUMENT_DETAIL
+								.setCode(CommonsConstants.CURRENT_DOCUMENT_DETAIL.getProduct().getCode());
+						itemListOld.set(pos, CommonsConstants.CURRENT_DOCUMENT_DETAIL);
 					} else {
 						// itemsList.set(pos, null);
 					}
@@ -2419,7 +2419,7 @@ public class ReturnLayout extends VerticalLayout implements View {
 	}
 
 	private void buildMeasurementUnitComponent() {
-		Product product = selectedProduct != null ? selectedProduct : CommonsUtil.CURRENT_DOCUMENT_DETAIL.getProduct();
+		Product product = selectedProduct != null ? selectedProduct : CommonsConstants.CURRENT_DOCUMENT_DETAIL.getProduct();
 		ComboBox<MeasurementUnit> cbMeasurementUnit = new ComboBox<>();
 
 		cbMeasurementUnit.setEmptySelectionAllowed(false);
@@ -2431,7 +2431,7 @@ public class ReturnLayout extends VerticalLayout implements View {
 			MeasurementUnitProduct muProduct = selectMuXProduct(
 					cbMeasurementUnit.getSelectedItem().isPresent() ? e.getValue() : null, product);
 			setPriceComponent(muProduct);
-			String qty = CommonsUtil.CURRENT_DOCUMENT_DETAIL.getQuantity();
+			String qty = CommonsConstants.CURRENT_DOCUMENT_DETAIL.getQuantity();
 			if (qty != null && !qty.isEmpty()) {
 				setQuantityComponent(Double.parseDouble(qty), e.getOldValue(), e.getValue());
 			}
@@ -2506,7 +2506,7 @@ public class ReturnLayout extends VerticalLayout implements View {
 				NumberField txtTax = new NumberField();
 				txtTax.setReadOnly(true);
 
-				CommonsUtil.MEASUREMENT_UNIT_PRODUCT = muProduct;
+				CommonsConstants.MEASUREMENT_UNIT_PRODUCT = muProduct;
 				if (transactionType.equals(ETransactionType.ENTRADA)) {
 					txtPrice.setValue(muProduct.getPurchasePrice());
 					txtTax.setValue(muProduct.getPurchaseTax());

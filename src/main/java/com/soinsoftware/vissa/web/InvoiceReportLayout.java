@@ -18,7 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.soinsoftware.vissa.bll.DocumentBll;
 import com.soinsoftware.vissa.bll.DocumentTypeBll;
 import com.soinsoftware.vissa.bll.PaymentDocumentTypeBll;
-import com.soinsoftware.vissa.common.CommonsUtil;
+import com.soinsoftware.vissa.common.CommonsConstants;
 import com.soinsoftware.vissa.model.Document;
 import com.soinsoftware.vissa.model.DocumentType;
 import com.soinsoftware.vissa.model.EPaymentStatus;
@@ -102,7 +102,7 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 		documentBll = DocumentBll.getInstance();
 		documentTypeBll = DocumentTypeBll.getInstance();
 		paymentDocumentTypeBll = PaymentDocumentTypeBll.getInstance();
-		transactionType = ETransactionType.valueOf(CommonsUtil.TRANSACTION_TYPE);
+		transactionType = ETransactionType.valueOf(CommonsConstants.TRANSACTION_TYPE);
 		this.layoutMode = ELayoutMode.ALL;
 
 		if (transactionType.equals(ETransactionType.ENTRADA)) {
@@ -122,7 +122,7 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 		documentBll = DocumentBll.getInstance();
 		documentTypeBll = DocumentTypeBll.getInstance();
 		paymentDocumentTypeBll = PaymentDocumentTypeBll.getInstance();
-		transactionType = ETransactionType.valueOf(CommonsUtil.TRANSACTION_TYPE);
+		transactionType = ETransactionType.valueOf(CommonsConstants.TRANSACTION_TYPE);
 
 		if (transactionType.equals(ETransactionType.ENTRADA)) {
 			Commons.PERSON_TYPE = PersonType.SUPPLIER.getName();

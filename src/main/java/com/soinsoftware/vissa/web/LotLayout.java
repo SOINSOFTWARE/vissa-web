@@ -18,7 +18,7 @@ import com.soinsoftware.vissa.bll.MeasurementUnitProductBll;
 import com.soinsoftware.vissa.bll.MuEquivalenceBll;
 import com.soinsoftware.vissa.bll.ProductBll;
 import com.soinsoftware.vissa.bll.WarehouseBll;
-import com.soinsoftware.vissa.common.CommonsUtil;
+import com.soinsoftware.vissa.common.CommonsConstants;
 import com.soinsoftware.vissa.model.DocumentDetailLot;
 import com.soinsoftware.vissa.model.Lot;
 import com.soinsoftware.vissa.model.MeasurementUnit;
@@ -255,7 +255,7 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 	private void clickAction(Lot lot) {
 		if (modeLayout.equals(ELayoutMode.NEW)) {
 			if (invoiceLayout != null) {
-				invoiceLayout.selectLot(CommonsUtil.CURRENT_DOCUMENT_DETAIL, lot);
+				invoiceLayout.selectLot(CommonsConstants.CURRENT_DOCUMENT_DETAIL, lot);
 			}
 		}
 		if (modeLayout.equals(ELayoutMode.REPORT)) {
@@ -509,7 +509,7 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 
 				if (invoiceLayout != null && modeLayout.equals(ELayoutMode.NEW)) {
 					invoiceLayout.setSelectedLot(lot);
-					invoiceLayout.selectLot(CommonsUtil.CURRENT_DOCUMENT_DETAIL, lot);
+					invoiceLayout.selectLot(CommonsConstants.CURRENT_DOCUMENT_DETAIL, lot);
 					invoiceLayout.getLotSubwindow().close();
 					invoiceLayout.getDetailGrid().focus();
 				} else {

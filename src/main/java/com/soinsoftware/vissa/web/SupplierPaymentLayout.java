@@ -20,7 +20,7 @@ import com.soinsoftware.vissa.bll.CollectionBll;
 import com.soinsoftware.vissa.bll.DocumentBll;
 import com.soinsoftware.vissa.bll.DocumentTypeBll;
 import com.soinsoftware.vissa.bll.PaymentTypeBll;
-import com.soinsoftware.vissa.common.CommonsUtil;
+import com.soinsoftware.vissa.common.CommonsConstants;
 import com.soinsoftware.vissa.model.Collection;
 import com.soinsoftware.vissa.model.Document;
 import com.soinsoftware.vissa.model.DocumentType;
@@ -576,7 +576,7 @@ public class SupplierPaymentLayout extends AbstractEditableLayout<Collection> {
 		VerticalLayout subContent = ViewHelper.buildVerticalLayout(true, true);
 
 		try {
-			CommonsUtil.TRANSACTION_TYPE = ETransactionType.ENTRADA.getName();
+			CommonsConstants.TRANSACTION_TYPE = ETransactionType.ENTRADA.getName();
 
 			invoicListLayout = new InvoiceReportLayout(ELayoutMode.LIST);
 			invoicListLayout.getCbFilterPaymentStatus().setValue(EPaymentStatus.PENDING);

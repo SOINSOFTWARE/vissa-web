@@ -10,7 +10,7 @@ import javax.servlet.annotation.WebServlet;
 import org.apache.log4j.Logger;
 
 import com.soinsoftware.vissa.bll.UserBll;
-import com.soinsoftware.vissa.common.CommonsUtil;
+import com.soinsoftware.vissa.common.CommonsConstants;
 import com.soinsoftware.vissa.model.ERole;
 import com.soinsoftware.vissa.model.ETransactionType;
 import com.soinsoftware.vissa.model.Person;
@@ -101,6 +101,7 @@ public class VissaUI extends UI {
 	protected static final String KEY_EGRESS = "Egresos";
 	protected static final String KEY_COMPANY = "Compañía";
 	protected static final String KEY_MENU = "Menus";
+	protected static final String KEY_NOTIFICATION = "Notificaciones";
 
 	private PermissionUtil permissionUtil;
 
@@ -129,8 +130,15 @@ public class VissaUI extends UI {
 		root.setWidth("100%");
 		Panel panel = new Panel();
 		panel.setStyleName("well");
+		try {
+			root.addComponent(new NotificationLayout());
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		panel.setContent(root);
 		setContent(root);
+		UI.getCurrent().getNavigator().navigateTo(KEY_NOTIFICATION);
 	}
 
 	private void buildMenuItems() {
@@ -329,13 +337,13 @@ public class VissaUI extends UI {
 	private void selectItem(Tree.ItemClick<String> event) {
 		String item = event.getItem();
 		if (item.equals(KEY_SALE_INVOICES) || item.equals(KEY_SALES_REPORT)) {
-			CommonsUtil.TRANSACTION_TYPE = ETransactionType.SALIDA.getName();
+			CommonsConstants.TRANSACTION_TYPE = ETransactionType.SALIDA.getName();
 		}
 		if (item.equals(KEY_PURCHASE_INVOICES) || item.equals(KEY_PURCHASES_REPORT)) {
-			CommonsUtil.TRANSACTION_TYPE = ETransactionType.ENTRADA.getName();
+			CommonsConstants.TRANSACTION_TYPE = ETransactionType.ENTRADA.getName();
 		}
 		if (item.equals(KEY_RETURNS)) {
-			CommonsUtil.TRANSACTION_TYPE = ETransactionType.SALIDA.getName();
+			CommonsConstants.TRANSACTION_TYPE = ETransactionType.SALIDA.getName();
 		}
 		if (item.equals(KEY_SUPPLIER)) {
 			Commons.PERSON_TYPE = PersonType.SUPPLIER.getName();
@@ -359,11 +367,11 @@ public class VissaUI extends UI {
 		}
 
 		if (item.equals(KEY_SUPPLIER_PAYMENTS)) {
-			CommonsUtil.TRANSACTION_TYPE = ETransactionType.ENTRADA.getName();
+			CommonsConstants.TRANSACTION_TYPE = ETransactionType.ENTRADA.getName();
 		}
 
 		if (item.equals(KEY_COLLECTION)) {
-			CommonsUtil.TRANSACTION_TYPE = ETransactionType.SALIDA.getName();
+			CommonsConstants.TRANSACTION_TYPE = ETransactionType.SALIDA.getName();
 		}
 
 		if (item.equals(KEY_PRODUCTS)) {
@@ -399,6 +407,7 @@ public class VissaUI extends UI {
 		navigator.addView(KEY_RETURNS, ReturnLayout.class);
 		navigator.addView(KEY_COMPANY, CompanyLayout.class);
 		navigator.addView(KEY_MENUS, MenuLayout.class);
+		navigator.addView(KEY_NOTIFICATION, NotificationLayout.class);
 		navigator.setErrorView(DefaultView.class);
 		UI.getCurrent().setNavigator(navigator);
 

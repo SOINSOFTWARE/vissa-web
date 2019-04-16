@@ -20,7 +20,7 @@ import com.soinsoftware.vissa.bll.CollectionBll;
 import com.soinsoftware.vissa.bll.DocumentBll;
 import com.soinsoftware.vissa.bll.DocumentTypeBll;
 import com.soinsoftware.vissa.bll.PaymentTypeBll;
-import com.soinsoftware.vissa.common.CommonsUtil;
+import com.soinsoftware.vissa.common.CommonsConstants;
 import com.soinsoftware.vissa.model.Collection;
 import com.soinsoftware.vissa.model.Document;
 import com.soinsoftware.vissa.model.DocumentType;
@@ -119,7 +119,7 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 		documentBll = DocumentBll.getInstance();
 		documentTypeBll = DocumentTypeBll.getInstance();
 		paymentTypeBll = PaymentTypeBll.getInstance();
-		transactionType = CommonsUtil.TRANSACTION_TYPE;
+		transactionType = CommonsConstants.TRANSACTION_TYPE;
 		if (transactionType.equals(ETransactionType.ENTRADA.getName())) {
 			this.setCaption("Pago a proveedores");
 			pendingPaymentType = EPendingPayment.PAYMENT_SUPPLIER.getName();
@@ -596,7 +596,7 @@ public class CollectionLayout extends AbstractEditableLayout<Collection> {
 		VerticalLayout subContent = ViewHelper.buildVerticalLayout(true, true);
 
 		try {
-			CommonsUtil.TRANSACTION_TYPE = transactionType;
+			CommonsConstants.TRANSACTION_TYPE = transactionType;
 
 			invoicListLayout = new InvoiceReportLayout(ELayoutMode.LIST);
 			invoicListLayout.getCbFilterPaymentStatus().setValue(EPaymentStatus.PENDING);
