@@ -1,6 +1,7 @@
 package com.soinsoftware.vissa.web;
 
 import java.io.IOException;
+import java.util.Calendar;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
@@ -8,40 +9,31 @@ import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.time.DateUtils;
 import org.apache.log4j.Logger;
-import org.jsoup.helper.StringUtil;
 
-import com.soinsoftware.vissa.bll.CompanyBll;
 import com.soinsoftware.vissa.bll.DocumentBll;
 import com.soinsoftware.vissa.bll.DocumentTypeBll;
 import com.soinsoftware.vissa.common.CommonsConstants;
 import com.soinsoftware.vissa.common.EComparatorType;
-import com.soinsoftware.vissa.model.Company;
 import com.soinsoftware.vissa.model.Document;
 import com.soinsoftware.vissa.model.DocumentType;
 import com.soinsoftware.vissa.model.EPaymentStatus;
 import com.soinsoftware.vissa.model.ETransactionType;
-import com.soinsoftware.vissa.model.User;
 import com.soinsoftware.vissa.util.Commons;
 import com.soinsoftware.vissa.util.DateUtil;
-import com.soinsoftware.vissa.util.PermissionUtil;
 import com.soinsoftware.vissa.util.StringUtility;
 import com.soinsoftware.vissa.util.ViewHelper;
 import com.vaadin.data.provider.ListDataProvider;
 import com.vaadin.navigator.View;
 import com.vaadin.navigator.ViewChangeListener.ViewChangeEvent;
-import com.vaadin.server.FontAwesome;
-import com.vaadin.ui.Button;
-import com.vaadin.ui.FormLayout;
+import com.vaadin.shared.ui.grid.ColumnResizeMode;
 import com.vaadin.ui.Grid;
 import com.vaadin.ui.Grid.SelectionMode;
 import com.vaadin.ui.HorizontalLayout;
-import com.vaadin.ui.Notification;
+import com.vaadin.ui.Label;
 import com.vaadin.ui.Panel;
-import com.vaadin.ui.TextField;
 import com.vaadin.ui.VerticalLayout;
 import com.vaadin.ui.themes.ValoTheme;
 
-@SuppressWarnings("deprecation")
 public class NotificationLayout extends VerticalLayout implements View {
 
 	/**
@@ -51,62 +43,50 @@ public class NotificationLayout extends VerticalLayout implements View {
 	protected static final Logger log = Logger.getLogger(NotificationLayout.class);
 
 	// Bll
-	private final CompanyBll companyBll;
 	private final DocumentBll documentBll;
 	private final DocumentTypeBll documentTypeBll;
 
 	// Components
-	private TextField txtNit;
-	private TextField txtName;
-	private TextField txtInvoiceResolution;
-	private TextField txtRegimeType;
-	private TextField txtAddress;
-	private TextField txtPhone;
-	private TextField txtMobile;
-	private TextField txtEmail;
-	private TextField txtWebsite;
-	private Grid<Document> grid;
+	private Grid<Document> purchasesGrid;
+	private Grid<Document> salesGrid;
 
 	// Entities
-	private Company company;
-	private PermissionUtil permissionUtil;
-	private User user;
 
-	private ListDataProvider<Document> docuemntDataProvider;
+	private ListDataProvider<Document> purchasesDataProvider;
+	private ListDataProvider<Document> salesDataProvider;
 
 	public NotificationLayout() throws IOException {
 		super();
-		companyBll = CompanyBll.getInstance();
+
 		documentBll = DocumentBll.getInstance();
 		documentTypeBll = DocumentTypeBll.getInstance();
-		setCaption("Notificaciones");
 
 	}
 
 	@Override
 	public void enter(ViewChangeEvent event) {
 
+		Label tittle = new Label("Notificaciones");
+		tittle.addStyleName(ValoTheme.LABEL_H3);
+		addComponent(tittle);
 		VerticalLayout layout = ViewHelper.buildVerticalLayout(false, false);
 
-		this.user = getSession().getAttribute(User.class);
-		this.permissionUtil = new PermissionUtil(user.getRole().getPermissions());
-
-		HorizontalLayout hl1 = ViewHelper.buildHorizontalLayout(false, false);
+		HorizontalLayout hl1 = ViewHelper.buildHorizontalLayout(true, false);
 		// Facturas de compra próximas a vencer
-		Panel documentPanel1 = buildDocumentGridPanel(ETransactionType.ENTRADA);
-
+		Panel panel1 = builPurchasesGrid(ETransactionType.ENTRADA);
 		// Facturas de venta próximas a vencer
-		Panel documentPanel2 = buildDocumentGridPanel(ETransactionType.SALIDA);
-		hl1.addComponents(documentPanel1);
-		hl1.addComponents(documentPanel2);
+		Panel panel2 = buildSalesGridPanel(ETransactionType.SALIDA);
+		hl1.addComponents(panel1);
+		hl1.addComponents(panel2);
 
-		HorizontalLayout hl2 = ViewHelper.buildHorizontalLayout(false, false);
-		Panel panel = buildDocumentGridPanel(ETransactionType.ENTRADA);
-		Panel panel2 = buildDocumentGridPanel(ETransactionType.ENTRADA);
-		hl2.addComponents(panel);
-		hl2.addComponents(panel2);
+		/*
+		 * HorizontalLayout hl2 = ViewHelper.buildHorizontalLayout(false, false); Panel
+		 * panel3 = builPurchasesGrid(ETransactionType.ENTRADA); Panel panel4 =
+		 * builPurchasesGrid(ETransactionType.ENTRADA); hl2.addComponents(panel3);
+		 * hl2.addComponents(panel4);
+		 */
 
-		layout.addComponents(hl1, hl2);
+		layout.addComponents(hl1);
 
 		addComponent(layout);
 		this.setMargin(false);
@@ -115,30 +95,15 @@ public class NotificationLayout extends VerticalLayout implements View {
 	}
 
 	@SuppressWarnings("unchecked")
-	protected Panel buildDocumentGridPanel(ETransactionType transactionType) {
+	protected Panel builPurchasesGrid(ETransactionType transactionType) {
 		String strLog = "[buildDocumentGridPanel] ";
-		VerticalLayout layout = ViewHelper.buildVerticalLayout(true, true);
+		VerticalLayout layout = ViewHelper.buildVerticalLayout(false, false);
 		try {
-			grid = ViewHelper.buildGrid(SelectionMode.SINGLE);
+			purchasesGrid = ViewHelper.buildGrid(SelectionMode.SINGLE);
 
-			grid.addColumn(Document::getCode).setCaption("Número");
-			grid.addColumn(document -> {
-				if (document.getDocumentType() != null) {
-					return document.getDocumentType().getName();
-				} else {
-					return "";
-				}
-			}).setCaption("Tipo");
+			purchasesGrid.addColumn(Document::getCode).setCaption("N°");
 
-			grid.addColumn(document -> {
-				if (document.getDocumentDate() != null) {
-					return DateUtil.dateToString(document.getDocumentDate());
-				} else {
-					return "";
-				}
-			}).setCaption("Fecha");
-
-			grid.addColumn(document -> {
+			purchasesGrid.addColumn(document -> {
 				if (document.getPerson() != null) {
 					return StringUtility.concatName(document.getPerson().getName(), document.getPerson().getLastName());
 				} else {
@@ -146,16 +111,27 @@ public class NotificationLayout extends VerticalLayout implements View {
 				}
 			}).setCaption("Proveedor");
 
-			grid.addColumn(Document::getTotalValue).setCaption("Total");
+			purchasesGrid.addColumn(document -> {
+				if (document.getExpirationDate() != null) {
+					return DateUtil.dateToString(document.getExpirationDate(), Commons.FORMAT_DATE);
+				} else {
+					return "";
+				}
+			}).setCaption("Vencimiento");
 
-			grid.addColumn(document -> {
-				Double payValue = document.getPayValue() != null ? document.getPayValue() : document.getTotalValue();
+			purchasesGrid.addColumn(Document::getTotalValue).setCaption("Total");
+
+			purchasesGrid.addColumn(document -> {
+				Double payValue = document.getPayValue() != null ? document.getPayValue() :  0.0;
 				Double balance = document.getTotalValue() - payValue;
 				return (Math.round(balance));
-			}).setCaption("Saldo");
+			}).setCaption("Saldo").setResizable(true);
 
-			grid.setHeight("200px");
-			layout.addComponent(grid);
+			purchasesGrid.setHeight("200px");
+			purchasesGrid.setColumnResizeMode(ColumnResizeMode.ANIMATED);
+			purchasesGrid.addStyleName(ValoTheme.TABLE_COMPACT);		
+
+			layout.addComponent(purchasesGrid);
 
 			fillDocumentGridData(transactionType);
 
@@ -163,7 +139,59 @@ public class NotificationLayout extends VerticalLayout implements View {
 			log.error(strLog + "[Exception]" + e.getMessage());
 			e.printStackTrace();
 		}
-		Panel panel = ViewHelper.buildPanel("Facturas próximas a vencer", layout);
+		Panel panel = ViewHelper.buildPanel("Facturas de compra próximas a vencer", layout);
+		panel.setWidth("50%");
+		panel.setHeight("50%");
+		return panel;
+	}
+
+	@SuppressWarnings("unchecked")
+	protected Panel buildSalesGridPanel(ETransactionType transactionType) {
+		String strLog = "[salesGrid] ";
+		VerticalLayout layout = ViewHelper.buildVerticalLayout(false, false);
+		try {
+			salesGrid = ViewHelper.buildGrid(SelectionMode.SINGLE);
+
+			salesGrid.addColumn(Document::getCode).setCaption("N°");
+
+			salesGrid.addColumn(document -> {
+				if (document.getPerson() != null) {
+					return StringUtility.concatName(document.getPerson().getName(), document.getPerson().getLastName());
+				} else {
+					return null;
+				}
+			}).setCaption("Cliente");
+
+			salesGrid.addColumn(document -> {
+				if (document.getExpirationDate() != null) {
+					return DateUtil.dateToString(document.getExpirationDate(), Commons.FORMAT_DATE);
+				} else {
+					return "";
+				}
+			}).setCaption("Vencimiento");
+
+			salesGrid.addColumn(Document::getTotalValue).setCaption("Total");
+
+			salesGrid.addColumn(document -> {
+				Double payValue = document.getPayValue() != null ? document.getPayValue() : 0.0;
+				Double balance = document.getTotalValue() - payValue;
+				return (Math.round(balance));
+			}).setCaption("Saldo").setResizable(true);
+
+			salesGrid.setHeight("200px");
+			// salesGrid.setStyleName("v-grid-cell");
+			salesGrid.setColumnResizeMode(ColumnResizeMode.ANIMATED);
+			salesGrid.addStyleName(ValoTheme.TABLE_SMALL);
+
+			layout.addComponent(salesGrid);
+
+			fillDocumentGridData(transactionType);
+
+		} catch (Exception e) {
+			log.error(strLog + "[Exception]" + e.getMessage());
+			e.printStackTrace();
+		}
+		Panel panel = ViewHelper.buildPanel("Facturas de ventas próximas a vencer", layout);
 		panel.setWidth("50%");
 		panel.setHeight("50%");
 		return panel;
@@ -174,17 +202,19 @@ public class NotificationLayout extends VerticalLayout implements View {
 		try {
 
 			List<Document> documents = null;
-			if (transactionType.equals(ETransactionType.ENTRADA)) {
-				documents = getSupplierPayments(transactionType);
-			}
-			if (transactionType.equals(ETransactionType.SALIDA)) {
-				documents = getSupplierPayments(transactionType);
-			}
+
+			documents = getPendingPayments(transactionType);
+
 			documents = documents.stream().sorted(Comparator.comparing(Document::getExpirationDate))
 					.collect(Collectors.toList());
-			docuemntDataProvider = new ListDataProvider<>(documents);
-
-			grid.setDataProvider(docuemntDataProvider);
+			if (transactionType.equals(ETransactionType.ENTRADA)) {
+				purchasesDataProvider = new ListDataProvider<>(documents);
+				purchasesGrid.setDataProvider(purchasesDataProvider);
+			}
+			if (transactionType.equals(ETransactionType.SALIDA)) {
+				salesDataProvider = new ListDataProvider<>(documents);
+				salesGrid.setDataProvider(salesDataProvider);
+			}
 
 		} catch (
 
@@ -194,15 +224,14 @@ public class NotificationLayout extends VerticalLayout implements View {
 		}
 	}
 
-	private List<Document> getSupplierPayments(ETransactionType transactiontype) {
-		String strLog = "[getSupplierPayments] ";
+	private List<Document> getPendingPayments(ETransactionType transactiontype) {
+		String strLog = "[getPendingPayments] ";
 		List<Document> documents = null;
 		try {
 			int days = CommonsConstants.PAYMENT_PENDING_DAYS;
 			Date expirationDateTmp = DateUtils.addDays(new Date(), days);
-			Date expirationDate = DateUtils.addHours(expirationDateTmp, 23);
-			expirationDate = DateUtils.addMinutes(expirationDate, 59);
-			expirationDate = DateUtils.addSeconds(expirationDate, 59);
+			expirationDateTmp = DateUtils.truncate(expirationDateTmp, Calendar.DATE);
+			Date expirationDate = DateUtil.endDate(expirationDateTmp);
 
 			List<DocumentType> types = documentTypeBll.select(transactiontype);
 			documents = documentBll.selectByExpirationDate(types, expirationDate, EPaymentStatus.PENDING.getName(),

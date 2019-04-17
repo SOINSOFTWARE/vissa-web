@@ -15164,3 +15164,7 @@ div.v-layout.v-horizontal.v-widget {
 	margin-right: 0;
 	font-size: 24px;
 }
+
+.mytheme .v-grid-cell {
+	font-size: 14px;
+}
