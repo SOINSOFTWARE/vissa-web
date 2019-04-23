@@ -175,8 +175,6 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		return layout;
 	}
 
-	
-	
 	@Override
 	protected Panel buildGridPanel() {
 		VerticalLayout layout = ViewHelper.buildVerticalLayout(true, true);
@@ -239,11 +237,11 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		cbMeasurementUnit.setDataProvider(measurementDataProv);
 		cbMeasurementUnit.setItemCaptionGenerator(MeasurementUnit::getName);
 
-		priceGrid.addColumn(MeasurementUnitProduct::getMeasurementUnit).setCaption("Unidad de medida")
+		priceGrid.addColumn(MeasurementUnitProduct::getMeasurementUnit).setCaption("UM")
 				.setEditorComponent(cbMeasurementUnit, MeasurementUnitProduct::setMeasurementUnit);
 
 		NumberField txtPurchasePrice = new NumberField();
-		priceGrid.addColumn(MeasurementUnitProduct::getPurchasePriceStr).setCaption("Precio de compra sin IVA")
+		priceGrid.addColumn(MeasurementUnitProduct::getPurchasePriceStr).setCaption("Precio compra sin IVA")
 				.setEditorComponent(txtPurchasePrice, MeasurementUnitProduct::setPurchasePriceStr);
 
 		/*
@@ -267,6 +265,23 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		txtStock.setReadOnly(true);
 		priceGrid.addColumn(MeasurementUnitProduct::getStockStr).setCaption("Stock").setEditorComponent(txtStock,
 				MeasurementUnitProduct::setStockStr);
+
+		NumberField txtQtyEquivalence = new NumberField();
+		txtQtyEquivalence.setReadOnly(true);
+		priceGrid.addColumn(MeasurementUnitProduct::getQtyEquivalenceStr).setCaption("Cant equivalencia")
+				.setEditorComponent(txtQtyEquivalence, MeasurementUnitProduct::setQtyEquivalenceStr);
+
+		ComboBox<MeasurementUnit> cbMeasurementUnitE = new ComboBox<>("Unidad de medida equivalente");
+		cbMeasurementUnitE.setEmptySelectionCaption("Seleccione");
+		cbMeasurementUnitE.setWidth("50%");
+		cbMeasurementUnitE.setDescription("UM equiv");
+		cbMeasurementUnitE.setEmptySelectionAllowed(true);
+		ListDataProvider<MeasurementUnit> muEquivData = new ListDataProvider<>(measurementUnitBll.selectAll());
+		cbMeasurementUnitE.setDataProvider(muEquivData);
+		cbMeasurementUnitE.setItemCaptionGenerator(MeasurementUnit::getName);
+
+		priceGrid.addColumn(MeasurementUnitProduct::getMuEquivalence).setCaption("UM equivalente")
+				.setEditorComponent(cbMeasurementUnitE, MeasurementUnitProduct::setMuEquivalence);
 
 		priceGrid.getEditor().setEnabled(true);
 
