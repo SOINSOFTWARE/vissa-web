@@ -50,6 +50,7 @@ import com.vaadin.ui.TextField;
 import com.vaadin.ui.VerticalLayout;
 import com.vaadin.ui.Window;
 import com.vaadin.ui.components.grid.HeaderRow;
+import com.vaadin.ui.renderers.ButtonRenderer;
 import com.vaadin.ui.themes.ValoTheme;
 
 @SuppressWarnings("unchecked")
@@ -190,6 +191,7 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 		return layout;
 	}
 
+	@SuppressWarnings("rawtypes")
 	@Override
 	protected Panel buildGridPanel() {
 		String strLog = "[buildGridPanel] ";
@@ -230,6 +232,10 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 					return null;
 				}
 			}).setCaption("Fecha de vencimiento");
+
+			lotGrid.addColumn(lot -> "UM", new ButtonRenderer(clickEvent -> {
+				log.info("render" + ((Lot) clickEvent.getItem()).getCode());
+			}));
 
 			lotGrid.setStyleName(ValoTheme.TABLE_SMALL);
 			footer = lotGrid.prependHeaderRow();
@@ -514,7 +520,7 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 					invoiceLayout.getDetailGrid().focus();
 				} else {
 					// Guardar el lote
-					save(lotBll, lot, null);			
+					save(lotBll, lot, null);
 
 					if (!hasError) {
 						log.info(strLog + "Lote guardado: " + lot);

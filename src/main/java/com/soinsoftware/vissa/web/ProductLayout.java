@@ -26,7 +26,6 @@ import com.soinsoftware.vissa.bll.ProductTypeBll;
 import com.soinsoftware.vissa.bll.TableSequenceBll;
 import com.soinsoftware.vissa.bll.WarehouseBll;
 import com.soinsoftware.vissa.exception.ModelValidationException;
-import com.soinsoftware.vissa.model.DocumentDetail;
 import com.soinsoftware.vissa.model.MeasurementUnit;
 import com.soinsoftware.vissa.model.MeasurementUnitProduct;
 import com.soinsoftware.vissa.model.MuEquivalence;
@@ -92,6 +91,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 
 	private ComboBox<ProductType> cbType;
 	private ComboBox<MeasurementUnit> cbMeasurementUnit;
+	private ComboBox<MeasurementUnit> cbMUEquivalence;
 
 	private TextField txtBrand;
 	private NumberField txtSalePrice;
@@ -251,6 +251,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		 * MeasurementUnitProduct::setPurchaseTaxStr);
 		 */
 		NumberField txtUtilityPrc = new NumberField();
+		txtUtilityPrc.setStyleName(ValoTheme.TEXTFIELD_TINY);
 		priceGrid.addColumn(MeasurementUnitProduct::getUtilityPrcStr).setCaption("% Utilidad")
 				.setEditorComponent(txtUtilityPrc, MeasurementUnitProduct::setUtilityPrcStr);
 
@@ -263,25 +264,26 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 
 		NumberField txtStock = new NumberField();
 		txtStock.setReadOnly(true);
+		txtStock.setStyleName(ValoTheme.TEXTFIELD_TINY);
 		priceGrid.addColumn(MeasurementUnitProduct::getStockStr).setCaption("Stock").setEditorComponent(txtStock,
 				MeasurementUnitProduct::setStockStr);
 
 		NumberField txtQtyEquivalence = new NumberField();
-		txtQtyEquivalence.setReadOnly(true);
 		priceGrid.addColumn(MeasurementUnitProduct::getQtyEquivalenceStr).setCaption("Cant equivalencia")
 				.setEditorComponent(txtQtyEquivalence, MeasurementUnitProduct::setQtyEquivalenceStr);
 
-		ComboBox<MeasurementUnit> cbMeasurementUnitE = new ComboBox<>("Unidad de medida equivalente");
-		cbMeasurementUnitE.setEmptySelectionCaption("Seleccione");
-		cbMeasurementUnitE.setWidth("50%");
-		cbMeasurementUnitE.setDescription("UM equiv");
-		cbMeasurementUnitE.setEmptySelectionAllowed(true);
+		cbMUEquivalence = new ComboBox<>("Unidad de medida equivalente");
+		cbMUEquivalence.setEmptySelectionCaption("Seleccione");
+		cbMUEquivalence.setWidth("50%");
+		cbMUEquivalence.setDescription("UM equiv");
+		cbMUEquivalence.setEmptySelectionAllowed(true);
 		ListDataProvider<MeasurementUnit> muEquivData = new ListDataProvider<>(measurementUnitBll.selectAll());
-		cbMeasurementUnitE.setDataProvider(muEquivData);
-		cbMeasurementUnitE.setItemCaptionGenerator(MeasurementUnit::getName);
+		cbMUEquivalence.setDataProvider(muEquivData);
+		cbMUEquivalence.setItemCaptionGenerator(MeasurementUnit::getName);
+		cbMUEquivalence.setStyleName(ValoTheme.COMBOBOX_TINY);
 
 		priceGrid.addColumn(MeasurementUnitProduct::getMuEquivalence).setCaption("UM equivalente")
-				.setEditorComponent(cbMeasurementUnitE, MeasurementUnitProduct::setMuEquivalence);
+				.setEditorComponent(cbMUEquivalence, MeasurementUnitProduct::setMuEquivalence);
 
 		priceGrid.getEditor().setEnabled(true);
 
@@ -786,7 +788,9 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 							.measurementUnit(priceTmp.getMeasurementUnit()).purchasePrice(priceTmp.getPurchasePrice())
 							.purchaseTax(priceTmp.getPurchaseTax()).utility(priceTmp.getUtility())
 							.salePrice(priceTmp.getSalePrice()).saleTax(priceTmp.getSaleTax())
-							.finalPrice(priceTmp.getFinalPrice()).stock(product.getStock()).archived(false).build();
+							.finalPrice(priceTmp.getFinalPrice()).stock(product.getStock())
+							.qtyEquivalence(priceTmp.getQtyEquivalence()).muEquivalence(priceTmp.getMuEquivalence())
+							.archived(false).build();
 
 					measurementUnitProductBll.save(price, false);
 					log.info("UM Precio guardado " + price);

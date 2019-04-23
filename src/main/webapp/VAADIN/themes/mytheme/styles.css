@@ -15168,3 +15168,12 @@ div.v-layout.v-horizontal.v-widget {
 .mytheme .v-grid-cell {
 	font-size: 14px;
 }
+
+.mytheme .v-select-optiongroup-small {
+	font-size: 10px;
+}
+
+.mytheme .v-filterselect-tiny {
+	text-transform: uppercase;
+	font-size: 8px;
+}
