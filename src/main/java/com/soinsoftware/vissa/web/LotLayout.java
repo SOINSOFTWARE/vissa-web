@@ -638,11 +638,12 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 				List<MeasurementUnitLot> muLotList = measurementUnitLotBll.select(lot);
 				for (MeasurementUnitLot muLot : muLotList) {
 					MeasurementUnit mu = muLot.getMuProduct().getMeasurementUnit();
-					Double cant = muMap.get(mu);
-					Double stock = muMap.get(mu) + muLot.getStock();
+					Double stockMu = muMap.get(mu);
+					Double stock = stockMu == null ? 0.0 : stockMu + muLot.getStock();
 					muMap.put(mu, stock);
 				}
 			}
+			log.info("map");
 
 		} catch (Exception e) {
 			log.error(strLog + "[Exception] " + e.getMessage());
