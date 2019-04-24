@@ -7,7 +7,6 @@ import java.math.BigInteger;
 import java.util.Date;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import org.apache.log4j.Logger;
 import org.hibernate.HibernateException;
@@ -39,7 +38,6 @@ import com.soinsoftware.vissa.util.ELayoutMode;
 import com.soinsoftware.vissa.util.ViewHelper;
 import com.vaadin.data.provider.ConfigurableFilterDataProvider;
 import com.vaadin.data.provider.ListDataProvider;
-import com.vaadin.data.provider.Query;
 import com.vaadin.server.FontAwesome;
 import com.vaadin.server.Page;
 import com.vaadin.server.SerializablePredicate;
@@ -55,6 +53,7 @@ import com.vaadin.ui.Notification;
 import com.vaadin.ui.Panel;
 import com.vaadin.ui.TextField;
 import com.vaadin.ui.VerticalLayout;
+import com.vaadin.ui.Window;
 import com.vaadin.ui.themes.ValoTheme;
 
 @SuppressWarnings({ "unchecked", "deprecation" })
@@ -78,6 +77,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 	private final WarehouseBll warehouseBll;
 
 	public Grid<Product> productGrid;
+	private Grid<MeasurementUnitProduct> MUGrid;
 	private Grid<MeasurementUnitProduct> priceGrid;
 
 	private TextField txFilterByName;
@@ -90,7 +90,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 	private LotLayout lotPanel = null;
 
 	private ComboBox<ProductType> cbType;
-	private ComboBox<MeasurementUnit> cbMeasurementUnit;
+	private ComboBox<MeasurementUnit> cbMeasureUnit;
 	private ComboBox<MeasurementUnit> cbMUEquivalence;
 
 	private TextField txtBrand;
@@ -111,7 +111,9 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 	private Product product;
 	private List<Product> productList;
 	private boolean showConfirmMessage = true;
-	ELayoutMode mode = ELayoutMode.ALL;
+	private ELayoutMode mode = ELayoutMode.ALL;
+
+	private Window lotSubwindow;
 
 	public ProductLayout(ELayoutMode mode, List<Product> productList) throws IOException {
 		super("Productos", KEY_PRODUCTS);
@@ -205,7 +207,8 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 	}
 
 	/**
-	 * Metodo para llenar la grid de UM y precios
+	 * Metodo para llenar la grid de Unidades de Medida y sus respectivas
+	 * equivalencias
 	 * 
 	 * @param product
 	 * @return
@@ -225,20 +228,73 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 
 		horizontaLayout.addComponents(newPriceBtn, deletePriceBtn);
 
+		MUGrid = ViewHelper.buildGrid(SelectionMode.SINGLE);
+		MUGrid.setHeight("160px");
+
+		cbMeasureUnit = new ComboBox<>();
+		cbMeasureUnit.setEmptySelectionCaption("Seleccione");
+		cbMeasureUnit.setWidth("50%");
+		cbMeasureUnit.setDescription("Unidad de medida");
+		cbMeasureUnit.setEmptySelectionAllowed(true);
+		ListDataProvider<MeasurementUnit> measurementDataProv = new ListDataProvider<>(measurementUnitBll.selectAll());
+		cbMeasureUnit.setDataProvider(measurementDataProv);
+		cbMeasureUnit.setItemCaptionGenerator(MeasurementUnit::getName);
+
+		MUGrid.addColumn(MeasurementUnitProduct::getMeasurementUnit).setCaption("Unidad de medida (UM)")
+				.setEditorComponent(cbMeasureUnit, MeasurementUnitProduct::setMeasurementUnit);
+
+		NumberField txtStock = new NumberField();
+		txtStock.setReadOnly(true);
+		txtStock.setStyleName(ValoTheme.TEXTFIELD_TINY);
+		MUGrid.addColumn(MeasurementUnitProduct::getStockStr).setCaption("Stock en UM").setEditorComponent(txtStock,
+				MeasurementUnitProduct::setStockStr);
+
+		cbMUEquivalence = new ComboBox<>();
+		cbMUEquivalence.setEmptySelectionCaption("Seleccione");
+		cbMUEquivalence.setWidth("50%");
+		cbMUEquivalence.setDescription("UM equiv");
+		cbMUEquivalence.setEmptySelectionAllowed(true);
+		ListDataProvider<MeasurementUnit> muEquivData = new ListDataProvider<>(measurementUnitBll.selectAll());
+		cbMUEquivalence.setDataProvider(muEquivData);
+		cbMUEquivalence.setItemCaptionGenerator(MeasurementUnit::getName);
+		cbMUEquivalence.setStyleName(ValoTheme.COMBOBOX_TINY);
+
+		MUGrid.addColumn(MeasurementUnitProduct::getMuEquivalence).setCaption("Unidad de medida equivalente")
+				.setEditorComponent(cbMUEquivalence, MeasurementUnitProduct::setMuEquivalence);
+
+		NumberField txtQtyEquivalence = new NumberField();
+		MUGrid.addColumn(MeasurementUnitProduct::getQtyEquivalenceStr).setCaption("Cantidad UM equivalente")
+				.setEditorComponent(txtQtyEquivalence, MeasurementUnitProduct::setQtyEquivalenceStr);
+
+		MUGrid.getEditor().setEnabled(true);
+
+		layout.addComponents(horizontaLayout, MUGrid);
+
+		cbMeasureUnit.addValueChangeListener(e -> MUEquivalences(e.getValue()));
+
+		MUGrid.getEditor().addSaveListener(e -> {
+			priceGrid.getDataProvider().refreshAll();
+		});
+
+		fillMUGridData(product);
+		Panel panel = ViewHelper.buildPanel("Unidades de medida", layout);
+		panel.setHeight("270px");
+		return panel;
+	}
+
+	/**
+	 * Metodo para llenar la grid de precios por unidad de medida
+	 * 
+	 * @param product
+	 * @return
+	 */
+	protected Panel buildPriceGridPanel(Product product) {
+		VerticalLayout layout = ViewHelper.buildVerticalLayout(false, true);
+
 		priceGrid = ViewHelper.buildGrid(SelectionMode.SINGLE);
 		priceGrid.setHeight("160px");
 
-		cbMeasurementUnit = new ComboBox<>("Unidad de medida");
-		cbMeasurementUnit.setEmptySelectionCaption("Seleccione");
-		cbMeasurementUnit.setWidth("50%");
-		cbMeasurementUnit.setDescription("Unidad de medida");
-		cbMeasurementUnit.setEmptySelectionAllowed(true);
-		ListDataProvider<MeasurementUnit> measurementDataProv = new ListDataProvider<>(measurementUnitBll.selectAll());
-		cbMeasurementUnit.setDataProvider(measurementDataProv);
-		cbMeasurementUnit.setItemCaptionGenerator(MeasurementUnit::getName);
-
-		priceGrid.addColumn(MeasurementUnitProduct::getMeasurementUnit).setCaption("UM")
-				.setEditorComponent(cbMeasurementUnit, MeasurementUnitProduct::setMeasurementUnit);
+		priceGrid.addColumn(MeasurementUnitProduct::getMeasurementUnit).setCaption("Unida de medida");
 
 		NumberField txtPurchasePrice = new NumberField();
 		priceGrid.addColumn(MeasurementUnitProduct::getPurchasePriceStr).setCaption("Precio compra sin IVA")
@@ -256,43 +312,21 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 				.setEditorComponent(txtUtilityPrc, MeasurementUnitProduct::setUtilityPrcStr);
 
 		priceGrid.addColumn(MeasurementUnitProduct::getSalePrice).setCaption("Precio de venta");
+
 		NumberField txtSaleTax = new NumberField();
 		priceGrid.addColumn(MeasurementUnitProduct::getSaleTaxStr).setCaption("% IVA").setEditorComponent(txtSaleTax,
 				MeasurementUnitProduct::setSaleTaxStr);
 
 		priceGrid.addColumn(MeasurementUnitProduct::getFinalPrice).setCaption("Precio final");
 
-		NumberField txtStock = new NumberField();
-		txtStock.setReadOnly(true);
-		txtStock.setStyleName(ValoTheme.TEXTFIELD_TINY);
-		priceGrid.addColumn(MeasurementUnitProduct::getStockStr).setCaption("Stock").setEditorComponent(txtStock,
-				MeasurementUnitProduct::setStockStr);
-
-		NumberField txtQtyEquivalence = new NumberField();
-		priceGrid.addColumn(MeasurementUnitProduct::getQtyEquivalenceStr).setCaption("Cant equivalencia")
-				.setEditorComponent(txtQtyEquivalence, MeasurementUnitProduct::setQtyEquivalenceStr);
-
-		cbMUEquivalence = new ComboBox<>("Unidad de medida equivalente");
-		cbMUEquivalence.setEmptySelectionCaption("Seleccione");
-		cbMUEquivalence.setWidth("50%");
-		cbMUEquivalence.setDescription("UM equiv");
-		cbMUEquivalence.setEmptySelectionAllowed(true);
-		ListDataProvider<MeasurementUnit> muEquivData = new ListDataProvider<>(measurementUnitBll.selectAll());
-		cbMUEquivalence.setDataProvider(muEquivData);
-		cbMUEquivalence.setItemCaptionGenerator(MeasurementUnit::getName);
-		cbMUEquivalence.setStyleName(ValoTheme.COMBOBOX_TINY);
-
-		priceGrid.addColumn(MeasurementUnitProduct::getMuEquivalence).setCaption("UM equivalente")
-				.setEditorComponent(cbMUEquivalence, MeasurementUnitProduct::setMuEquivalence);
-
 		priceGrid.getEditor().setEnabled(true);
 
-		layout.addComponents(horizontaLayout, priceGrid);
+		layout.addComponents(priceGrid);
 
-		cbMeasurementUnit.addValueChangeListener(e -> MUEquivalences(e.getValue()));
+		cbMeasureUnit.addValueChangeListener(e -> MUEquivalences(e.getValue()));
 
 		fillMUGridData(product);
-		Panel panel = ViewHelper.buildPanel("Unidades de medida y precios", layout);
+		Panel panel = ViewHelper.buildPanel("Pecios x unidad de medida", layout);
 		panel.setHeight("270px");
 		return panel;
 	}
@@ -327,7 +361,6 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		cbCategory.setDataProvider(categoryDataProv);
 		cbCategory.setItemCaptionGenerator(ProductCategory::getName);
 		cbCategory.setRequiredIndicatorVisible(true);
-		;
 
 		cbType = new ComboBox<>("Tipo de producto");
 		cbType.setEmptySelectionCaption("Seleccione");
@@ -338,15 +371,15 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		cbType.setDataProvider(typeDataProv);
 		cbType.setItemCaptionGenerator(ProductType::getName);
 
-		cbMeasurementUnit = new ComboBox<>("Unidad de medida");
-		cbMeasurementUnit.setEmptySelectionCaption("Seleccione");
-		cbMeasurementUnit.setWidth("50%");
-		cbMeasurementUnit.setDescription("Unidad de medida");
-		cbMeasurementUnit.setEmptySelectionAllowed(true);
-		cbMeasurementUnit.addStyleName(ValoTheme.COMBOBOX_TINY);
+		cbMeasureUnit = new ComboBox<>("Unidad de medida");
+		cbMeasureUnit.setEmptySelectionCaption("Seleccione");
+		cbMeasureUnit.setWidth("50%");
+		cbMeasureUnit.setDescription("Unidad de medida");
+		cbMeasureUnit.setEmptySelectionAllowed(true);
+		cbMeasureUnit.addStyleName(ValoTheme.COMBOBOX_TINY);
 		ListDataProvider<MeasurementUnit> measurementDataProv = new ListDataProvider<>(measurementUnitBll.selectAll());
-		cbMeasurementUnit.setDataProvider(measurementDataProv);
-		cbMeasurementUnit.setItemCaptionGenerator(MeasurementUnit::getName);
+		cbMeasureUnit.setDataProvider(measurementDataProv);
+		cbMeasureUnit.setItemCaptionGenerator(MeasurementUnit::getName);
 
 		txtBrand = new TextField("Marca");
 		txtBrand.setWidth("50%");
@@ -387,9 +420,14 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		txtStockDate.setWidth("55%");
 		txtStockDate.setReadOnly(true);
 
+		Button lotBtn = new Button("Lotes");
+		lotBtn.addStyleName(ValoTheme.BUTTON_TINY);
+
 		// Setear los valores de los campos
 		setFieldValues(product);
 
+		// -----------------------------------------------------------
+		// Asociar eventos
 		txtPurchasePrice.addValueChangeListener(e -> {
 			updateSalePrice();
 		});
@@ -407,39 +445,71 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		txtStock.addValueChangeListener(e -> {
 			updateStockDate(txtStock.getValue());
 		});
+
+		lotBtn.addClickListener(e -> buildLotWindow(product));
+
 		// ----------------------------------------------------------------------------------
 
 		HorizontalLayout formLayout = ViewHelper.buildHorizontalLayout(false, false);
 
 		final FormLayout form = ViewHelper.buildForm("", false, false);
 		form.setSizeFull();
-		form.setWidth("50%");
+		form.setWidth("40%");
 		form.addStyleName(ValoTheme.FORMLAYOUT_LIGHT);
+		form.addComponents(txtCode, txtName, cbCategory);
 
 		final FormLayout form2 = ViewHelper.buildForm("", false, false);
 		form2.setSizeFull();
-		form2.setWidth("50%");
+		form2.setWidth("40%");
 		form2.addStyleName(ValoTheme.FORMLAYOUT_LIGHT);
-
-		form.addComponents(txtCode, txtName, cbCategory);
 		form2.addComponents(txtBrand, txtStock);
 
-		formLayout.addComponents(form, form2);
+		final FormLayout form3 = ViewHelper.buildForm("", false, false);
+		form2.setSizeFull();
+		form2.setWidth("20%");
+		form2.addStyleName(ValoTheme.FORMLAYOUT_LIGHT);
+		form3.addComponents(lotBtn);
 
-		// Panel de UM y precios
-		Panel pricePanel = buildMUGridPanel(product);
+		formLayout.addComponents(form, form2, form3);
+
+		// Panel de unidades de medida
+		Panel muPanel = buildMUGridPanel(product);
+
+		// Panel de precios x unidad de medida
+		Panel pricePanel = buildPriceGridPanel(product);
 
 		// Panel de lotes
-		LotLayout lotPanel = buildLotPanel();
+		// LotLayout lotPanel = buildLotPanel();
 
-		layout.addComponents(formLayout, pricePanel);
+		layout.addComponents(formLayout, muPanel, pricePanel);
 
 		// txtStock.setValue(lotPanel.getTotalStock());
 
 		if (!mode.equals(ELayoutMode.LIST) && !mode.equals(ELayoutMode.NEW)) {
-			layout.addComponents(lotPanel);
+			// layout.addComponents(lotPanel);
 		}
 		return layout;
+	}
+
+	/**
+	 * Metodo que construye la ventana para buscar lores
+	 */
+	private void buildLotWindow(Product product) {
+		String strLog = "[buildLotWindow] ";
+		try {
+
+			lotSubwindow = ViewHelper.buildSubwindow("70%", "95%");
+			lotSubwindow.setCaption("Lotes del producto " + product.getCode() + " - " + product.getName());
+
+			VerticalLayout subContent = ViewHelper.buildVerticalLayout(true, true);
+			subContent.addComponents(buildLotPanel());
+
+			lotSubwindow.setContent(subContent);
+
+			getUI().addWindow(lotSubwindow);
+		} catch (Exception e) {
+			log.error(strLog + "[Exception]" + e.getMessage());
+		}
 	}
 
 	/**
@@ -480,7 +550,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 				txtDescription.setValue(product.getDescription() != null ? product.getDescription() : "");
 				cbCategory.setValue(product.getCategory() != null ? product.getCategory() : null);
 				cbType.setValue(product.getType() != null ? product.getType() : null);
-				cbMeasurementUnit.setValue(product.getMeasurementUnit() != null ? product.getMeasurementUnit() : null);
+				cbMeasureUnit.setValue(product.getMeasurementUnit() != null ? product.getMeasurementUnit() : null);
 				txtBrand.setValue(product.getBrand() != null ? product.getBrand() : "");
 				txtEan.setValue(product.getEanCode() != null ? product.getEanCode() : "");
 				txtPurchasePrice
@@ -619,12 +689,15 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 	 */
 
 	protected void fillMUGridData(Product product) {
-		String strLog = "[fillPriceGridData]";
+		String strLog = "[fillMUGridData]";
 
 		try {
 			log.info(strLog + "[parameters] product: " + product);
-			priceProductList = measurementUnitProductBll.select(product);
+			if (priceProductList == null || priceProductList.isEmpty()) {
+				priceProductList = measurementUnitProductBll.select(product);
+			}
 			dataProviderProdMeasurement = new ListDataProvider<>(priceProductList);
+			MUGrid.setDataProvider(dataProviderProdMeasurement);
 			priceGrid.setDataProvider(dataProviderProdMeasurement);
 		} catch (Exception e) {
 			log.error(strLog + "[Exception]" + e.getMessage());
@@ -642,7 +715,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 			log.info(strLog + "[parameters] priceProductList: " + priceProductList);
 			if (priceProductList != null) {
 				dataProviderProdMeasurement = new ListDataProvider<>(priceProductList);
-				priceGrid.setDataProvider(dataProviderProdMeasurement);
+				MUGrid.setDataProvider(dataProviderProdMeasurement);
 			}
 		} catch (Exception e) {
 			log.error(strLog + "[Exception]" + e.getMessage());
@@ -775,25 +848,26 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		try {
 
 			// Se obtienen los precios de la grid de la UM del producto
-			priceProductList = priceGrid.getDataProvider().fetch(new Query<>()).collect(Collectors.toList());
+			// priceProductList = MUGrid.getDataProvider().fetch(new
+			// Query<>()).collect(Collectors.toList());
 
-			for (MeasurementUnitProduct priceTmp : priceProductList) {
+			for (MeasurementUnitProduct muProductTmp : priceProductList) {
 
 				MeasurementUnitProduct.Builder priceBuilder = null;
-				priceBuilder = MeasurementUnitProduct.builder(priceTmp);
+				priceBuilder = MeasurementUnitProduct.builder(muProductTmp);
 
 				try {
 					// Guardar precio por unidad de medida del producto
-					MeasurementUnitProduct price = priceBuilder.product(product)
-							.measurementUnit(priceTmp.getMeasurementUnit()).purchasePrice(priceTmp.getPurchasePrice())
-							.purchaseTax(priceTmp.getPurchaseTax()).utility(priceTmp.getUtility())
-							.salePrice(priceTmp.getSalePrice()).saleTax(priceTmp.getSaleTax())
-							.finalPrice(priceTmp.getFinalPrice()).stock(product.getStock())
-							.qtyEquivalence(priceTmp.getQtyEquivalence()).muEquivalence(priceTmp.getMuEquivalence())
-							.archived(false).build();
+					MeasurementUnitProduct umProductEntity = priceBuilder.product(product)
+							.measurementUnit(muProductTmp.getMeasurementUnit())
+							.purchasePrice(muProductTmp.getPurchasePrice()).purchaseTax(muProductTmp.getPurchaseTax())
+							.utility(muProductTmp.getUtility()).salePrice(muProductTmp.getSalePrice())
+							.saleTax(muProductTmp.getSaleTax()).finalPrice(muProductTmp.getFinalPrice())
+							.stock(product.getStock()).qtyEquivalence(muProductTmp.getQtyEquivalence())
+							.muEquivalence(muProductTmp.getMuEquivalence()).archived(false).build();
 
-					measurementUnitProductBll.save(price, false);
-					log.info("UM Precio guardado " + price);
+					measurementUnitProductBll.save(umProductEntity, false);
+					log.info("UM y precio guardados " + umProductEntity);
 				} catch (ModelValidationException ex) {
 					measurementUnitProductBll.rollback();
 					log.error(strLog + "[ModelValidationException] " + ex);
@@ -829,7 +903,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 	 */
 	public MeasurementUnitProduct getMUSelected() {
 		MeasurementUnitProduct prod = null;
-		Set<MeasurementUnitProduct> products = priceGrid.getSelectedItems();
+		Set<MeasurementUnitProduct> products = MUGrid.getSelectedItems();
 		if (products != null && !products.isEmpty()) {
 			prod = (MeasurementUnitProduct) products.toArray()[0];
 		}
@@ -867,7 +941,8 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 	}
 
 	private void refreshPriceGrid() {
-		priceGrid.getDataProvider().refreshAll();
+		MUGrid.getDataProvider().refreshAll();
+		// priceGrid.getDataProvider().refreshAll();
 	}
 
 	private SerializablePredicate<Product> filterGrid() {
@@ -910,7 +985,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 	private void addItemPriceGrid() {
 		MeasurementUnitProduct muProduct = new MeasurementUnitProduct();
 		priceProductList.add(muProduct);
-		priceGrid.focus();
+		MUGrid.focus();
 		refreshPriceGrid();
 	}
 
@@ -923,10 +998,15 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		String strLog = "[deleteItemPriceGrid]";
 		try {
 			if (entity != null) {
-				entity = MeasurementUnitProduct.builder(entity).archived(true).build();
-				measurementUnitProductBll.save(entity);
-				fillMUGridData(product);
-				ViewHelper.showNotification("Unidad de medida eliminada", Notification.Type.WARNING_MESSAGE);
+				if (entity.getMeasurementUnit() != null) {
+					entity = MeasurementUnitProduct.builder(entity).archived(true).build();
+					measurementUnitProductBll.save(entity);
+					fillMUGridData(product);
+					ViewHelper.showNotification("Unidad de medida eliminada", Notification.Type.WARNING_MESSAGE);
+				} else {
+					priceProductList.remove(entity);
+					priceGrid.getDataProvider().refreshAll();
+				}
 			} else {
 				ViewHelper.showNotification("No ha seleccionado un registro", Notification.Type.WARNING_MESSAGE);
 			}
@@ -941,7 +1021,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 	 */
 	protected MeasurementUnitProduct getMUProduct() {
 		MeasurementUnitProduct muProduct = null;
-		Set<MeasurementUnitProduct> muProducts = priceGrid.getSelectedItems();
+		Set<MeasurementUnitProduct> muProducts = MUGrid.getSelectedItems();
 		if (muProducts != null && !muProducts.isEmpty()) {
 			muProduct = (MeasurementUnitProduct) muProducts.toArray()[0];
 		}
@@ -1006,7 +1086,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 				// Se calcula la equivalencia de los precios y stock para la UM. Los impuestos
 				// se mantienen
 
-				MeasurementUnitProduct muPRoduct = priceGrid.getSelectedItems().iterator().next();
+				MeasurementUnitProduct muPRoduct = MUGrid.getSelectedItems().iterator().next();
 				int pos = priceProductList.indexOf(muPRoduct);
 
 				if (pos >= 0) {

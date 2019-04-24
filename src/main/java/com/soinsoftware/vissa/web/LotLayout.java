@@ -5,15 +5,20 @@ import static com.soinsoftware.vissa.web.VissaUI.KEY_LOTS;
 import java.io.IOException;
 import java.util.Comparator;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 
 import org.apache.log4j.Logger;
 import org.jsoup.helper.StringUtil;
+import org.springframework.scheduling.annotation.Async;
 import org.vaadin.ui.NumberField;
 
 import com.soinsoftware.vissa.bll.DocumentDetailLotBll;
 import com.soinsoftware.vissa.bll.LotBll;
+import com.soinsoftware.vissa.bll.MeasurementUnitLotBll;
 import com.soinsoftware.vissa.bll.MeasurementUnitProductBll;
 import com.soinsoftware.vissa.bll.MuEquivalenceBll;
 import com.soinsoftware.vissa.bll.ProductBll;
@@ -22,6 +27,7 @@ import com.soinsoftware.vissa.common.CommonsConstants;
 import com.soinsoftware.vissa.model.DocumentDetailLot;
 import com.soinsoftware.vissa.model.Lot;
 import com.soinsoftware.vissa.model.MeasurementUnit;
+import com.soinsoftware.vissa.model.MeasurementUnitLot;
 import com.soinsoftware.vissa.model.MeasurementUnitProduct;
 import com.soinsoftware.vissa.model.MuEquivalence;
 import com.soinsoftware.vissa.model.Product;
@@ -68,6 +74,7 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 	private final MeasurementUnitProductBll measurementUnitProductBll;
 	private final MuEquivalenceBll muEquivalencesBll;
 	private final DocumentDetailLotBll documentDetailLotBll;
+	private final MeasurementUnitLotBll measurementUnitLotBll;
 
 	public Grid<Lot> lotGrid;
 	public Grid<DocumentDetailLot> detailLotGrid;
@@ -113,6 +120,7 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 		measurementUnitProductBll = MeasurementUnitProductBll.getInstance();
 		muEquivalencesBll = MuEquivalenceBll.getInstance();
 		documentDetailLotBll = DocumentDetailLotBll.getInstance();
+		measurementUnitLotBll = MeasurementUnitLotBll.getInstance();
 		modeLayout = Commons.LAYOUT_MODE;
 		addListTab();
 	}
@@ -127,6 +135,7 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 		measurementUnitProductBll = MeasurementUnitProductBll.getInstance();
 		muEquivalencesBll = MuEquivalenceBll.getInstance();
 		documentDetailLotBll = DocumentDetailLotBll.getInstance();
+		measurementUnitLotBll = MeasurementUnitLotBll.getInstance();
 		modeLayout = Commons.LAYOUT_MODE;
 		if (modeLayout.equals(ELayoutMode.NEW)) {
 			addListTab();
@@ -143,6 +152,7 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 		measurementUnitProductBll = MeasurementUnitProductBll.getInstance();
 		muEquivalencesBll = MuEquivalenceBll.getInstance();
 		documentDetailLotBll = DocumentDetailLotBll.getInstance();
+		measurementUnitLotBll = MeasurementUnitLotBll.getInstance();
 		modeLayout = Commons.LAYOUT_MODE;
 		addListTab();
 
@@ -157,6 +167,7 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 		measurementUnitProductBll = MeasurementUnitProductBll.getInstance();
 		muEquivalencesBll = MuEquivalenceBll.getInstance();
 		documentDetailLotBll = DocumentDetailLotBll.getInstance();
+		measurementUnitLotBll = MeasurementUnitLotBll.getInstance();
 		modeLayout = ELayoutMode.REPORT;
 		log.info("modeLayout:" + modeLayout);
 	}
@@ -235,11 +246,13 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 				}
 			}).setCaption("Fecha de vencimiento");
 
-			lotGrid.addColumn(lot -> "UM", new ButtonRenderer(clickEvent -> {
+			lotGrid.addColumn(lot -> "Unidad de medida", new ButtonRenderer(clickEvent -> {
 				buidMuLotWindow((Lot) clickEvent.getItem());
-			}));
+			})).setCaption("Ver unidad de medida");
 
 			lotGrid.setStyleName(ValoTheme.TABLE_SMALL);
+			lotGrid.setHeight("300px");
+
 			footer = lotGrid.prependHeaderRow();
 			footer.getCell(columnWarehouse).setHtml("<b>Totat stock:</b>");
 			fillGridData();
@@ -354,7 +367,7 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 		txtWarehouseFilter.setItemCaptionGenerator(Warehouse::getName);
 		txtWarehouseFilter.addValueChangeListener(e -> refreshGrid());
 
-		checkStockFilter = new CheckBox("Stock 0");
+		checkStockFilter = new CheckBox("Stock en 0");
 		checkStockFilter.setStyleName(ValoTheme.CHECKBOX_SMALL);
 		checkStockFilter.addValueChangeListener(e -> refreshGrid());
 
@@ -608,6 +621,33 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 		} catch (Exception e) {
 			log.error(strLog + "[Exception]" + e.getMessage());
 		}
+	}
+
+	/**
+	 * Metodo asincrono que actualizar el stock por UM en el lote y producto
+	 * 
+	 * @param product
+	 */
+	@Async
+	public void updateStock(Product product) {
+		String strLog = "[updateStock] ";
+		Map<MeasurementUnit, Double> muMap = new HashMap<MeasurementUnit, Double>();
+		try {
+			List<Lot> lots = lotBll.selecLotWithStock(product);
+			for (Lot lot : lots) {
+				List<MeasurementUnitLot> muLotList = measurementUnitLotBll.select(lot);
+				for (MeasurementUnitLot muLot : muLotList) {
+					MeasurementUnit mu = muLot.getMuProduct().getMeasurementUnit();
+					Double cant = muMap.get(mu);
+					Double stock = muMap.get(mu) + muLot.getStock();
+					muMap.put(mu, stock);
+				}
+			}
+
+		} catch (Exception e) {
+			log.error(strLog + "[Exception] " + e.getMessage());
+		}
+
 	}
 
 	private Double convertMU(Double quantity, MeasurementUnit muSource, MeasurementUnit muTarget) {

@@ -68,6 +68,7 @@ public class MuLotLayout extends AbstractEditableLayout<MeasurementUnitLot> {
 		measurementUnitLotBll = MeasurementUnitLotBll.getInstance();
 		measurementUnitProducBll = MeasurementUnitProductBll.getInstance();
 		measurementUnitBll = MeasurementUnitBll.getInstance();
+		this.lotLayout = lotLayout;
 		this.lot = lotLayout.getLot();
 		this.product = lot.getProduct();
 		addComponent(buildGridPanel());
@@ -221,10 +222,16 @@ public class MuLotLayout extends AbstractEditableLayout<MeasurementUnitLot> {
 					muLot.setLot(lot);
 					muLotList.add(muLot);
 				}
+
 			}
 
-			dataProvider = new ListDataProvider<>(muLotList);
-			muLotGrid.setDataProvider(dataProvider);
+			if (muLotList == null || muLotList.isEmpty()) {
+				ViewHelper.showNotification("No hay UM confirguradas para el producto",
+						Notification.Type.ERROR_MESSAGE);
+			} else {
+				dataProvider = new ListDataProvider<>(muLotList);
+				muLotGrid.setDataProvider(dataProvider);
+			}
 		} catch (Exception e) {
 			log.error(strLog + "[Exception] " + e.getMessage());
 		}
@@ -237,7 +244,10 @@ public class MuLotLayout extends AbstractEditableLayout<MeasurementUnitLot> {
 		try {
 			for (MeasurementUnitLot muLot : muLotList) {
 				measurementUnitLotBll.save(muLot);
-				log.info(strLog + " MU product saved: " + muLot);
+				log.info(strLog + " MU x lote guardado: " + muLot);
+
+				// Actualizar stock total por UM
+				lotLayout.updateStock(product);
 			}
 			ViewHelper.showNotification("Unidades de medida actualizadas para el lote",
 					Notification.Type.WARNING_MESSAGE);
