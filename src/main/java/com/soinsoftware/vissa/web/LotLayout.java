@@ -101,6 +101,8 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 	private ELayoutMode modeLayout;
 	private Lot lot;
 
+	private MuLotLayout muLotLayout;
+
 	public LotLayout(Product product, ProductLayout productLayout) throws IOException {
 		super("Lotes", KEY_LOTS);
 		this.product = product;
@@ -234,7 +236,7 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 			}).setCaption("Fecha de vencimiento");
 
 			lotGrid.addColumn(lot -> "UM", new ButtonRenderer(clickEvent -> {
-				log.info("render" + ((Lot) clickEvent.getItem()).getCode());
+				buidMuLotWindow((Lot) clickEvent.getItem());
 			}));
 
 			lotGrid.setStyleName(ValoTheme.TABLE_SMALL);
@@ -268,6 +270,32 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 			lotGrid.select(lot);
 			editButtonAction("Movimientos del lote");
 		}
+	}
+
+	/**
+	 * Metodo para configurar el stock por UM del lote
+	 * 
+	 * @param lot
+	 */
+	private void buidMuLotWindow(Lot lot) {
+		String strLog = "[buidMuLotWindow] ";
+		try {
+			log.info(strLog + "[parameters] lot: " + lot);
+			this.lot = lot;
+			VerticalLayout subContent = ViewHelper.buildVerticalLayout(true, true);
+			muLotLayout = new MuLotLayout(this);
+			muLotLayout.setCaption("Lotes");
+			muLotLayout.setMargin(false);
+			muLotLayout.setSpacing(true);
+			subContent.addComponent(muLotLayout);
+			Window muLotWindow = ViewHelper.buildSubwindow("50%", null);
+			muLotWindow.setContent(subContent);
+			getUI().addWindow(muLotWindow);
+		} catch (IOException e) {
+			log.error(strLog + "[IOException] " + e.getMessage());
+			e.printStackTrace();
+		}
+
 	}
 
 	protected Panel buildDetailLotGridPanel(Lot lot) {

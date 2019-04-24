@@ -12,6 +12,7 @@ import org.vaadin.ui.NumberField;
 import com.soinsoftware.vissa.bll.MeasurementUnitBll;
 import com.soinsoftware.vissa.bll.MeasurementUnitLotBll;
 import com.soinsoftware.vissa.bll.MeasurementUnitProductBll;
+import com.soinsoftware.vissa.common.CommonsConstants;
 import com.soinsoftware.vissa.model.ETransactionType;
 import com.soinsoftware.vissa.model.Lot;
 import com.soinsoftware.vissa.model.MeasurementUnit;
@@ -47,9 +48,9 @@ public class MuLotLayout extends AbstractEditableLayout<MeasurementUnitLot> {
 	private final MeasurementUnitProductBll measurementUnitProducBll;
 	private final MeasurementUnitBll measurementUnitBll;
 
-	private Grid<MeasurementUnitLot> muProductGrid;
+	private Grid<MeasurementUnitLot> muLotGrid;
 
-	private ComboBox<MeasurementUnitProduct> cbMeasurementUnit;
+	private ComboBox<MeasurementUnit> cbMeasurementUnit;
 
 	private Product product;
 
@@ -58,17 +59,17 @@ public class MuLotLayout extends AbstractEditableLayout<MeasurementUnitLot> {
 	private ETransactionType transactionType;
 
 	private ListDataProvider<MeasurementUnitLot> dataProvider;
-	private List<MeasurementUnitLot> muProductList;
+	private List<MeasurementUnitLot> muLotList;
 
 	private LotLayout lotLayout;
 
-	public MuLotLayout(LotLayout lotLayout, Product product) throws IOException {
+	public MuLotLayout(LotLayout lotLayout) throws IOException {
 		super("Unidades de Medida x lote", KEY_PRODUCTS);
-		this.product = product;
-		this.lotLayout = lotLayout;
 		measurementUnitLotBll = MeasurementUnitLotBll.getInstance();
 		measurementUnitProducBll = MeasurementUnitProductBll.getInstance();
 		measurementUnitBll = MeasurementUnitBll.getInstance();
+		this.lot = lotLayout.getLot();
+		this.product = lot.getProduct();
 		addComponent(buildGridPanel());
 	}
 
@@ -116,51 +117,53 @@ public class MuLotLayout extends AbstractEditableLayout<MeasurementUnitLot> {
 
 		buttonLayout.addComponents(newMuTbn, saveMuBtn, deleteMuBtn);
 
-		muProductGrid = ViewHelper.buildGrid(SelectionMode.SINGLE);
-		muProductGrid.setHeight("160px");
+		muLotGrid = ViewHelper.buildGrid(SelectionMode.SINGLE);
+		muLotGrid.setHeight("160px");
 
 		cbMeasurementUnit = new ComboBox<>("Unidad de medida");
 		cbMeasurementUnit.setEmptySelectionCaption("Seleccione");
 		cbMeasurementUnit.setWidth("50%");
 		cbMeasurementUnit.setDescription("Unidad de medida");
 		cbMeasurementUnit.setEmptySelectionAllowed(true);
-		ListDataProvider<MeasurementUnitProduct> measurementDataProv = new ListDataProvider<>(
-				measurementUnitProducBll.select(product));
+		ListDataProvider<MeasurementUnit> measurementDataProv = new ListDataProvider<>(
+				measurementUnitBll.selectAll(false));
 		cbMeasurementUnit.setDataProvider(measurementDataProv);
-		cbMeasurementUnit.setItemCaptionGenerator(muProduct -> muProduct.getMeasurementUnit().getName());
+		cbMeasurementUnit.setItemCaptionGenerator(MeasurementUnit::getName);
 		/*
 		 * cbMeasurementUnit.addValueChangeListener(e -> validateMeasurementUnit(
 		 * cbMeasurementUnit.getSelectedItem().isPresent() ?
 		 * cbMeasurementUnit.getSelectedItem().get() : null));
 		 */
 
-		muProductGrid.addColumn(MeasurementUnitLot::getMuProduct).setCaption("Unidad de medida")
-				.setEditorComponent(cbMeasurementUnit, MeasurementUnitLot::setMuProduct);
+		muLotGrid.addColumn(MeasurementUnitLot::getMeasureUnit).setCaption("Unidad de medida")
+				.setEditorComponent(cbMeasurementUnit, MeasurementUnitLot::setMeasureUnit);
 
 		NumberField txtStock = new NumberField();
-		muProductGrid.addColumn(MeasurementUnitLot::getStockStr).setCaption("Stock").setEditorComponent(txtStock,
+		muLotGrid.addColumn(MeasurementUnitLot::getStockStr).setCaption("Stock").setEditorComponent(txtStock,
 				MeasurementUnitLot::setStockStr);
 
-		muProductGrid.getEditor().setEnabled(true);
+		muLotGrid.getEditor().setEnabled(true);
 
-		layout.addComponents(buttonLayout, muProductGrid);
+		muLotGrid.getEditor().addSaveListener(e -> {
+			muLotGrid.deselectAll();
+			muLotGrid.deselect(CommonsConstants.MEASUREMENT_UNIT_LOT);
+		});
+		layout.addComponents(buttonLayout, muLotGrid);
 
 		fillGridData();
-		Panel panel = ViewHelper.buildPanel("Unidades de medida y precios", layout);
+		Panel panel = ViewHelper.buildPanel("Stock por Unidad de Medida", layout);
 		panel.setSizeFull();
 		return panel;
 	}
 
 	/**
-	 * Metodo para agregar una línea a la grid de UM
+	 * Metodo para agregar una línea a la grid de UM x Lote
 	 */
 	private void addItemGrid() {
 		MeasurementUnitLot muProductLot = new MeasurementUnitLot();
 		muProductLot.setLot(lot);
-		muProductList.add(muProductLot);
-
-		muProductGrid.select(muProductLot);
-
+		muLotList.add(muProductLot);
+		muLotGrid.focus();
 		refreshGrid();
 	}
 
@@ -171,7 +174,7 @@ public class MuLotLayout extends AbstractEditableLayout<MeasurementUnitLot> {
 	 */
 	private void validateMeasurementUnit(MeasurementUnit measurementUnit) {
 		MeasurementUnitProduct muProduct = MeasurementUnitProduct.builder().measurementUnit(measurementUnit).build();
-		if (muProductList.contains(muProduct)) {
+		if (muLotList.contains(muProduct)) {
 			ViewHelper.showNotification("Esta unidad de medida ya está asociada al producto",
 					Notification.Type.ERROR_MESSAGE);
 		}
@@ -204,14 +207,26 @@ public class MuLotLayout extends AbstractEditableLayout<MeasurementUnitLot> {
 	@Override
 	protected void fillGridData() {
 
-		String strLog = "[fillGridData]";
+		String strLog = "[fillGridData] ";
 
 		try {
-			muProductList = measurementUnitLotBll.select(lot);
-			dataProvider = new ListDataProvider<>(muProductList);
-			muProductGrid.setDataProvider(dataProvider);
+			muLotList = measurementUnitLotBll.select(lot);
+
+			if (muLotList == null || muLotList.isEmpty()) {
+				List<MeasurementUnitProduct> muProductList = measurementUnitProducBll.select(product);
+				for (MeasurementUnitProduct muProduct : muProductList) {
+					MeasurementUnitLot muLot = new MeasurementUnitLot();
+					muLot.setMuProduct(muProduct);
+					muLot.setMeasureUnit(muProduct.getMeasurementUnit());
+					muLot.setLot(lot);
+					muLotList.add(muLot);
+				}
+			}
+
+			dataProvider = new ListDataProvider<>(muLotList);
+			muLotGrid.setDataProvider(dataProvider);
 		} catch (Exception e) {
-			log.error(strLog + "[Exception]" + e.getMessage());
+			log.error(strLog + "[Exception] " + e.getMessage());
 		}
 	}
 
@@ -220,9 +235,9 @@ public class MuLotLayout extends AbstractEditableLayout<MeasurementUnitLot> {
 		String strLog = "[saveButtonAction] ";
 
 		try {
-			for (MeasurementUnitLot muProduct : muProductList) {
-				measurementUnitLotBll.save(muProduct);
-				log.info(strLog + " MU product saved: " + muProduct);
+			for (MeasurementUnitLot muLot : muLotList) {
+				measurementUnitLotBll.save(muLot);
+				log.info(strLog + " MU product saved: " + muLot);
 			}
 			ViewHelper.showNotification("Unidades de medida actualizadas para el lote",
 					Notification.Type.WARNING_MESSAGE);
@@ -238,7 +253,7 @@ public class MuLotLayout extends AbstractEditableLayout<MeasurementUnitLot> {
 	@Override
 	protected MeasurementUnitLot getSelected() {
 		MeasurementUnitLot muProduct = null;
-		Set<MeasurementUnitLot> muProducts = muProductGrid.getSelectedItems();
+		Set<MeasurementUnitLot> muProducts = muLotGrid.getSelectedItems();
 		if (muProducts != null && !muProducts.isEmpty()) {
 			muProduct = (MeasurementUnitLot) muProducts.toArray()[0];
 		}
@@ -264,7 +279,7 @@ public class MuLotLayout extends AbstractEditableLayout<MeasurementUnitLot> {
 	}
 
 	private void refreshGrid() {
-		dataProvider.setFilter(muProduct -> filterGrid(muProduct));
+		dataProvider.refreshAll();
 	}
 
 	private boolean filterGrid(MeasurementUnitLot muProduct) {
@@ -279,11 +294,11 @@ public class MuLotLayout extends AbstractEditableLayout<MeasurementUnitLot> {
 	}
 
 	public Grid<MeasurementUnitLot> getMuProductGrid() {
-		return muProductGrid;
+		return muLotGrid;
 	}
 
 	public void setMuProductGrid(Grid<MeasurementUnitLot> muProductGrid) {
-		this.muProductGrid = muProductGrid;
+		this.muLotGrid = muProductGrid;
 	}
 
 	/**
