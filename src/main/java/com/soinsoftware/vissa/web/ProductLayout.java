@@ -4,12 +4,14 @@ import static com.soinsoftware.vissa.web.VissaUI.KEY_PRODUCTS;
 
 import java.io.IOException;
 import java.math.BigInteger;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Set;
 
 import org.apache.log4j.Logger;
 import org.hibernate.HibernateException;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.vaadin.dialogs.ConfirmDialog;
@@ -17,6 +19,7 @@ import org.vaadin.ui.NumberField;
 
 import com.soinsoftware.vissa.bll.LotBll;
 import com.soinsoftware.vissa.bll.MeasurementUnitBll;
+import com.soinsoftware.vissa.bll.MeasurementUnitLotBll;
 import com.soinsoftware.vissa.bll.MeasurementUnitProductBll;
 import com.soinsoftware.vissa.bll.MuEquivalenceBll;
 import com.soinsoftware.vissa.bll.ProductBll;
@@ -25,7 +28,9 @@ import com.soinsoftware.vissa.bll.ProductTypeBll;
 import com.soinsoftware.vissa.bll.TableSequenceBll;
 import com.soinsoftware.vissa.bll.WarehouseBll;
 import com.soinsoftware.vissa.exception.ModelValidationException;
+import com.soinsoftware.vissa.model.Lot;
 import com.soinsoftware.vissa.model.MeasurementUnit;
+import com.soinsoftware.vissa.model.MeasurementUnitLot;
 import com.soinsoftware.vissa.model.MeasurementUnitProduct;
 import com.soinsoftware.vissa.model.MuEquivalence;
 import com.soinsoftware.vissa.model.Product;
@@ -36,6 +41,8 @@ import com.soinsoftware.vissa.util.Commons;
 import com.soinsoftware.vissa.util.DateUtil;
 import com.soinsoftware.vissa.util.ELayoutMode;
 import com.soinsoftware.vissa.util.ViewHelper;
+import com.vaadin.data.Binder;
+import com.vaadin.data.Binder.Binding;
 import com.vaadin.data.provider.ConfigurableFilterDataProvider;
 import com.vaadin.data.provider.ListDataProvider;
 import com.vaadin.server.FontAwesome;
@@ -43,10 +50,12 @@ import com.vaadin.server.Page;
 import com.vaadin.server.SerializablePredicate;
 import com.vaadin.ui.AbstractOrderedLayout;
 import com.vaadin.ui.Button;
+import com.vaadin.ui.CheckBox;
 import com.vaadin.ui.ComboBox;
 import com.vaadin.ui.Component;
 import com.vaadin.ui.FormLayout;
 import com.vaadin.ui.Grid;
+import com.vaadin.ui.Grid.Column;
 import com.vaadin.ui.Grid.SelectionMode;
 import com.vaadin.ui.HorizontalLayout;
 import com.vaadin.ui.Notification;
@@ -71,6 +80,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 	private final ProductTypeBll typeBll;
 	private final MeasurementUnitBll measurementUnitBll;
 	private final MeasurementUnitProductBll measurementUnitProductBll;
+	private final MeasurementUnitLotBll measurementUnitLotBll;
 	private final TableSequenceBll tableSequenceBll;
 	private final MuEquivalenceBll muEquivalencesBll;
 	private final LotBll lotBll;
@@ -122,6 +132,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		typeBll = ProductTypeBll.getInstance();
 		measurementUnitBll = MeasurementUnitBll.getInstance();
 		measurementUnitProductBll = MeasurementUnitProductBll.getInstance();
+		measurementUnitLotBll = MeasurementUnitLotBll.getInstance();
 		tableSequenceBll = TableSequenceBll.getInstance();
 		muEquivalencesBll = MuEquivalenceBll.getInstance();
 		lotBll = LotBll.getInstance();
@@ -143,6 +154,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		typeBll = ProductTypeBll.getInstance();
 		measurementUnitBll = MeasurementUnitBll.getInstance();
 		measurementUnitProductBll = MeasurementUnitProductBll.getInstance();
+		measurementUnitLotBll = MeasurementUnitLotBll.getInstance();
 		tableSequenceBll = TableSequenceBll.getInstance();
 		muEquivalencesBll = MuEquivalenceBll.getInstance();
 		lotBll = LotBll.getInstance();
@@ -234,6 +246,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		cbMeasureUnit = new ComboBox<>();
 		cbMeasureUnit.setEmptySelectionCaption("Seleccione");
 		cbMeasureUnit.setWidth("50%");
+		cbMeasureUnit.addStyleName(ValoTheme.CHECKBOX_SMALL);
 		cbMeasureUnit.setDescription("Unidad de medida");
 		cbMeasureUnit.setEmptySelectionAllowed(true);
 		ListDataProvider<MeasurementUnit> measurementDataProv = new ListDataProvider<>(measurementUnitBll.selectAll());
@@ -265,6 +278,14 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		NumberField txtQtyEquivalence = new NumberField();
 		MUGrid.addColumn(MeasurementUnitProduct::getQtyEquivalenceStr).setCaption("Cantidad UM equivalente")
 				.setEditorComponent(txtQtyEquivalence, MeasurementUnitProduct::setQtyEquivalenceStr);
+
+		CheckBox ckPrincipal = new CheckBox();
+		Binder<MeasurementUnitProduct> binder = MUGrid.getEditor().getBinder();
+		Binding<MeasurementUnitProduct, Boolean> doneBinding = binder.bind(ckPrincipal,
+				MeasurementUnitProduct::isPrincipal, MeasurementUnitProduct::setPrincipal);
+		Column<MeasurementUnitProduct, String> column = MUGrid
+				.addColumn(muProduct -> String.valueOf(muProduct.isPrincipal())).setCaption("UM principal");
+		column.setEditorBinding(doneBinding);
 
 		MUGrid.getEditor().setEnabled(true);
 
@@ -789,12 +810,12 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 			ProductType type = cbType.getSelectedItem().isPresent() ? cbType.getSelectedItem().get() : null;
 
 			// Se obtiene el stock del total de los lotes
-			Double stock = lotPanel.getTotalStock();
+			// Double stock = lotPanel.getTotalStock();
 
 			Date stockDate = txtStockDate.getValue() != null ? DateUtil.stringToDate(txtStockDate.getValue()) : null;
 			entity = productBuilder.code(txtCode.getValue()).name(txtName.getValue())
 					.description(txtDescription.getValue()).category(category).type(type).eanCode(txtEan.getValue())
-					.brand(txtBrand.getValue()).stock(stock).stockDate(stockDate).archived(false).build();
+					.brand(txtBrand.getValue()).stockDate(stockDate).archived(false).build();
 			productBll.save(entity, false);
 
 		} catch (Exception e) {
@@ -853,8 +874,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 
 			for (MeasurementUnitProduct muProductTmp : priceProductList) {
 
-				MeasurementUnitProduct.Builder priceBuilder = null;
-				priceBuilder = MeasurementUnitProduct.builder(muProductTmp);
+				MeasurementUnitProduct.Builder priceBuilder = MeasurementUnitProduct.builder(muProductTmp);
 
 				try {
 					// Guardar precio por unidad de medida del producto
@@ -864,10 +884,18 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 							.utility(muProductTmp.getUtility()).salePrice(muProductTmp.getSalePrice())
 							.saleTax(muProductTmp.getSaleTax()).finalPrice(muProductTmp.getFinalPrice())
 							.stock(product.getStock()).qtyEquivalence(muProductTmp.getQtyEquivalence())
-							.muEquivalence(muProductTmp.getMuEquivalence()).archived(false).build();
+							.muEquivalence(muProductTmp.getMuEquivalence()).isPrincipal(muProductTmp.isPrincipal())
+							.archived(false).build();
 
 					measurementUnitProductBll.save(umProductEntity, false);
 					log.info("UM y precio guardados " + umProductEntity);
+
+					MeasurementUnitProduct entitySaved = measurementUnitProductBll
+							.select(umProductEntity.getMeasurementUnit(), product).get(0);
+					
+					// Actualizar UM por cada lote del producto
+					saveMuLot(entitySaved);
+
 				} catch (ModelValidationException ex) {
 					measurementUnitProductBll.rollback();
 					log.error(strLog + "[ModelValidationException] " + ex);
@@ -883,6 +911,40 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 
 		} catch (Exception e) {
 			log.error(strLog + "[Exception]" + e.getMessage());
+		}
+	}
+
+	/**
+	 * Metodo para actualizar las unidades de medida por lote
+	 */
+	@Async
+	private void saveMuLot(MeasurementUnitProduct muProduct) {
+		String strLog = "[saveMuLot] ";
+		try {
+			Product product = muProduct.getProduct();
+			List<Lot> lots = lotBll.select(product);
+			// Buscar los lotes del producto
+			for (Lot lotTmp : lots) {
+				// Buscar las um del lote
+				List<MeasurementUnitLot> muLotList = measurementUnitLotBll.select(lotTmp);
+				// Cargar las umProduct en una nueva lista
+				List<MeasurementUnitProduct> muProductList = new ArrayList<>();
+				for (MeasurementUnitLot muLot : muLotList) {
+					muProductList.add(muLot.getMuProduct());
+				}
+
+				if (!muProductList.contains(muProduct)) {
+					MeasurementUnitLot muLotEntity = MeasurementUnitLot.builder().muProduct(muProduct).lot(lotTmp)
+							.build();
+					measurementUnitLotBll.save(muLotEntity);
+					log.info(strLog + "UM agregada al lote");
+				}
+
+			}
+
+		} catch (Exception e) {
+			log.error(strLog + "" + e.getMessage());
+			e.printStackTrace();
 		}
 	}
 

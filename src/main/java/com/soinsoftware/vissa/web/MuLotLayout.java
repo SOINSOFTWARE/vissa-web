@@ -146,8 +146,7 @@ public class MuLotLayout extends AbstractEditableLayout<MeasurementUnitLot> {
 		muLotGrid.getEditor().setEnabled(true);
 
 		muLotGrid.getEditor().addSaveListener(e -> {
-			muLotGrid.deselectAll();
-			muLotGrid.deselect(CommonsConstants.MEASUREMENT_UNIT_LOT);
+			muLotGrid.getDataProvider().refreshAll();
 		});
 		layout.addComponents(buttonLayout, muLotGrid);
 

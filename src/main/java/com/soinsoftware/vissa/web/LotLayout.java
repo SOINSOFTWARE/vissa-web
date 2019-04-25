@@ -3,6 +3,7 @@ package com.soinsoftware.vissa.web;
 import static com.soinsoftware.vissa.web.VissaUI.KEY_LOTS;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
@@ -631,22 +632,70 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 	@Async
 	public void updateStock(Product product) {
 		String strLog = "[updateStock] ";
-		Map<MeasurementUnit, Double> muMap = new HashMap<MeasurementUnit, Double>();
+		// Mapa de um x producto
+		Map<MeasurementUnitProduct, Double> muProductMap = new HashMap<MeasurementUnitProduct, Double>();
+		List<MeasurementUnitLot> muLotMap = new ArrayList<MeasurementUnitLot>();
+
 		try {
+			// Obtener lotes del producto
 			List<Lot> lots = lotBll.selecLotWithStock(product);
 			for (Lot lot : lots) {
+				// Por cada lote obtener las UM
 				List<MeasurementUnitLot> muLotList = measurementUnitLotBll.select(lot);
+				// Sumar el total por cada UM
 				for (MeasurementUnitLot muLot : muLotList) {
-					MeasurementUnit mu = muLot.getMuProduct().getMeasurementUnit();
-					Double stockMu = muMap.get(mu);
-					Double stock = stockMu == null ? 0.0 : stockMu + muLot.getStock();
-					muMap.put(mu, stock);
+					MeasurementUnitProduct mu = muLot.getMuProduct();
+					// Se suma el stock por cada UM
+					Double stockMu = muProductMap.get(mu);
+					Double stock = (stockMu == null ? 0.0 : stockMu) + muLot.getStock();
+					muProductMap.put(mu, stock);
+					// Si es la UM pral se guarda para actualizarlo en el lote
+					if (mu.isPrincipal()) {
+						muLotMap.add(muLot);
+					}
 				}
 			}
-			log.info("map");
+			log.info(strLog + "muProductMap: " + muProductMap);
+			// Recorrer el mapa de UM del producto para actualizar el stock de cada una de
+			// acuerdo a la suma de los lotes calculada
+			muProductMap.forEach((k, v) -> {
+				try {
+					log.info(strLog + "Key: " + k + ": Value: " + v);
 
+					// Actualizar el stock por UM del producto
+					k.setStock(v);
+					measurementUnitProductBll.save(k);
+					log.info(strLog + "Stock muProduct " + k.getMeasurementUnit() + " actualizado: " + v);
+
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			});
+
+			log.info(strLog + "muLotMap: " + muLotMap);
+			// Recorrer la lista de UM por lote para actualizar el stock de acuerdo a la UM
+			// pral
+			for (MeasurementUnitLot muLot : muLotMap) {
+				try {
+					// Actualizar el stock y UM del lote con la UM pral
+					Lot lotEntity = Lot.builder(muLot.getLot())
+							.measurementUnit(muLot.getMuProduct().getMeasurementUnit()).quantity(muLot.getStock())
+							.build();
+					lotBll.save(lotEntity);
+					log.info(strLog + "Stock del lote actualizado " + muLot);
+
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			}
+
+			lotGrid.getDataProvider().refreshAll();
+			if (productLayout != null) {
+				productLayout.getProductGrid().getDataProvider().refreshAll();
+			}
 		} catch (Exception e) {
 			log.error(strLog + "[Exception] " + e.getMessage());
+			e.printStackTrace();
 		}
 
 	}
