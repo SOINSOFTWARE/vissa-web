@@ -1210,4 +1210,12 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		this.txtStock = txtStock;
 	}
 
+	public Grid<MeasurementUnitProduct> getMUGrid() {
+		return MUGrid;
+	}
+
+	public void setMUGrid(Grid<MeasurementUnitProduct> mUGrid) {
+		MUGrid = mUGrid;
+	}
+
 }

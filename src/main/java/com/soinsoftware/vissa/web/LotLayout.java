@@ -689,9 +689,10 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 				}
 			}
 
+			//Refrescar grid de lote
 			lotGrid.getDataProvider().refreshAll();
 			if (productLayout != null) {
-				productLayout.getProductGrid().getDataProvider().refreshAll();
+				productLayout.getMUGrid().getDataProvider().refreshAll();
 			}
 		} catch (Exception e) {
 			log.error(strLog + "[Exception] " + e.getMessage());
