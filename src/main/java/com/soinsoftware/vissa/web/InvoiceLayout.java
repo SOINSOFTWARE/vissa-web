@@ -1187,8 +1187,8 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 			if (product != null) {
 				pos = itemsList.indexOf(CommonsConstants.CURRENT_DOCUMENT_DETAIL);
-				DocumentDetail docDetail = DocumentDetail.builder(CommonsConstants.CURRENT_DOCUMENT_DETAIL).product(product)
-						.build();
+				DocumentDetail docDetail = DocumentDetail.builder(CommonsConstants.CURRENT_DOCUMENT_DETAIL)
+						.product(product).build();
 				CommonsConstants.CURRENT_DOCUMENT_DETAIL.setIndex(pos);
 				detailGrid.getSelectionModel().select(docDetail);
 				detailGrid.focus();
@@ -1853,7 +1853,13 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			List<DocumentDetailLot> detailLotList = getDetailLotsByDetail(detailTmp);
 
 			for (DocumentDetailLot detailLot : detailLotList) {
+
+				log.info(strLog + " detailLot: " + detailLot);
+
 				Double qty = detailLot.getQuantity();
+
+				log.info(strLog + " qty: " + qty);
+
 				// Consultar lote
 				lot = detailLot.getLot();
 				log.info(strLog + "Lote a actualizar: " + lot);
@@ -2386,7 +2392,8 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	}
 
 	private void buildMeasurementUnitComponent() {
-		Product product = selectedProduct != null ? selectedProduct : CommonsConstants.CURRENT_DOCUMENT_DETAIL.getProduct();
+		Product product = selectedProduct != null ? selectedProduct
+				: CommonsConstants.CURRENT_DOCUMENT_DETAIL.getProduct();
 		ComboBox<MeasurementUnit> cbMeasurementUnit = new ComboBox<>();
 
 		cbMeasurementUnit.setEmptySelectionAllowed(false);
@@ -2398,7 +2405,8 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			MeasurementUnitProduct muProduct = selectMuXProduct(
 					cbMeasurementUnit.getSelectedItem().isPresent() ? e.getValue() : null, product);
 			setPriceComponent(muProduct);
-			String qty = CommonsConstants.CURRENT_DOCUMENT_DETAIL != null ? CommonsConstants.CURRENT_DOCUMENT_DETAIL.getQuantity()
+			String qty = CommonsConstants.CURRENT_DOCUMENT_DETAIL != null
+					? CommonsConstants.CURRENT_DOCUMENT_DETAIL.getQuantity()
 					: null;
 			if (qty != null && !qty.isEmpty()) {
 				setQuantityComponent(Double.parseDouble(qty), e.getOldValue(), e.getValue());
@@ -2555,16 +2563,16 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			Double tax = detail.getTax();
 			log.info(strLog + "[parameters] muProduct: " + muProduct + ", price: " + price);
 			if (price != null && !price.equals(0.0) && muProduct != null) {
-				MeasurementUnitProduct entity = null;				
+				MeasurementUnitProduct entity = null;
 				if (transactionType.equals(ETransactionType.ENTRADA)) {
 					muProduct.setPurchasePrice(price);
-					muProduct.setPurchaseTax(tax);					
+					muProduct.setPurchaseTax(tax);
 				} else if (transactionType.equals(ETransactionType.SALIDA)) {
 					muProduct.setSalePrice(price);
-					muProduct.setSaleTax(tax);					
+					muProduct.setSaleTax(tax);
 				}
 				entity = MeasurementUnitProduct.builder(muProduct).build();
-				
+
 				measurementUnitProductBll.save(entity, false);
 				log.info(strLog + "Precio actualizado");
 			}
