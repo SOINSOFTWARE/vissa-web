@@ -10,9 +10,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.TreeMap;
 
 import org.apache.log4j.Logger;
+import org.hibernate.HibernateException;
 import org.jsoup.helper.StringUtil;
 import org.springframework.scheduling.annotation.Async;
 import org.vaadin.ui.NumberField;
@@ -25,6 +25,7 @@ import com.soinsoftware.vissa.bll.MuEquivalenceBll;
 import com.soinsoftware.vissa.bll.ProductBll;
 import com.soinsoftware.vissa.bll.WarehouseBll;
 import com.soinsoftware.vissa.common.CommonsConstants;
+import com.soinsoftware.vissa.exception.ModelValidationException;
 import com.soinsoftware.vissa.model.DocumentDetailLot;
 import com.soinsoftware.vissa.model.Lot;
 import com.soinsoftware.vissa.model.MeasurementUnit;
@@ -86,7 +87,7 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 	private DateField dtExpirationDate;
 	private NumberField txtQuantity;
 	private ComboBox<Warehouse> cbWarehouse;
-	private ComboBox<MeasurementUnit> cbMeasurementUnit;
+	private ComboBox<MeasurementUnitProduct> cbMeasurementUnit;
 	private TextField txtProductNameFilter;
 	private ComboBox<Warehouse> txtWarehouseFilter;
 	private CheckBox checkStockFilter;
@@ -105,11 +106,16 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 	private MuProductLayout muProductLayout = null;
 
 	private ListDataProvider<Lot> dataProvider = null;
-	private ListDataProvider<MeasurementUnit> measurementDataProv;
+	private ListDataProvider<MeasurementUnitProduct> measurementDataProv;
 	private ELayoutMode modeLayout;
 	private Lot lot;
 
 	private MuLotLayout muLotLayout;
+
+	private Grid<MeasurementUnitProduct> priceGrid;
+
+	private List<MeasurementUnitProduct> priceProductList;
+	private ListDataProvider<MeasurementUnitProduct> dataProviderProdMeasurement;
 
 	public LotLayout(Product product, ProductLayout productLayout) throws IOException {
 		super("Lotes", KEY_LOTS);
@@ -399,19 +405,22 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 	protected Component buildEditionComponent(Lot entity) {
 		VerticalLayout layout = ViewHelper.buildVerticalLayout(false, false);
 
+		// Si es modo reporte permite listar los movimientos del lote
 		if (modeLayout.equals(ELayoutMode.REPORT)) {
 			layout.addComponents(buildDetailLotGridPanel(entity));
 		} else {
+			HorizontalLayout hLayout = ViewHelper.buildHorizontalLayout(false, true);
+
 			Integer sequence = getLotSequence();
 			txtCode = new TextField("Código");
-			txtCode.setStyleName(ValoTheme.TEXTAREA_TINY);
+			txtCode.setStyleName(ValoTheme.TEXTFIELD_TINY);
 			txtCode.focus();
 			txtCode.setValue(entity != null ? entity.getCode() : sequence != null ? String.valueOf(sequence) : "");
 			txtCode.setRequiredIndicatorVisible(true);
 			txtCode.setReadOnly(true);
 
 			txtName = new TextField("Nombre");
-			txtName.setStyleName(ValoTheme.TEXTAREA_TINY);
+			txtName.setStyleName(ValoTheme.TEXTFIELD_TINY);
 			txtName.setValue(entity != null ? entity.getName() : "");
 
 			dtFabricationDate = new DateField("Fecha de fabricación");
@@ -425,9 +434,10 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 			dtExpirationDate.setValue(entity != null ? DateUtil.dateToLocalDate(entity.getExpirationDate()) : null);
 
 			txtQuantity = new NumberField("Cantidad");
-			txtQuantity.setStyleName(ValoTheme.TEXTAREA_TINY);
+			txtQuantity.setStyleName(ValoTheme.TEXTFIELD_TINY);
 			txtQuantity.setRequiredIndicatorVisible(true);
 			txtQuantity.setValue(entity != null ? String.valueOf(entity.getQuantity()) : "");
+			txtQuantity.focus();
 
 			cbMeasurementUnit = new ComboBox<>("Unidad de medida");
 			cbMeasurementUnit.setEmptySelectionCaption("Seleccione");
@@ -435,10 +445,13 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 			cbMeasurementUnit.setEmptySelectionAllowed(false);
 			cbMeasurementUnit.setRequiredIndicatorVisible(true);
 			fillMeasurementUnit();
-			cbMeasurementUnit.setItemCaptionGenerator(MeasurementUnit::getName);
-			cbMeasurementUnit.setValue(entity != null ? entity.getMeasurementUnit() : null);
+			cbMeasurementUnit.setItemCaptionGenerator(measurementUnit -> {
+				return measurementUnit.getMeasurementUnit().getName();
+			});
+			// cbMeasurementUnit.setValue(entity != null ? entity.getMeasurementUnit() :
+			// null);
 
-			Button muNewBtn = new Button("Nueva unidad de medida");
+			Button muNewBtn = new Button("Configurar unidades de medida");
 			muNewBtn.addStyleNames(ValoTheme.BUTTON_LINK, ValoTheme.BUTTON_TINY);
 			muNewBtn.addClickListener(e -> buildMuProductWindow(product));
 
@@ -455,21 +468,87 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 				cbWarehouse.setReadOnly(true);
 			}
 
-			FormLayout form = new FormLayout();
-			form.setMargin(true);
-			form.setCaption("Datos del lote");
-			form.setCaptionAsHtml(true);
-			form.setSizeFull();
-			form.setWidth("50%");
-			form.addStyleName(ValoTheme.FORMLAYOUT_LIGHT);
+			FormLayout form1 = new FormLayout();
+			form1.setMargin(true);
+			form1.setCaptionAsHtml(true);
+			form1.setSizeFull();
+			form1.setWidth("40%");
+			form1.addStyleName(ValoTheme.FORMLAYOUT_LIGHT);
 
-			form.addComponents(txtCode, txtName, dtFabricationDate, dtExpirationDate, txtQuantity, cbMeasurementUnit,
-					muNewBtn, cbWarehouse);
+			form1.addComponents(txtCode, txtQuantity, cbMeasurementUnit);
 
-			layout.addComponents(form);
+			FormLayout form2 = new FormLayout();
+			form2.setMargin(true);
+			form2.setCaptionAsHtml(true);
+			form2.setSizeFull();
+			form2.setWidth("40%");
+			form2.addStyleName(ValoTheme.FORMLAYOUT_LIGHT);
+			form2.addComponents(cbWarehouse, dtFabricationDate, dtExpirationDate);
+
+			FormLayout form3 = new FormLayout();
+			form3.setWidth("20%");
+			form3.addComponents(muNewBtn);
+
+			hLayout.addComponents(form1, form2, form3);
+
+			layout.addComponents(hLayout);
+			layout.addComponents(buildPriceGridPanel(product));
 
 		}
 		return layout;
+	}
+
+	/**
+	 * Metodo para llenar la grid de precios por unidad de medida
+	 * 
+	 * @param product
+	 * @return
+	 */
+	protected Panel buildPriceGridPanel(Product product) {
+		VerticalLayout layout = ViewHelper.buildVerticalLayout(false, true);
+
+		priceGrid = ViewHelper.buildGrid(SelectionMode.SINGLE);
+		priceGrid.setHeight("160px");
+		priceGrid.setStyleName(ValoTheme.TABLE_SMALL);
+
+		priceGrid.addColumn(MeasurementUnitProduct::getMeasurementUnit).setCaption("Unida de medida");
+
+		NumberField txtPurchasePrice = new NumberField();
+		priceGrid.addColumn(MeasurementUnitProduct::getPurchasePriceStr).setCaption("Precio compra sin IVA")
+				.setEditorComponent(txtPurchasePrice, MeasurementUnitProduct::setPurchasePriceStr);
+
+		/*
+		 * NumberField txtPurchaseTax = new NumberField();
+		 * priceGrid.addColumn(MeasurementUnitProduct::getPurchaseTaxStr).
+		 * setCaption("% Impuesto compra") .setEditorComponent(txtPurchaseTax,
+		 * MeasurementUnitProduct::setPurchaseTaxStr);
+		 */
+		NumberField txtUtilityPrc = new NumberField();
+		txtUtilityPrc.setStyleName(ValoTheme.TEXTFIELD_TINY);
+		priceGrid.addColumn(MeasurementUnitProduct::getUtilityPrcStr).setCaption("% Utilidad")
+				.setEditorComponent(txtUtilityPrc, MeasurementUnitProduct::setUtilityPrcStr);
+
+		priceGrid.addColumn(MeasurementUnitProduct::getSalePrice).setCaption("Precio de venta");
+
+		NumberField txtSaleTax = new NumberField();
+		priceGrid.addColumn(MeasurementUnitProduct::getSaleTaxStr).setCaption("% IVA").setEditorComponent(txtSaleTax,
+				MeasurementUnitProduct::setSaleTaxStr);
+
+		priceGrid.addColumn(MeasurementUnitProduct::getFinalPrice).setCaption("Precio final");
+
+		priceGrid.getEditor().setEnabled(true);
+
+		// En el evento de guardar la grid se actualiza los precios en la bd
+		priceGrid.getEditor().addSaveListener(e -> savePriceMUProduct(e.getBean()));
+
+		layout.addComponents(priceGrid);
+
+		// cbMeasureUnit.addValueChangeListener(e -> MUEquivalences(e.getValue()));
+
+		fillPriceGridData(product);
+		Panel panel = ViewHelper.buildPanel("Pecios x unidad de medida del producto", layout);
+		panel.setHeight("270px");
+		return panel;
 	}
 
 	@Override
@@ -522,79 +601,166 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 	}
 
 	private void fillMeasurementUnit() {
-		measurementDataProv = new ListDataProvider<>(measurementUnitProductBll.selectMuByProduct(product));
+		measurementDataProv = new ListDataProvider<>(measurementUnitProductBll.select(product));
 		cbMeasurementUnit.setDataProvider(measurementDataProv);
 	}
 
+	/**
+	 * Metodo para llenar la grid de UM y precios del producto
+	 */
+	protected void fillPriceGridData(Product product) {
+		String strLog = "[fillMUGridData]";
+
+		try {
+			log.info(strLog + "[parameters] product: " + product);
+			if (priceProductList == null || priceProductList.isEmpty()) {
+				priceProductList = measurementUnitProductBll.select(product);
+			}
+			dataProviderProdMeasurement = new ListDataProvider<>(priceProductList);
+			priceGrid.setDataProvider(dataProviderProdMeasurement);
+		} catch (Exception e) {
+			log.error(strLog + "[Exception]" + e.getMessage());
+			e.printStackTrace();
+		}
+	}
+
+	/**
+	 * Metodo con el evento del botón para guardar lote
+	 */
 	@Override
 	protected void saveButtonAction(Lot entity) {
 		String strLog = "[saveButtonAction] ";
-		String confirmMsg = null;
-		boolean isNew = false;
+
 		try {
 			String message = validateRequiredFields();
 			if (!message.isEmpty()) {
 				ViewHelper.showNotification(message, Notification.Type.ERROR_MESSAGE);
 			} else {
-				Lot.Builder lotBuilder = null;
-				if (entity == null) {
-					lotBuilder = Lot.builder();
-				} else {
-					lotBuilder = Lot.builder(entity);
-				}
-				// Bandera para indicar que el lote es nuevo y se puede usar
-				isNew = true;
-				MeasurementUnit measurementUnit = cbMeasurementUnit.getSelectedItem().isPresent()
-						? cbMeasurementUnit.getSelectedItem().get()
-						: null;
-				Warehouse warehouse = cbWarehouse.getSelectedItem().isPresent() ? cbWarehouse.getSelectedItem().get()
-						: null;
-				lot = lotBuilder.code(txtCode.getValue()).name(txtName.getValue())
-						.lotDate(DateUtil.localDateToDate(dtFabricationDate.getValue()))
-						.expirationDate(DateUtil.localDateToDate(dtExpirationDate.getValue())).archived(false)
-						.quantity(Double.parseDouble(txtQuantity.getValue())).measurementUnit(measurementUnit)
-						.product(product).warehouse(warehouse).isNew(isNew).build();
+				saveLot(entity);
+			}
+		} catch (Exception e) {
+			log.error(strLog + "[Exception] " + e.getMessage());
+			e.printStackTrace();
+			ViewHelper.showNotification("Se generó un error al guardar el lote", Notification.Type.ERROR_MESSAGE);
+		}
+	}
 
-				if (invoiceLayout != null && modeLayout.equals(ELayoutMode.NEW)) {
-					invoiceLayout.setSelectedLot(lot);
-					invoiceLayout.selectLot(CommonsConstants.CURRENT_DOCUMENT_DETAIL, lot);
-					invoiceLayout.getLotSubwindow().close();
-					invoiceLayout.getDetailGrid().focus();
-				} else {
-					// Guardar el lote
-					save(lotBll, lot, null);
+	/**
+	 * Metodo para guardar el lote
+	 */
+	protected void saveLot(Lot entity) {
+		String strLog = "[saveLot] ";
+		String confirmMsg = null;
+		boolean isNew = false;
 
-					if (!hasError) {
-						log.info(strLog + "Lote guardado: " + lot);
-						// Actualizar stock del product
-						product.setStock(totalStock);
-						product.setStockDate(new Date());
-						productBll.save(product);
-						log.info(strLog + "Stock actualizado: " + totalStock);
+		try {
+			Lot.Builder lotBuilder = null;
+			if (entity == null) {
+				lotBuilder = Lot.builder();
+			} else {
+				lotBuilder = Lot.builder(entity);
+			}
+			// Bandera para indicar que el lote es nuevo y se puede usar
+			isNew = true;
 
-						// Actualizar el stock por cada UM del producto
-						updateStockByMU(measurementUnit);
+			MeasurementUnitProduct muProduct = cbMeasurementUnit.getSelectedItem().isPresent()
+					? cbMeasurementUnit.getSelectedItem().get()
+					: null;
+			Warehouse warehouse = cbWarehouse.getSelectedItem().isPresent() ? cbWarehouse.getSelectedItem().get()
+					: null;
+			lot = lotBuilder.code(txtCode.getValue()).name(txtName.getValue())
+					.lotDate(DateUtil.localDateToDate(dtFabricationDate.getValue()))
+					.expirationDate(DateUtil.localDateToDate(dtExpirationDate.getValue())).archived(false)
+					.quantity(Double.parseDouble(txtQuantity.getValue()))
+					.measurementUnit(muProduct.getMeasurementUnit()).product(product).warehouse(warehouse).isNew(isNew)
+					.build();
 
-						if (productLayout != null && !productLayout.isShowConfirmMessage()) {
-							confirmMsg = "Producto guardado con éxito";
-						} else {
-							confirmMsg = "Lote guardado";
-						}
+			lot.setMuProduct(muProduct);
 
-						ViewHelper.showNotification(confirmMsg, Notification.Type.WARNING_MESSAGE);
-						if (productLayout != null) {
-							productLayout.updateProductLayout(product);
-						}
+			// Si es un nuevo lote desde la factura de compra no se guarda, solo se agrega
+			// al detail de la factua
+			if (invoiceLayout != null && modeLayout.equals(ELayoutMode.NEW)) {
+				
+				invoiceLayout.setSelectedLot(lot);
+				invoiceLayout.selectLot(CommonsConstants.CURRENT_DOCUMENT_DETAIL, lot);
+				invoiceLayout.getLotSubwindow().close();
+				invoiceLayout.getDetailGrid().focus();
+			} else {
+				// Guardar el lote
+				save(lotBll, lot, null);
+
+				if (!hasError) {
+					log.info(strLog + "Lote guardado: " + lot);
+					// Actualizar stock del product
+					product.setStock(totalStock);
+					product.setStockDate(new Date());
+					productBll.save(product);
+					log.info(strLog + "Stock actualizado: " + totalStock);
+
+					// Actualizar el stock por cada UM del producto
+					updateStockByMU(lot.getMeasurementUnit());
+
+					if (productLayout != null && !productLayout.isShowConfirmMessage()) {
+						confirmMsg = "Producto guardado con éxito";
+					} else {
+						confirmMsg = "Lote guardado";
 					}
 
+					ViewHelper.showNotification(confirmMsg, Notification.Type.WARNING_MESSAGE);
+					if (productLayout != null) {
+						productLayout.updateProductLayout(product);
+					}
 				}
+			}
 
+		} catch (Exception e) {
+			log.error(strLog + "[Exception] " + e.getMessage());
+			e.printStackTrace();
+		}
+
+	}
+	
+	
+	/**
+	 * Guardar los precios para una UM
+	 * 
+	 * @param product
+	 */
+	@Async
+	private void savePriceMUProduct(MeasurementUnitProduct muProductTmp) {
+		String strLog = "[savePriceProduct] ";
+		try {
+
+			MeasurementUnitProduct.Builder priceBuilder = MeasurementUnitProduct.builder(muProductTmp);
+
+			try {
+				// Guardar precio por unidad de medida del producto
+				MeasurementUnitProduct umProductEntity = priceBuilder.product(muProductTmp.getProduct())
+						.measurementUnit(muProductTmp.getMeasurementUnit())
+						.purchasePrice(muProductTmp.getPurchasePrice()).purchaseTax(muProductTmp.getPurchaseTax())
+						.utility(muProductTmp.getUtility()).salePrice(muProductTmp.getSalePrice())
+						.saleTax(muProductTmp.getSaleTax()).finalPrice(muProductTmp.getFinalPrice())
+						.stock(muProductTmp.getStock()).qtyEquivalence(muProductTmp.getQtyEquivalence())
+						.muEquivalence(muProductTmp.getMuEquivalence()).isPrincipal(muProductTmp.isPrincipal())
+						.archived(false).build();
+
+				measurementUnitProductBll.save(muProductTmp);
+				log.info("UM y precio guardados " + umProductEntity);
+
+			} catch (ModelValidationException ex) {
+				measurementUnitProductBll.rollback();
+				log.error(strLog + "[ModelValidationException] " + ex);
+				ViewHelper.showNotification(ex.getMessage(), Notification.Type.ERROR_MESSAGE);
+			} catch (HibernateException ex) {
+				measurementUnitProductBll.rollback();
+				log.error(strLog + "[HibernateException] " + ex);
+				ViewHelper.showNotification("Los datos no pudieron ser salvados, contacte al administrador del sistema",
+						Notification.Type.ERROR_MESSAGE);
 			}
 
 		} catch (Exception e) {
 			log.error(strLog + "[Exception]" + e.getMessage());
 			e.printStackTrace();
-			ViewHelper.showNotification("Se generó un error al guardar el lote", Notification.Type.ERROR_MESSAGE);
 		}
 	}
 
@@ -689,7 +855,7 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 				}
 			}
 
-			//Refrescar grid de lote
+			// Refrescar grid de lote
 			lotGrid.getDataProvider().refreshAll();
 			if (productLayout != null) {
 				productLayout.getMUGrid().getDataProvider().refreshAll();
@@ -786,6 +952,17 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 		if (dataProvider != null) {
 			dataProvider.setFilter(lot -> filterGrid(lot));
 		}
+
+	}
+
+	/**
+	 * Metodo para recargar los registros de UM en grid de precios y lista
+	 */
+	public void refreshMeasurementUnit() {
+		priceProductList = null;
+		fillPriceGridData(product);
+		priceGrid.getDataProvider().refreshAll();
+		cbMeasurementUnit.getDataProvider().refreshAll();
 	}
 
 	/**
@@ -890,7 +1067,7 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 		String strLog = "[buildMuProductWindow]";
 		try {
 
-			muProductSubwindow = ViewHelper.buildSubwindow("70%", "90%");
+			muProductSubwindow = ViewHelper.buildSubwindow("70%", "50%");
 			muProductSubwindow
 					.setCaption("Unidades de medida del producto " + product.getCode() + " - " + product.getName());
 
@@ -920,7 +1097,7 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 	}
 
 	private void selectMuProduct(MeasurementUnitProduct muProduct) {
-		cbMeasurementUnit.setValue(muProduct.getMeasurementUnit());
+		cbMeasurementUnit.setValue(muProduct);
 	}
 
 	public Double getTotalStock() {
@@ -953,6 +1130,14 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 
 	public void setLot(Lot lot) {
 		this.lot = lot;
+	}
+
+	public Grid<MeasurementUnitProduct> getPriceGrid() {
+		return priceGrid;
+	}
+
+	public void setPriceGrid(Grid<MeasurementUnitProduct> priceGrid) {
+		this.priceGrid = priceGrid;
 	}
 
 }

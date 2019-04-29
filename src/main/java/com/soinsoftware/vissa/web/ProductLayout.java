@@ -933,17 +933,17 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 					muProductList.add(muLot.getMuProduct());
 				}
 
+				//Si la UM no está agregada al lote se relaciona
 				if (!muProductList.contains(muProduct)) {
 					MeasurementUnitLot muLotEntity = MeasurementUnitLot.builder().muProduct(muProduct).lot(lotTmp)
 							.build();
 					measurementUnitLotBll.save(muLotEntity);
 					log.info(strLog + "UM agregada al lote");
 				}
-
 			}
 
 		} catch (Exception e) {
-			log.error(strLog + "" + e.getMessage());
+			log.error(strLog + "[Exception] " + e.getMessage());
 			e.printStackTrace();
 		}
 	}

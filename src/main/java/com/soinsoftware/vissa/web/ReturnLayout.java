@@ -614,8 +614,8 @@ public class ReturnLayout extends VerticalLayout implements View {
 		txtQuantity.setDecimalAllowed(true);
 		txtQuantity.setDecimalPrecision(4);
 		txtQuantity.setDecimalSeparator(',');
-		columnQuantity = detailGrid.addColumn(DocumentDetail::getQuantity).setCaption("Cantidad")
-				.setEditorComponent(txtQuantity, DocumentDetail::setQuantity);
+		columnQuantity = detailGrid.addColumn(DocumentDetail::getQuantityStr).setCaption("Cantidad")
+				.setEditorComponent(txtQuantity, DocumentDetail::setQuantityStr);
 
 		columnSubtotal = detailGrid.addColumn(documentDetail -> {
 			if (documentDetail.getSubtotal() != null) {
@@ -753,33 +753,24 @@ public class ReturnLayout extends VerticalLayout implements View {
 	 * 
 	 * @param quantity
 	 */
-	private void saveEditorAction(String quantity, Double price) {
+	private void saveEditorAction(Double quantity, Double price) {
 		String strLog = "[changeQuantity] ";
 		dataProvider.refreshAll();
 		String message = "";
 		boolean correct = false;
-		Double qty;
+
 		DocumentDetail currentDetail = null;
 
 		try {
-			if (CommonsConstants.CURRENT_DOCUMENT_DETAIL.getProduct() != null && quantity != null && !quantity.isEmpty()) {
-				// Validar que la cantidad no es nula
-				if (StringUtil.isBlank(quantity)) {
+			if (CommonsConstants.CURRENT_DOCUMENT_DETAIL.getProduct() != null && quantity != null) {
+				// Validar la cantidad mayor a 0
+				if (quantity <= 0) {
 					message = "La cantidad debe ser mayor a 0";
 					throw new Exception(message);
 				}
-
 				// Validar el precio
 				if (price == null || price.equals(0.0)) {
 					message = "Precio no valido";
-					throw new Exception(message);
-				}
-
-				qty = Double.parseDouble(quantity);
-
-				// Validar la cantidad mayor a 0
-				if (qty <= 0) {
-					message = "La cantidad debe ser mayor a 0";
 					throw new Exception(message);
 				}
 
@@ -788,13 +779,13 @@ public class ReturnLayout extends VerticalLayout implements View {
 
 				if (transactionType.equals(ETransactionType.SALIDA)) {
 					// Validar que la cantidad ingresada esté dentro del stock del producto
-					if (qty > currentDetail.getProduct().getStock()) {
+					if (quantity > currentDetail.getProduct().getStock()) {
 						message = "Cantidad ingresada es mayor al stock total del producto";
 						throw new Exception(message);
 					}
 
 					// Validar que la cantidad sea mayor a la ingresada en la factura original
-					if (qty <= currentDetail.getOldQuantity()) {
+					if (quantity <= currentDetail.getOldQuantity()) {
 						message = "Cantidad del producto menor a la cantidad original";
 						throw new Exception(message);
 					}
@@ -809,8 +800,8 @@ public class ReturnLayout extends VerticalLayout implements View {
 					DocumentDetailLot detailLot = detailLotList.get(0);
 					if (transactionType.equals(ETransactionType.ENTRADA)) {
 
-						Double finalStockLot = qty;
-						DocumentDetailLot detailLotTmp = DocumentDetailLot.builder(detailLot).quantity(qty)
+						Double finalStockLot = quantity;
+						DocumentDetailLot detailLotTmp = DocumentDetailLot.builder(detailLot).quantity(quantity)
 								.finalStockLot(finalStockLot).build();
 						int pos = detailLotList.indexOf(detailLot);
 						detailLotList.set(pos, detailLotTmp);
@@ -820,7 +811,7 @@ public class ReturnLayout extends VerticalLayout implements View {
 						// Actualizar la cantidad del ítem
 						currentDetail.setQuantity(quantity);
 						// Se actualiza la diferencia entre la cant origina y el cambio
-						currentDetail.setDiffQuantity(qty - currentDetail.getOldQuantity());
+						currentDetail.setDiffQuantity(quantity - currentDetail.getOldQuantity());
 						currentDetail = documentDetail(currentDetail);
 
 						validateLot(currentDetail, detailLotList);
@@ -875,7 +866,7 @@ public class ReturnLayout extends VerticalLayout implements View {
 		String strLog = "[validateLot] ";
 		try {
 			if (detailLotList.size() > 0) {
-				Double quantity = Double.parseDouble(detail.getQuantity());
+				Double quantity = detail.getQuantity();
 				log.info(strLog + "quantity: " + quantity);
 
 				// Se toma el primer detailLot por defecto de los asociados al detail
@@ -1051,11 +1042,8 @@ public class ReturnLayout extends VerticalLayout implements View {
 			log.info(strLog + "[parameters]" + detailDataProv);
 			String totalIVA = String.valueOf(detailDataProv.fetch(new Query<>()).mapToDouble(documentDetail -> {
 				if (documentDetail.getTax() != null) {
-					Double qty = 0.0;
-					if (documentDetail.getQuantity() != null && !documentDetail.getQuantity().isEmpty()) {
-						qty = Double.parseDouble(documentDetail.getQuantity());
-					}
-					return Math.round(documentDetail.getTaxValue() * qty);
+
+					return Math.round(documentDetail.getTaxValue() * documentDetail.getQuantity());
 				} else {
 					return 0.0;
 				}
@@ -1240,8 +1228,8 @@ public class ReturnLayout extends VerticalLayout implements View {
 
 			if (product != null) {
 				pos = itemListOld.indexOf(CommonsConstants.CURRENT_DOCUMENT_DETAIL);
-				DocumentDetail docDetail = DocumentDetail.builder(CommonsConstants.CURRENT_DOCUMENT_DETAIL).product(product)
-						.build();
+				DocumentDetail docDetail = DocumentDetail.builder(CommonsConstants.CURRENT_DOCUMENT_DETAIL)
+						.product(product).build();
 				CommonsConstants.CURRENT_DOCUMENT_DETAIL.setIndex(pos);
 				detailGrid.getSelectionModel().select(docDetail);
 				detailGrid.focus();
@@ -1415,7 +1403,7 @@ public class ReturnLayout extends VerticalLayout implements View {
 								Notification.Type.ERROR_MESSAGE);
 					} else {
 						if (transactionType.equals(ETransactionType.ENTRADA)) {
-							detail.setQuantity(String.valueOf(lot.getQuantity()));
+							detail.setQuantity(lot.getQuantity());
 							detail.setMeasurementUnit(lot.getMeasurementUnit());
 						}
 						// Se agrega el item al detail de la factura
@@ -1626,7 +1614,7 @@ public class ReturnLayout extends VerticalLayout implements View {
 			MeasurementUnitProduct muProduct = detail.getMeasurementUnitProduct();
 			log.info(strLog + "muProduct. MU: " + muProduct.getMeasurementUnit());
 
-			quantity = Double.parseDouble(detail.getQuantity());
+			quantity = detail.getQuantity();
 			log.info(strLog + "quantity ingresado: " + quantity);
 
 			// Consultar stock para la UM escogida
@@ -1743,7 +1731,7 @@ public class ReturnLayout extends VerticalLayout implements View {
 	private boolean saveLot(Document document, DocumentDetail detail) {
 		String strLog = "[saveLot] ";
 		Lot lot = null;
-		Double quantity = Double.parseDouble(detail.getQuantity());
+		Double quantity = detail.getQuantity();
 		Double initialStockLot = 0.0;
 		Double quantityLot = 0.0;
 		Double finalStockLot = 0.0;
@@ -1880,7 +1868,7 @@ public class ReturnLayout extends VerticalLayout implements View {
 				Set<DocumentDetail> detailsTmp = new HashSet<>();
 				for (DocumentDetail detail : details) {
 					if (detail.getProduct() != null) {
-						if (StringUtil.isBlank(detail.getQuantity())) {
+						if (detail.getQuantity() == null || detail.getQuantity().equals(0.0)) {
 							hasErrors = true;
 							ViewHelper.showNotification("Cantidad no ingresada para producto: " + detail.getCode(),
 									Notification.Type.ERROR_MESSAGE);
@@ -2111,7 +2099,7 @@ public class ReturnLayout extends VerticalLayout implements View {
 						List<DocumentDetailLot> detailLots = detailLotBll.select(detail);
 
 						// Guardar temporalmente la cantidad inicial de cada item de factura
-						detail.setOldQuantity(Double.parseDouble(detail.getQuantity()));
+						detail.setOldQuantity(detail.getQuantity());
 
 						for (DocumentDetailLot detailLot : detailLots) {
 							detailLot.setDocumentDetail(detail); // Actualizar el item de DetailLot
@@ -2419,7 +2407,8 @@ public class ReturnLayout extends VerticalLayout implements View {
 	}
 
 	private void buildMeasurementUnitComponent() {
-		Product product = selectedProduct != null ? selectedProduct : CommonsConstants.CURRENT_DOCUMENT_DETAIL.getProduct();
+		Product product = selectedProduct != null ? selectedProduct
+				: CommonsConstants.CURRENT_DOCUMENT_DETAIL.getProduct();
 		ComboBox<MeasurementUnit> cbMeasurementUnit = new ComboBox<>();
 
 		cbMeasurementUnit.setEmptySelectionAllowed(false);
@@ -2431,10 +2420,8 @@ public class ReturnLayout extends VerticalLayout implements View {
 			MeasurementUnitProduct muProduct = selectMuXProduct(
 					cbMeasurementUnit.getSelectedItem().isPresent() ? e.getValue() : null, product);
 			setPriceComponent(muProduct);
-			String qty = CommonsConstants.CURRENT_DOCUMENT_DETAIL.getQuantity();
-			if (qty != null && !qty.isEmpty()) {
-				setQuantityComponent(Double.parseDouble(qty), e.getOldValue(), e.getValue());
-			}
+
+			setQuantityComponent(CommonsConstants.CURRENT_DOCUMENT_DETAIL.getQuantity(), e.getOldValue(), e.getValue());
 
 		});
 
@@ -2459,8 +2446,8 @@ public class ReturnLayout extends VerticalLayout implements View {
 		Double newQty = convertStockXMU(value, sourceMU, targetMU);
 		txtQuantity.setValue(newQty);
 		Binder<DocumentDetail> binder = detailGrid.getEditor().getBinder();
-		Binding<DocumentDetail, String> quantityBinding = binder.bind(txtQuantity, DocumentDetail::getQuantity,
-				DocumentDetail::setQuantity);
+		Binding<DocumentDetail, String> quantityBinding = binder.bind(txtQuantity, DocumentDetail::getQuantityStr,
+				DocumentDetail::setQuantityStr);
 		columnQuantity.setEditorBinding(quantityBinding);
 
 	}
