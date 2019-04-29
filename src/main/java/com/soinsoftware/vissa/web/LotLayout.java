@@ -680,7 +680,7 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 			// Si es un nuevo lote desde la factura de compra no se guarda, solo se agrega
 			// al detail de la factua
 			if (invoiceLayout != null && modeLayout.equals(ELayoutMode.NEW)) {
-				
+
 				invoiceLayout.setSelectedLot(lot);
 				invoiceLayout.selectLot(CommonsConstants.CURRENT_DOCUMENT_DETAIL, lot);
 				invoiceLayout.getLotSubwindow().close();
@@ -719,8 +719,7 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 		}
 
 	}
-	
-	
+
 	/**
 	 * Guardar los precios para una UM
 	 * 
@@ -865,6 +864,72 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 			e.printStackTrace();
 		}
 
+	}
+
+	/**
+	 * Actualizar el stock para cada UM del lote
+	 * 
+	 * @param lot
+	 */
+	public void updateStockXUMLot(Lot lot, boolean commit) {
+		String strLog = "[updateStockUMLot] ";
+		try {
+			List<MeasurementUnitLot> muLotList = measurementUnitLotBll.select(lot);
+			for (MeasurementUnitLot muLot : muLotList) {
+				Double stock = new InvoiceLayout().convertStockXMU(lot.getQuantity(), lot.getProduct(),
+						lot.getMeasurementUnit(), muLot.getMeasureUnit());
+				log.info(strLog + "Stock convertido: " + stock);
+				// Se actualiza el stock de la UM
+				muLot.setStock(stock);
+
+				// Se persisteb los cambios sobre la UMLot modificada
+				measurementUnitLotBll.save(muLot, commit);
+				log.info(strLog + "MU x lote actualizado: " + muLot);
+			}
+
+		} catch (Exception e) {
+			log.error(strLog + "[Exception] " + e.getMessage());
+			e.printStackTrace();
+		}
+	}
+
+	/*
+	 * Metodo para asociar las Um del producto a un nuevo lote
+	 */
+	public void insertUMxLot(Lot lot, boolean commit) {
+		String strLog = "[createUMxLot] ";
+		try {
+			log.info(strLog + "[parameters] lot: " + lot);
+
+			// Se consultan las UM del producto
+			List<MeasurementUnitProduct> muProducts = measurementUnitProductBll.select(lot.getProduct());
+
+			// Se asocian las UM del producto al nuevo lote
+			for (MeasurementUnitProduct muProduct : muProducts) {
+				Double stock = 0.0;
+				// Si la UM es la misma del lote se actualiza stock de la UM con lo q tiene el
+				// lote
+				if (muProduct.getMeasurementUnit().equals(lot.getMeasurementUnit())) {
+					stock = lot.getQuantity();
+				} else {
+					// Si la UM es la UM pral se convierte
+					stock = new InvoiceLayout().convertStockXMU(lot.getQuantity(), lot.getProduct(),
+							lot.getMeasurementUnit(), muProduct.getMeasurementUnit());
+				}
+
+				// Se construye el objeto de UM x lote
+				MeasurementUnitLot muLot = MeasurementUnitLot.builder().muProduct(muProduct).lot(lot).stock(stock)
+						.build();
+
+				// Se inserta la UM para el lote
+				measurementUnitLotBll.save(muLot, commit);
+				log.info(strLog + " UM x lote insertada: " + muLot);
+			}
+
+		} catch (Exception e) {
+			log.error(strLog + "[Exception] " + e.getMessage());
+			e.printStackTrace();
+		}
 	}
 
 	private Double convertMU(Double quantity, MeasurementUnit muSource, MeasurementUnit muTarget) {
