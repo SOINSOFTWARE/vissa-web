@@ -912,9 +912,9 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 				if (muProduct.getMeasurementUnit().equals(lot.getMeasurementUnit())) {
 					stock = lot.getQuantity();
 				} else {
-					// Si la UM es la UM pral se convierte
-					stock = new InvoiceLayout().convertStockXMU(lot.getQuantity(), lot.getProduct(),
-							lot.getMeasurementUnit(), muProduct.getMeasurementUnit());
+					// Si la UM es diferente UM pral del lote se convierte
+					stock = new InvoiceLayout().convertStockXMU(lot.getQuantity(), lot.getProduct()
+							, lot.getMeasurementUnit(),muProduct.getMeasurementUnit());
 				}
 
 				// Se construye el objeto de UM x lote

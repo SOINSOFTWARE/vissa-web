@@ -613,7 +613,13 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		}).setCaption("Nombre").setEditorComponent(txtName, DocumentDetail::setName);
 
 		// Columna Unidad de medida editable
-		columnUM = detailGrid.addColumn(DocumentDetail::getMeasurementUnit).setCaption("Unidad de medida");
+		columnUM = detailGrid.addColumn(documentDetail -> {
+			if (documentDetail.getMeasurementUnitProduct() != null) {
+				return documentDetail.getMeasurementUnitProduct().getMeasurementUnit();
+			} else {
+				return null;
+			}
+		}).setCaption("Unidad de medida");
 
 		// Columna Unidad de medida Product
 		columnUMProd = detailGrid.addColumn(DocumentDetail::getMeasurementUnitProduct).setCaption("Unidad de medida")
@@ -900,20 +906,38 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			MeasurementUnit muProductTarget) {
 		String strLog = "[convertStockXMU] ";
 		Double stock = 0.0;
+		boolean reverse = false;
 		try {
 			log.info(strLog + "[parameters] quantity: " + quantity + "" + ", muProductSource: " + muProductSource
 					+ ", muProductTarget: " + muProductTarget);
+
 			// Se busca las UM del producto donde la nueva UM es equivalencia
 			List<MeasurementUnitProduct> muProducts = measurementUnitProductBll.selectMuEquivalence(muProductSource,
 					muProductTarget, product);
+
+			// Si no se encuentran registros se realiza la busqueda invirtiendo las UM
+			if (muProducts == null || muProducts.isEmpty()) {
+				muProducts = measurementUnitProductBll.selectMuEquivalence(muProductTarget, muProductSource, product);
+				reverse = true;
+			}
 
 			if (muProducts != null && !muProducts.isEmpty()) {
 				// Se toma el primero que se encuentre
 				MeasurementUnitProduct muEquivalent = muProducts.get(0);
 
 				// La cantidad es el factor de conversión
-				// El stock se multiplica
-				stock = quantity * muEquivalent.getQtyEquivalence();
+				// Si la conversión fue en sentido inverso se divide el stock
+				if (reverse) {
+					stock = quantity / muEquivalent.getQtyEquivalence();
+				} else {
+					// El stock se multiplica
+					stock = quantity * muEquivalent.getQtyEquivalence();
+				}
+				stock = (double) Math.round(stock);
+			} else {
+				log.error(strLog + "No hay UM equivalente a la principal del producto");
+				ViewHelper.showNotification("No hay UM equivalente a la principal del product",
+						Notification.Type.WARNING_MESSAGE);
 			}
 
 		} catch (Exception e) {
@@ -934,7 +958,8 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	public Double convertPriceXMU(Double price, Product product, MeasurementUnit muProductSource,
 			MeasurementUnit muProductTarget) {
 		String strLog = "[convertPriceXMU] ";
-		Double stock = 0.0;
+		Double priceConverted = 0.0;
+		boolean reverse = false;
 		try {
 
 			log.info(strLog + "[parameters] price: " + price + "" + ", muProductSource: " + muProductSource
@@ -944,26 +969,38 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			List<MeasurementUnitProduct> muProducts = measurementUnitProductBll.selectMuEquivalence(muProductSource,
 					muProductTarget, product);
 
+			// Si no se encuentran registros se realiza la busqueda invirtiendo las UM
+			if (muProducts == null || muProducts.isEmpty()) {
+				muProducts = measurementUnitProductBll.selectMuEquivalence(muProductTarget, muProductSource, product);
+				reverse = true;
+			}
 			if (muProducts != null && !muProducts.isEmpty()) {
 				// Se toma el primero que se encuentre
 				MeasurementUnitProduct muEquivalent = muProducts.get(0);
 
 				// La cantidad es el factor de conversión
-				// Los precios se dividen
-				if (transactionType.equals(ETransactionType.ENTRADA)) {
-					stock = price / muEquivalent.getPurchasePrice();
-				}
-				if (transactionType.equals(ETransactionType.SALIDA)) {
-					stock = price / muEquivalent.getSalePrice();
+
+				// Si la conversión fue en sentido inverso se multiplica el precio
+				if (reverse) {
+					priceConverted = price * muEquivalent.getQtyEquivalence();
+				} else {
+					// Se divide el precio
+					priceConverted = price / muEquivalent.getQtyEquivalence();
 				}
 
+				priceConverted = (double) Math.round(priceConverted);
+
+			} else {
+				log.error(strLog + "No hay UM equivalente a la principal del producto");
+				ViewHelper.showNotification("No hay UM equivalente a la principal del product",
+						Notification.Type.WARNING_MESSAGE);
 			}
 
 		} catch (Exception e) {
 			log.error(strLog + "[Exception]" + e.getMessage());
 			e.printStackTrace();
 		}
-		return stock;
+		return priceConverted;
 	}
 
 	/**
@@ -1385,7 +1422,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 					ViewHelper.showNotification("Precio del producto no válido", Notification.Type.ERROR_MESSAGE);
 				} else {
 					// Setear valores de precios en los respectivos campos del detail
-					setPriceOfDetail(muProduct);
+					setPriceInDetail(muProduct);
 
 					if (transactionType.equals(ETransactionType.ENTRADA)) {
 						detail.setPrice(muProduct.getPurchasePrice());
@@ -1537,6 +1574,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			}
 		} catch (Exception e) {
 			log.error(strLog + "[Exception]" + e.getMessage());
+			e.printStackTrace();
 		}
 
 	}
@@ -1765,7 +1803,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 				log.info(strLog + "quantity ingresado: " + quantity);
 
 				// Consultar stock para la UM escogida
-				log.info(strLog + "Stock actual para la UM: " + muProduct.getStock());
+				log.info(strLog + "Stock actual para la UM escogida: " + muProduct.getStock());
 
 				// El stock en la UM pral del producto
 				initialStock = muProductPral.getStock() != null ? muProductPral.getStock() : 0;
@@ -1806,7 +1844,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 				updatePrice(muProduct, detail);
 
 				// Actualizar stock de cada UM asociada al producto
-				updateStockXMU(detail, muProduct);
+				updateStockAndPriceXMu(detail, muProduct);
 			} else {
 				ViewHelper.showNotification("No existe unidad de medida principal configurada",
 						Notification.Type.WARNING_MESSAGE);
@@ -2439,13 +2477,15 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		});
 		// Cuando cambia la UM se debe validar el precio
 		cbMeasurementUnit.addValueChangeListener(e -> {
-			// MeasurementUnitProduct muProduct = selectMuXProduct(e.getValue(), product);
-			setPriceOfDetail(e.getValue());
+			// Se setea al precio del item
+			setPriceInDetail(e.getValue());
+			cbMeasurementUnit.setValue(e.getValue());
 
 			// Establecer la cantidad en el detalle de la factura
-			setQuantityComponent(CommonsConstants.CURRENT_DOCUMENT_DETAIL,
+			buildQuantityComponent(CommonsConstants.CURRENT_DOCUMENT_DETAIL,
 					e.getOldValue() == null ? e.getValue().getMeasurementUnit() : e.getOldValue().getMeasurementUnit(),
 					e.getValue().getMeasurementUnit());
+			detailGrid.getDataProvider().refreshAll();
 
 		});
 
@@ -2463,17 +2503,20 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	 * @param sourceMU
 	 * @param targetMU
 	 */
-	private void setQuantityComponent(DocumentDetail detail, MeasurementUnit sourceMU, MeasurementUnit targetMU) {
+	private void buildQuantityComponent(DocumentDetail detail, MeasurementUnit sourceMU, MeasurementUnit targetMU) {
 		// Binding de cantidad
-
 		NumberField txtQuantity = new NumberField();
 		txtQuantity.setDecimalAllowed(true);
 		txtQuantity.setDecimalPrecision(4);
 		txtQuantity.setDecimalSeparator(',');
 
-		Double newQty = convertStockXMU(detail.getQuantity(), detail.getProduct(), sourceMU, targetMU);
+		// Convertir la UM si son diferentes
+		Double qty = detail.getQuantity();
+		if (!sourceMU.equals(targetMU)) {
+			qty = convertStockXMU(qty, detail.getProduct(), sourceMU, targetMU);
+		}
 
-		txtQuantity.setValue(newQty);
+		txtQuantity.setValue(qty);
 		Binder<DocumentDetail> binder = detailGrid.getEditor().getBinder();
 		Binding<DocumentDetail, String> quantityBinding = binder.bind(txtQuantity, DocumentDetail::getQuantityStr,
 				DocumentDetail::setQuantityStr);
@@ -2482,13 +2525,13 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	}
 
 	/**
-	 * Metodo para setear los precios para la UM escogida
+	 * Metodo para setear los precios del detalle para la UM escogida
 	 * 
 	 * @param mus
 	 * @param product
 	 * @return
 	 */
-	private void setPriceOfDetail(MeasurementUnitProduct muProduct) {
+	private void setPriceInDetail(MeasurementUnitProduct muProduct) {
 		String strLog = "[setPriceOfDetail] ";
 		try {
 			log.info(strLog + "[parameters] muProduct: " + muProduct.getMeasurementUnit());
@@ -2541,8 +2584,8 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	 * 
 	 * @param measurementUnit
 	 */
-	private void updateStockXMU(DocumentDetail detail, MeasurementUnitProduct paramMuProduct) {
-		String strLog = "[updateStockByMU] ";
+	private void updateStockAndPriceXMu(DocumentDetail detail, MeasurementUnitProduct paramMuProduct) {
+		String strLog = "[updateStockAndPriceXMu] ";
 		try {
 			log.info(strLog + "[parameters] product: " + detail.getProduct() + ", MU: "
 					+ paramMuProduct.getMeasurementUnit());
@@ -2556,7 +2599,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 					muProductObj.setStock(newStock);
 
 					// Convertir el precio
-					Double newPrice = convertPriceXMU(paramMuProduct.getStock(), detail.getProduct(),
+					Double newPrice = convertPriceXMU(detail.getPrice(), detail.getProduct(),
 							paramMuProduct.getMeasurementUnit(), muProductObj.getMeasurementUnit());
 
 					// Si es compra es el precio de compra
@@ -2571,7 +2614,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 				}
 				measurementUnitProductBll.save(muProductObj, false);
 
-				log.info(strLog + " stock actualizado para UM: " + paramMuProduct);
+				log.info(strLog + " precio actualizado para UM: " + paramMuProduct);
 			}
 		} catch (Exception e) {
 			log.error(strLog + "[Exception]" + e.getMessage());
