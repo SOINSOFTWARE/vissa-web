@@ -876,13 +876,15 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 		try {
 			List<MeasurementUnitLot> muLotList = measurementUnitLotBll.select(lot);
 			for (MeasurementUnitLot muLot : muLotList) {
+				MeasurementUnit sourceMu = lot.getMeasurementUnit();
+				MeasurementUnit targetMu = muLot.getMeasureUnit();
 				Double stock = new InvoiceLayout().convertStockXMU(lot.getQuantity(), lot.getProduct(),
-						lot.getMeasurementUnit(), muLot.getMeasureUnit());
+						sourceMu, targetMu);
 				log.info(strLog + "Stock convertido: " + stock);
 				// Se actualiza el stock de la UM
 				muLot.setStock(stock);
 
-				// Se persisteb los cambios sobre la UMLot modificada
+				// Se persiste los cambios sobre la UMLot modificada
 				measurementUnitLotBll.save(muLot, commit);
 				log.info(strLog + "MU x lote actualizado: " + muLot);
 			}
@@ -911,10 +913,11 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 				// lote
 				if (muProduct.getMeasurementUnit().equals(lot.getMeasurementUnit())) {
 					stock = lot.getQuantity();
+
 				} else {
 					// Si la UM es diferente UM pral del lote se convierte
-					stock = new InvoiceLayout().convertStockXMU(lot.getQuantity(), lot.getProduct()
-							, lot.getMeasurementUnit(),muProduct.getMeasurementUnit());
+					stock = new InvoiceLayout().convertStockXMU(lot.getQuantity(), lot.getProduct(),
+							lot.getMeasurementUnit(), muProduct.getMeasurementUnit());
 				}
 
 				// Se construye el objeto de UM x lote

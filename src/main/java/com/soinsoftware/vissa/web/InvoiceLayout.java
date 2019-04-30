@@ -1415,7 +1415,8 @@ public class InvoiceLayout extends VerticalLayout implements View {
 				detail.setMeasurementUnitList(muList);
 
 				// Setear la UM por defecto del lote seleccionado
-				MeasurementUnitProduct muProduct = detail.getMeasurementUnitProduct();
+				MeasurementUnitProduct muProduct = measurementUnitProductBll
+						.select(detail.getMeasurementUnit(), detail.getProduct()).get(0);
 
 				if (transactionType.equals(ETransactionType.SALIDA)
 						&& (muProduct == null || (muProduct != null && muProduct.getFinalPrice().equals(0.0)))) {
@@ -2482,9 +2483,11 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			cbMeasurementUnit.setValue(e.getValue());
 
 			// Establecer la cantidad en el detalle de la factura
-			buildQuantityComponent(CommonsConstants.CURRENT_DOCUMENT_DETAIL,
-					e.getOldValue() == null ? e.getValue().getMeasurementUnit() : e.getOldValue().getMeasurementUnit(),
-					e.getValue().getMeasurementUnit());
+			MeasurementUnit oldMu = e.getOldValue() == null ? e.getValue().getMeasurementUnit()
+					: e.getOldValue().getMeasurementUnit();
+			MeasurementUnit newMu = e.getValue() == null ? null : e.getValue().getMeasurementUnit();
+			// Se setean los valores de cantidad de acuerdo a la UM
+			buildQuantityComponent(CommonsConstants.CURRENT_DOCUMENT_DETAIL, oldMu, newMu);
 			detailGrid.getDataProvider().refreshAll();
 
 		});
@@ -2504,23 +2507,32 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	 * @param targetMU
 	 */
 	private void buildQuantityComponent(DocumentDetail detail, MeasurementUnit sourceMU, MeasurementUnit targetMU) {
-		// Binding de cantidad
-		NumberField txtQuantity = new NumberField();
-		txtQuantity.setDecimalAllowed(true);
-		txtQuantity.setDecimalPrecision(4);
-		txtQuantity.setDecimalSeparator(',');
+		String strLog = "[buildQuantityComponent] ";
+		try {
+			log.info(strLog + "[parameters] detail: " + detail + ", sourceMU: " + sourceMU + ", targetMU: " + targetMU);
+			if (sourceMU != null && targetMU != null) {
+				// Binding de cantidad
+				NumberField txtQuantity = new NumberField();
+				txtQuantity.setDecimalAllowed(true);
+				txtQuantity.setDecimalPrecision(4);
+				txtQuantity.setDecimalSeparator(',');
 
-		// Convertir la UM si son diferentes
-		Double qty = detail.getQuantity();
-		if (!sourceMU.equals(targetMU)) {
-			qty = convertStockXMU(qty, detail.getProduct(), sourceMU, targetMU);
+				// Convertir la UM si son diferentes
+				Double qty = detail.getQuantity();
+				if (!sourceMU.equals(targetMU)) {
+					qty = convertStockXMU(qty, detail.getProduct(), sourceMU, targetMU);
+				}
+
+				txtQuantity.setValue(qty);
+				Binder<DocumentDetail> binder = detailGrid.getEditor().getBinder();
+				Binding<DocumentDetail, String> quantityBinding = binder.bind(txtQuantity,
+						DocumentDetail::getQuantityStr, DocumentDetail::setQuantityStr);
+				columnQuantity.setEditorBinding(quantityBinding);
+			}
+		} catch (Exception e) {
+			log.error(strLog + "[Exception] " + e.getMessage());
+			e.printStackTrace();
 		}
-
-		txtQuantity.setValue(qty);
-		Binder<DocumentDetail> binder = detailGrid.getEditor().getBinder();
-		Binding<DocumentDetail, String> quantityBinding = binder.bind(txtQuantity, DocumentDetail::getQuantityStr,
-				DocumentDetail::setQuantityStr);
-		columnQuantity.setEditorBinding(quantityBinding);
 
 	}
 
@@ -2534,7 +2546,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	private void setPriceInDetail(MeasurementUnitProduct muProduct) {
 		String strLog = "[setPriceOfDetail] ";
 		try {
-			log.info(strLog + "[parameters] muProduct: " + muProduct.getMeasurementUnit());
+			log.info(strLog + "[parameters] muProduct: " + muProduct);
 			if (muProduct != null) {
 				Binder<DocumentDetail> binder = detailGrid.getEditor().getBinder();
 				NumberField txtPrice = new NumberField();
@@ -2546,11 +2558,13 @@ public class InvoiceLayout extends VerticalLayout implements View {
 					txtPrice.setValue(muProduct.getPurchasePrice());
 					txtTax.setValue(muProduct.getPurchaseTax());
 					txtPrice.setReadOnly(false);
+					txtTax.setReadOnly(false);
 
 				} else if (transactionType.equals(ETransactionType.SALIDA)) {
 					txtPrice.setValue(muProduct.getSalePrice());
 					txtTax.setValue(muProduct.getSaleTax());
 					txtPrice.setReadOnly(true);
+					txtTax.setReadOnly(true);
 				}
 
 				// Binding de precio

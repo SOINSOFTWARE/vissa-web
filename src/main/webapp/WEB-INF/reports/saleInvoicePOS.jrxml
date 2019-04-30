@@ -37,7 +37,7 @@
 	<field name="price" class="java.lang.Double">
 		<fieldDescription><![CDATA[price]]></fieldDescription>
 	</field>
-	<field name="quantity" class="java.lang.String">
+	<field name="quantity" class="java.lang.Double">
 		<fieldDescription><![CDATA[quantity]]></fieldDescription>
 	</field>
 	<field name="subtotal" class="java.lang.Double">
