@@ -103,6 +103,7 @@ public class VissaUI extends UI {
 	protected static final String KEY_MENU = "Menus";
 	protected static final String KEY_NOTIFICATION = "Notificaciones";
 	protected static final String KEY_MEASUREMENT_UNIT = "Unidades de medida";
+	protected static final String KEY_PRODUCT_CATEGORY = "Dependencias";
 
 	private PermissionUtil permissionUtil;
 
@@ -235,6 +236,9 @@ public class VissaUI extends UI {
 			}
 			if (permissionUtil.canView(KEY_MEASUREMENT_UNIT)) {
 				treeData.addItem(KEY_ADMINISTRATION, KEY_MEASUREMENT_UNIT);
+			}
+			if (permissionUtil.canView(KEY_PRODUCT_CATEGORY)) {
+				treeData.addItem(KEY_ADMINISTRATION, KEY_PRODUCT_CATEGORY);
 			}
 		}
 
@@ -413,6 +417,7 @@ public class VissaUI extends UI {
 		navigator.addView(KEY_MENUS, MenuLayout.class);
 		navigator.addView(KEY_NOTIFICATION, NotificationLayout.class);
 		navigator.addView(KEY_MEASUREMENT_UNIT, MeasurementUnitLayout.class);
+		navigator.addView(KEY_PRODUCT_CATEGORY, ProductCategoryLayout.class);
 		navigator.setErrorView(DefaultView.class);
 		UI.getCurrent().setNavigator(navigator);
 
