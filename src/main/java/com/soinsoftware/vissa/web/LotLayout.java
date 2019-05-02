@@ -867,6 +867,14 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 				muProdPral.setStock(totalStock);
 				measurementUnitProductBll.save(muProdPral);
 				log.info(strLog + "Stock de la um x product actualizado " + muProdPral);
+
+				// Actualizar el stock del producto
+				product.setStock(totalStock);
+				product.setMeasurementUnit(muProdPral.getMeasurementUnit());
+				productBll.save(product);
+
+				log.info(strLog + "Stock total del producto actualizado en um pral: " + product);
+
 			} else {
 				log.error(strLog + "No hay unidad de medida principal configurada para el lote");
 			}
