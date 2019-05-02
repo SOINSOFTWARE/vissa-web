@@ -238,6 +238,7 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 				}
 			}).setCaption("Bodega");
 			columnQuantity = lotGrid.addColumn(Lot::getQuantity).setCaption("Stock");
+
 			lotGrid.addColumn(lot -> {
 				if (lot != null && lot.getMeasurementUnit() != null) {
 					return lot.getMeasurementUnit().getName();
@@ -676,7 +677,6 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 					.build();
 
 			lot.setMuProduct(muProduct);
-
 			// Si es un nuevo lote desde la factura de compra no se guarda, solo se agrega
 			// al detail de la factua
 			if (invoiceLayout != null && modeLayout.equals(ELayoutMode.NEW)) {
@@ -800,6 +800,7 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 		// Mapa de um x producto
 		Map<MeasurementUnitProduct, Double> muProductMap = new HashMap<MeasurementUnitProduct, Double>();
 		List<MeasurementUnitLot> muLotMap = new ArrayList<MeasurementUnitLot>();
+		MeasurementUnitProduct muProdPral = null;
 
 		try {
 			// Obtener lotes del producto
@@ -816,6 +817,7 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 					muProductMap.put(mu, stock);
 					// Si es la UM pral se guarda para actualizarlo en el lote
 					if (mu.isPrincipal()) {
+						muProdPral = mu;
 						muLotMap.add(muLot);
 					}
 				}
@@ -854,10 +856,23 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 				}
 			}
 
-			// Refrescar grid de lote
+			// Refrescar grid de lote y um del producto
 			lotGrid.getDataProvider().refreshAll();
+
+			// Actualizar stock de la um pral del del producto
+			// MeasurementUnitProduct muProd =
+			// measurementUnitProductBll.select(product.getMeasurementUnit(),
+			// product).get(0);
+			if (muProdPral != null) {
+				muProdPral.setStock(totalStock);
+				measurementUnitProductBll.save(muProdPral);
+				log.info(strLog + "Stock de la um x product actualizado " + muProdPral);
+			} else {
+				log.error(strLog + "No hay unidad de medida principal configurada para el lote");
+			}
+
 			if (productLayout != null) {
-				productLayout.getMUGrid().getDataProvider().refreshAll();
+				productLayout.refreshPriceGrid();
 			}
 		} catch (Exception e) {
 			log.error(strLog + "[Exception] " + e.getMessage());
@@ -874,12 +889,13 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 	public void updateStockXUMLot(Lot lot, boolean commit) {
 		String strLog = "[updateStockUMLot] ";
 		try {
+			// Consultar las um del lote
 			List<MeasurementUnitLot> muLotList = measurementUnitLotBll.select(lot);
 			for (MeasurementUnitLot muLot : muLotList) {
 				MeasurementUnit sourceMu = lot.getMeasurementUnit();
 				MeasurementUnit targetMu = muLot.getMeasureUnit();
-				Double stock = new InvoiceLayout().convertStockXMU(lot.getQuantity(), lot.getProduct(),
-						sourceMu, targetMu);
+				Double stock = new InvoiceLayout().convertStockXMU(lot.getQuantity(), lot.getProduct(), sourceMu,
+						targetMu);
 				log.info(strLog + "Stock convertido: " + stock);
 				// Se actualiza el stock de la UM
 				muLot.setStock(stock);
@@ -899,7 +915,7 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 	 * Metodo para asociar las Um del producto a un nuevo lote
 	 */
 	public void insertUMxLot(Lot lot, boolean commit) {
-		String strLog = "[createUMxLot] ";
+		String strLog = "[insertUMxLot] ";
 		try {
 			log.info(strLog + "[parameters] lot: " + lot);
 
@@ -1105,6 +1121,7 @@ public class LotLayout extends AbstractEditableLayout<Lot> {
 			}
 		} catch (Exception e) {
 			log.error(strLog + "[Exception]" + e.getMessage());
+			e.printStackTrace();
 		}
 		return maxCode;
 	}

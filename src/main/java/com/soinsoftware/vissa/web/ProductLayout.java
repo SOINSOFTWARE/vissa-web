@@ -12,6 +12,7 @@ import java.util.Set;
 import org.apache.log4j.Logger;
 import org.hibernate.HibernateException;
 import org.springframework.scheduling.annotation.Async;
+import org.springframework.transaction.SavepointManager;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.vaadin.dialogs.ConfirmDialog;
@@ -294,10 +295,11 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		cbMeasureUnit.addValueChangeListener(e -> MUEquivalences(e.getValue()));
 
 		MUGrid.getEditor().addSaveListener(e -> {
+			saveMuProduct(e.getBean());
 			priceGrid.getDataProvider().refreshAll();
 		});
 
-		fillMUGridData(product);
+		// fillMUGridData(product);
 		Panel panel = ViewHelper.buildPanel("Unidades de medida", layout);
 		panel.setHeight("270px");
 		return panel;
@@ -347,6 +349,12 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		cbMeasureUnit.addValueChangeListener(e -> MUEquivalences(e.getValue()));
 
 		fillMUGridData(product);
+
+		MUGrid.getEditor().addSaveListener(e -> {
+			saveMuProduct(e.getBean());
+			priceGrid.getDataProvider().refreshAll();
+		});
+
 		Panel panel = ViewHelper.buildPanel("Pecios x unidad de medida", layout);
 		panel.setHeight("270px");
 		return panel;
@@ -714,14 +722,15 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 
 		try {
 			log.info(strLog + "[parameters] product: " + product);
-			if (priceProductList == null || priceProductList.isEmpty()) {
-				priceProductList = measurementUnitProductBll.select(product);
-			}
+			// if (priceProductList == null || priceProductList.isEmpty()) {
+			priceProductList = measurementUnitProductBll.select(product);
+			// }
 			dataProviderProdMeasurement = new ListDataProvider<>(priceProductList);
 			MUGrid.setDataProvider(dataProviderProdMeasurement);
 			priceGrid.setDataProvider(dataProviderProdMeasurement);
 		} catch (Exception e) {
 			log.error(strLog + "[Exception]" + e.getMessage());
+			e.printStackTrace();
 		}
 	}
 
@@ -809,13 +818,9 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 
 			ProductType type = cbType.getSelectedItem().isPresent() ? cbType.getSelectedItem().get() : null;
 
-			// Se obtiene el stock del total de los lotes
-			// Double stock = lotPanel.getTotalStock();
-
-			Date stockDate = txtStockDate.getValue() != null ? DateUtil.stringToDate(txtStockDate.getValue()) : null;
 			entity = productBuilder.code(txtCode.getValue()).name(txtName.getValue())
 					.description(txtDescription.getValue()).category(category).type(type).eanCode(txtEan.getValue())
-					.brand(txtBrand.getValue()).stockDate(stockDate).archived(false).build();
+					.brand(txtBrand.getValue()).stockDate(new Date()).archived(false).build();
 			productBll.save(entity, false);
 
 		} catch (Exception e) {
@@ -830,7 +835,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		if (!hasError && (product != null && product.getCode() != null)) {
 			try {
 				// Guardar unidades de medidas y precios del producto
-				saveMuProduct(product);
+				saveMuGrid(product);
 
 				// Actualizar precio de venta y stock de la UM principal en el product
 				if (priceProductList != null && !priceProductList.isEmpty()) {
@@ -864,8 +869,8 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 	 * 
 	 * @param product
 	 */
-	private void saveMuProduct(Product product) {
-		String strLog = "[savePriceProduct] ";
+	private void saveMuGrid(Product product) {
+		String strLog = "[saveMuGrid] ";
 		try {
 
 			// Se obtienen los precios de la grid de la UM del producto
@@ -892,7 +897,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 
 					MeasurementUnitProduct entitySaved = measurementUnitProductBll
 							.select(umProductEntity.getMeasurementUnit(), product).get(0);
-					
+
 					// Actualizar UM por cada lote del producto
 					saveMuLot(entitySaved);
 
@@ -915,6 +920,42 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 	}
 
 	/**
+	 * Metodo para guardar cada um del producto
+	 * 
+	 * @param muProduct
+	 */
+	private void saveMuProduct(MeasurementUnitProduct muProduct) {
+		String strLog = "[saveMuProduct] ";
+		try {
+			if (product != null) {
+				muProduct.setProduct(product);
+				measurementUnitProductBll.save(muProduct);
+				log.info("UM y precio guardado " + muProduct);
+
+				MeasurementUnitProduct entitySaved = measurementUnitProductBll
+						.select(muProduct.getMeasurementUnit(), product).get(0);
+
+				// Actualizar UM por cada lote del producto
+				saveMuLot(entitySaved);
+			} else {
+				// Si no está guardado el producto, se debe guardar primero
+				showConfirmMessage = false;
+				saveButtonAction(null);
+			}
+
+		} catch (ModelValidationException ex) {
+			measurementUnitProductBll.rollback();
+			log.error(strLog + "[ModelValidationException] " + ex);
+			ViewHelper.showNotification(ex.getMessage(), Notification.Type.ERROR_MESSAGE);
+		} catch (HibernateException ex) {
+			measurementUnitProductBll.rollback();
+			log.error(strLog + "[HibernateException] " + ex);
+			ViewHelper.showNotification("Los datos no pudieron ser salvados, contacte al administrador del sistema",
+					Notification.Type.ERROR_MESSAGE);
+		}
+	}
+
+	/**
 	 * Metodo para actualizar las unidades de medida por lote
 	 */
 	@Async
@@ -927,18 +968,18 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 			for (Lot lotTmp : lots) {
 				// Buscar las um del lote
 				List<MeasurementUnitLot> muLotList = measurementUnitLotBll.select(lotTmp);
-				// Cargar las umProduct en una nueva lista
+				// Cargar las umProduct del lote en una nueva lista muProductList
 				List<MeasurementUnitProduct> muProductList = new ArrayList<>();
 				for (MeasurementUnitLot muLot : muLotList) {
 					muProductList.add(muLot.getMuProduct());
 				}
 
-				//Si la UM no está agregada al lote se relaciona
+				// Si la UM no está agregada al lote se relaciona
 				if (!muProductList.contains(muProduct)) {
 					MeasurementUnitLot muLotEntity = MeasurementUnitLot.builder().muProduct(muProduct).lot(lotTmp)
 							.build();
 					measurementUnitLotBll.save(muLotEntity);
-					log.info(strLog + "UM agregada al lote");
+					log.info(strLog + "UM " + muProduct.getMeasurementUnit() + " agregada al lote");
 				}
 			}
 
@@ -1002,7 +1043,9 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		productGrid.getDataProvider().refreshAll();
 	}
 
-	private void refreshPriceGrid() {
+	public void refreshPriceGrid() {
+		// priceProductList = null;
+		fillMUGridData(product);
 		MUGrid.getDataProvider().refreshAll();
 		// priceGrid.getDataProvider().refreshAll();
 	}
@@ -1048,7 +1091,8 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		MeasurementUnitProduct muProduct = new MeasurementUnitProduct();
 		priceProductList.add(muProduct);
 		MUGrid.focus();
-		refreshPriceGrid();
+		MUGrid.getDataProvider().refreshAll();
+		/// refreshPriceGrid();
 	}
 
 	/**

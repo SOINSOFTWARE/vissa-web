@@ -873,9 +873,9 @@ public class ReturnLayout extends VerticalLayout implements View {
 				DocumentDetailLot detailLotDefault = detailLotList.get(0);
 
 				// Si la UM del item es diferente a la del lote, se convierte a la del lote
-				if (!detail.getMeasurementUnit().equals(detailLotDefault.getLot().getMeasurementUnit())) {
+				if (!detail.getMeasurementUnit().equals(detailLotDefault.getLot().getMuProduct().getMeasurementUnit())) {
 					quantity = convertStockXMU(quantity, detail.getMeasurementUnit(),
-							detailLotDefault.getLot().getMeasurementUnit());
+							detailLotDefault.getLot().getMuProduct().getMeasurementUnit());
 
 				}
 
@@ -1404,7 +1404,7 @@ public class ReturnLayout extends VerticalLayout implements View {
 					} else {
 						if (transactionType.equals(ETransactionType.ENTRADA)) {
 							detail.setQuantity(lot.getQuantity());
-							detail.setMeasurementUnit(lot.getMeasurementUnit());
+							detail.setMeasurementUnit(lot.getMuProduct().getMeasurementUnit());
 						}
 						// Se agrega el item al detail de la factura
 						addItemToDetail(detail);
@@ -1754,8 +1754,8 @@ public class ReturnLayout extends VerticalLayout implements View {
 
 				if (transactionType.equals(ETransactionType.ENTRADA)) {
 					// Si la UM es diferente a la UM del lote se debe convertir
-					if (!detail.getMeasurementUnit().equals(lot.getMeasurementUnit())) {
-						qty = convertStockXMU(qty, detail.getMeasurementUnit(), lot.getMeasurementUnit());
+					if (!detail.getMeasurementUnit().equals(lot.getMuProduct().getMeasurementUnit())) {
+						qty = convertStockXMU(qty, detail.getMeasurementUnit(), lot.getMuProduct().getMeasurementUnit());
 						log.info(strLog + "quantity convertido: " + quantity);
 					}
 
@@ -1767,15 +1767,15 @@ public class ReturnLayout extends VerticalLayout implements View {
 				} else if (transactionType.equals(ETransactionType.SALIDA)) {
 					initialStockLot = lot.getQuantity();// stock del lote
 
-					if (!detail.getMeasurementUnit().equals(lot.getMeasurementUnit())) {
+					if (!detail.getMeasurementUnit().equals(lot.getMuProduct().getMeasurementUnit())) {
 						// Si la UM es diferente a la UM principal se debe convertir
 						// Convertir stock del lote
 						initialStockLot = convertStockXMU(initialStockLot, detail.getMeasurementUnit(),
-								lot.getMeasurementUnit());
+								lot.getMuProduct().getMeasurementUnit());
 						log.info(strLog + "initialStock del lote convertido: " + lot);
 
 						// Convertir quantity de la tx
-						quantity = convertStockXMU(qty, detail.getMeasurementUnit(), lot.getMeasurementUnit());
+						quantity = convertStockXMU(qty, detail.getMeasurementUnit(), lot.getMuProduct().getMeasurementUnit());
 						log.info(strLog + "quantity convertido: " + quantity);
 					}
 

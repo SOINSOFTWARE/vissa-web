@@ -54,7 +54,6 @@ import com.soinsoftware.vissa.model.ETransactionType;
 import com.soinsoftware.vissa.model.InventoryTransaction;
 import com.soinsoftware.vissa.model.Lot;
 import com.soinsoftware.vissa.model.MeasurementUnit;
-import com.soinsoftware.vissa.model.MeasurementUnitLot;
 import com.soinsoftware.vissa.model.MeasurementUnitProduct;
 import com.soinsoftware.vissa.model.PaymentDocumentType;
 import com.soinsoftware.vissa.model.PaymentMethod;
@@ -911,35 +910,38 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			log.info(strLog + "[parameters] quantity: " + quantity + "" + ", muProductSource: " + muProductSource
 					+ ", muProductTarget: " + muProductTarget);
 
-			// Se busca las UM del producto donde la nueva UM es equivalencia
-			List<MeasurementUnitProduct> muProducts = measurementUnitProductBll.selectMuEquivalence(muProductSource,
-					muProductTarget, product);
+			// Si las um son diferentes se consulta la equivalencia
+			if (!muProductSource.equals(muProductTarget)) {
+				// Se busca las UM del producto donde la nueva UM es equivalencia
+				List<MeasurementUnitProduct> muProducts = measurementUnitProductBll.selectMuEquivalence(muProductSource,
+						muProductTarget, product);
 
-			// Si no se encuentran registros se realiza la busqueda invirtiendo las UM
-			if (muProducts == null || muProducts.isEmpty()) {
-				muProducts = measurementUnitProductBll.selectMuEquivalence(muProductTarget, muProductSource, product);
-				reverse = true;
-			}
-
-			if (muProducts != null && !muProducts.isEmpty()) {
-				// Se toma el primero que se encuentre
-				MeasurementUnitProduct muEquivalent = muProducts.get(0);
-
-				// La cantidad es el factor de conversión
-				// Si la conversión fue en sentido inverso se divide el stock
-				if (reverse) {
-					stock = quantity / muEquivalent.getQtyEquivalence();
-				} else {
-					// El stock se multiplica
-					stock = quantity * muEquivalent.getQtyEquivalence();
+				// Si no se encuentran registros se realiza la busqueda invirtiendo las UM
+				if (muProducts == null || muProducts.isEmpty()) {
+					muProducts = measurementUnitProductBll.selectMuEquivalence(muProductTarget, muProductSource,
+							product);
+					reverse = true;
 				}
-				stock = (double) Math.round(stock);
-			} else {
-				log.error(strLog + "No hay UM equivalente a la principal del producto");
-				ViewHelper.showNotification("No hay UM equivalente a la principal del product",
-						Notification.Type.WARNING_MESSAGE);
-			}
 
+				if (muProducts != null && !muProducts.isEmpty()) {
+					// Se toma el primero que se encuentre
+					MeasurementUnitProduct muEquivalent = muProducts.get(0);
+
+					// La cantidad es el factor de conversión
+					// Si la conversión fue en sentido inverso se divide el stock
+					if (reverse) {
+						stock = quantity / muEquivalent.getQtyEquivalence();
+					} else {
+						// El stock se multiplica
+						stock = quantity * muEquivalent.getQtyEquivalence();
+					}
+					stock = (double) Math.round(stock);
+				} else {
+					log.error(strLog + "No hay UM equivalente a la principal del producto");
+					ViewHelper.showNotification("No hay UM equivalente a la principal del product",
+							Notification.Type.WARNING_MESSAGE);
+				}
+			}
 		} catch (Exception e) {
 			log.error(strLog + "[Exception]" + e.getMessage());
 			e.printStackTrace();
@@ -965,37 +967,40 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			log.info(strLog + "[parameters] price: " + price + "" + ", muProductSource: " + muProductSource
 					+ ", muProductTarget: " + muProductTarget);
 
-			// Se busca las UM del producto donde la nueva UM es equivalencia
-			List<MeasurementUnitProduct> muProducts = measurementUnitProductBll.selectMuEquivalence(muProductSource,
-					muProductTarget, product);
+			// Si las um son diferentes se consulta la equivalencia
+			if (!muProductSource.equals(muProductTarget)) {
+				// Se busca las UM del producto donde la nueva UM es equivalencia
+				List<MeasurementUnitProduct> muProducts = measurementUnitProductBll.selectMuEquivalence(muProductSource,
+						muProductTarget, product);
 
-			// Si no se encuentran registros se realiza la busqueda invirtiendo las UM
-			if (muProducts == null || muProducts.isEmpty()) {
-				muProducts = measurementUnitProductBll.selectMuEquivalence(muProductTarget, muProductSource, product);
-				reverse = true;
-			}
-			if (muProducts != null && !muProducts.isEmpty()) {
-				// Se toma el primero que se encuentre
-				MeasurementUnitProduct muEquivalent = muProducts.get(0);
-
-				// La cantidad es el factor de conversión
-
-				// Si la conversión fue en sentido inverso se multiplica el precio
-				if (reverse) {
-					priceConverted = price * muEquivalent.getQtyEquivalence();
-				} else {
-					// Se divide el precio
-					priceConverted = price / muEquivalent.getQtyEquivalence();
+				// Si no se encuentran registros se realiza la busqueda invirtiendo las UM
+				if (muProducts == null || muProducts.isEmpty()) {
+					muProducts = measurementUnitProductBll.selectMuEquivalence(muProductTarget, muProductSource,
+							product);
+					reverse = true;
 				}
+				if (muProducts != null && !muProducts.isEmpty()) {
+					// Se toma el primero que se encuentre
+					MeasurementUnitProduct muEquivalent = muProducts.get(0);
 
-				priceConverted = (double) Math.round(priceConverted);
+					// La cantidad es el factor de conversión
 
-			} else {
-				log.error(strLog + "No hay UM equivalente a la principal del producto");
-				ViewHelper.showNotification("No hay UM equivalente a la principal del product",
-						Notification.Type.WARNING_MESSAGE);
+					// Si la conversión fue en sentido inverso se multiplica el precio
+					if (reverse) {
+						priceConverted = price * muEquivalent.getQtyEquivalence();
+					} else {
+						// Se divide el precio
+						priceConverted = price / muEquivalent.getQtyEquivalence();
+					}
+
+					priceConverted = (double) Math.round(priceConverted);
+
+				} else {
+					log.error(strLog + "No hay UM equivalente a la principal del producto");
+					ViewHelper.showNotification("No hay UM equivalente a la principal del product",
+							Notification.Type.WARNING_MESSAGE);
+				}
 			}
-
 		} catch (Exception e) {
 			log.error(strLog + "[Exception]" + e.getMessage());
 			e.printStackTrace();
@@ -1406,7 +1411,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	 * @param detail
 	 */
 	private void addItemToDetail(DocumentDetail detail) {
-		String strLog = "[addItemToDetail]";
+		String strLog = "[addItemToDetail] ";
 		try {
 			// Setear unidad de medida por defecto para item
 			List<MeasurementUnit> muList = measurementUnitProductBll.selectMuByProduct(detail.getProduct());
@@ -1571,7 +1576,11 @@ public class InvoiceLayout extends VerticalLayout implements View {
 					}
 				}
 			} else {
-				ViewHelper.showNotification("No ha seleccionado lote", Notification.Type.ERROR_MESSAGE);
+				String msg = "No ha seleccionado lote";
+				if (transactionType.equals(ETransactionType.SALIDA)) {
+					msg = "No hay lote con stock  para el producto";
+				}
+				ViewHelper.showNotification(msg, Notification.Type.ERROR_MESSAGE);
 			}
 		} catch (Exception e) {
 			log.error(strLog + "[Exception]" + e.getMessage());
@@ -1724,12 +1733,16 @@ public class InvoiceLayout extends VerticalLayout implements View {
 						InventoryTransaction inventory = saveInventory(documentEntity, detail);
 						if (inventory != null) {
 							// Actualizar stock del producto
-							Product product = saveProduct(inventory);
+							Product product = saveProduct(detail.getProduct());
 							if (product != null) {
 								hasErrors = saveLot(documentEntity, detail);
 								closeWindow(cashChangeWindow);
 
+							} else {
+								hasErrors = true;
 							}
+						} else {
+							hasErrors = true;
 						}
 
 					} catch (Exception ex) {
@@ -1847,18 +1860,21 @@ public class InvoiceLayout extends VerticalLayout implements View {
 				// Actualizar stock de cada UM asociada al producto
 				updateStockAndPriceXMu(detail, muProduct);
 			} else {
-				ViewHelper.showNotification("No existe unidad de medida principal configurada",
-						Notification.Type.WARNING_MESSAGE);
+				ViewHelper.showNotification("No existe unidad de medida principal configurada para el producto: "
+						+ detail.getProduct().getName(), Notification.Type.WARNING_MESSAGE);
 			}
 
 		} catch (ModelValidationException ex) {
 			inventoryTransaction = null;
 			log.error(strLog + "[ModelValidationException]" + ex);
+			ex.printStackTrace();
 		} catch (HibernateException ex) {
 			inventoryTransaction = null;
 			log.error(strLog + "[HibernateException]" + ex);
+			ex.printStackTrace();
 		} catch (Exception e) {
 			log.error(strLog + "[Exception]" + e.getMessage());
+			e.printStackTrace();
 		}
 
 		return inventoryTransaction;
@@ -1870,23 +1886,35 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	 * 
 	 * @param inventoryTransaction
 	 */
-	private Product saveProduct(InventoryTransaction inventoryTransaction) {
+	private Product saveProduct(Product product) {
 		String strLog = "[saveProduct] ";
-		Product product = null;
-		try {
-			log.info(strLog + "[parameters] " + inventoryTransaction);
-			product = productBll.select(inventoryTransaction.getProduct().getCode());
-			product.setStock(inventoryTransaction.getFinalStock());
-			product.setStockDate(new Date());
 
-			// Actualizar stock producto
-			productBll.save(product, false);
-			log.info("product saved: " + product);
+		try {
+			log.info(strLog + "[parameters] product: " + product);
+			// Se actualiza el stock y precio en base a la um principal
+			List<MeasurementUnitProduct> muProductList = measurementUnitProductBll.selectPrincipal(product);
+			MeasurementUnitProduct muPral = null;
+			if (muProductList != null && !muProductList.isEmpty()) {
+				muPral = muProductList.get(0);
+				product = productBll.select(product.getCode());
+				product.setStock(muPral.getStock());
+				product.setStockDate(new Date());
+				product.setSalePrice(muPral.getFinalPrice());
+
+				// Actualizar stock producto
+				productBll.save(product, false);
+				log.info("product saved: " + product);
+			} else {
+				log.error(strLog + "No hay um principal configurada para el producto");
+				ViewHelper.showNotification("No hay um principal configurada para el producto",
+						Notification.Type.WARNING_MESSAGE);
+			}
 
 		} catch (Exception e) {
 			product = null;
-			inventoryBll.rollback();
+			productBll.rollback();
 			log.error(strLog + "[Exception]" + e.getMessage());
+			e.printStackTrace();
 		}
 
 		return product;
@@ -2103,23 +2131,26 @@ public class InvoiceLayout extends VerticalLayout implements View {
 				documentSaved = documentBll.select(documentEntity.getCode(), documentEntity.getDocumentType());
 			}
 		} catch (ModelValidationException ex) {
-			log.error(strLog + "[ModelValidationException]" + ex);
 			documentBll.rollback();
+			log.error(strLog + "[ModelValidationException]" + ex);
+			ex.printStackTrace();
 			ViewHelper.showNotification(ex.getMessage(), Notification.Type.ERROR_MESSAGE);
 		} catch (HibernateException ex) {
-			log.error(strLog + "[HibernateException]" + ex);
 			documentBll.rollback();
+			log.error(strLog + "[HibernateException]" + ex);
+			ex.printStackTrace();
 			ViewHelper.showNotification("Los datos no pudieron ser salvados, contacte al administrador",
 					Notification.Type.ERROR_MESSAGE);
 		} catch (PersistenceException ex) {
-			log.error(strLog + "[PersistenceException]" + ex);
 			documentBll.rollback();
+			log.error(strLog + "[PersistenceException]" + ex);
+			ex.printStackTrace();
 			ViewHelper.showNotification("Se presentó un error, por favor contacte al adminisrador del sistema",
 					Notification.Type.ERROR_MESSAGE);
 		} catch (Exception ex) {
+			documentBll.rollback();
 			log.error(strLog + "[Exception]" + ex.getLocalizedMessage());
 			ex.printStackTrace();
-			documentBll.rollback();
 			ViewHelper.showNotification(
 					"Se presentó un error al guardar la factura, por favor contacte al adminisrador del sistema",
 					Notification.Type.ERROR_MESSAGE);
@@ -2136,10 +2167,13 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		String strLog = "[cleanButtonAction]";
 
 		try {
+			// Entities
 			document = null;
 			selectedPerson = null;
 			selectedProduct = null;
 			selectedLot = null;
+			itemsList.clear();
+			detailLotCollection.clear();
 
 			txtDocNumber.clear();
 			txtDocNumFilter.clear();
@@ -2150,7 +2184,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			cbPaymentMethod.clear();
 			// cbPaymentType.clear();
 			cbDocumentStatus.setSelectedItem(docStatusBll.select("Nueva").get(0));
-			itemsList.clear();
+
 			// initializeGrid();
 			detailGrid.getDataProvider().refreshAll();
 			txtDocNumFilter.clear();
@@ -2162,6 +2196,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			CommonsConstants.CURRENT_DOCUMENT_DETAIL = null;
 		} catch (Exception e) {
 			log.error(strLog + "[Exception]" + e.getMessage());
+			e.printStackTrace();
 			ViewHelper.showNotification(
 					"Se presentó un error al limpiar los datos, por favor contacte al adminisrador del sistema",
 					Notification.Type.ERROR_MESSAGE);
@@ -2220,6 +2255,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 		} catch (Exception e) {
 			log.error(strLog + "[Exception]" + e.getMessage());
+			e.printStackTrace();
 			ViewHelper.showNotification("Se presentó un error al consultar la factura",
 					Notification.Type.ERROR_MESSAGE);
 		}
@@ -2269,15 +2305,44 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			DocumentDetail detail = getSelectedDetail();
 			log.info(strLog + "detail:" + detail);
 			if (detail != null) {
+				// Eliminar el item del listado de detalles de factura
 				itemsList.remove(detail);
+				// Volver a llenar la grid
 				fillDetailGridData(itemsList);
+				// Eliminar detail de listado de relacion detail-lot
+				deleteDetailLot(detail);
 			} else {
 				ViewHelper.showNotification("Seleccione un ítem", Notification.Type.WARNING_MESSAGE);
 			}
 		} catch (Exception e) {
 			log.error(strLog + "[Exception]" + e.getMessage());
+			e.printStackTrace();
 			ViewHelper.showNotification("Se presentó une error al eliminar el ítem", Notification.Type.ERROR_MESSAGE);
 		}
+	}
+
+	/**
+	 * Metodo para eliminar de la lista de detailLot un item
+	 * 
+	 * @param detailLot
+	 */
+	private void deleteDetailLot(DocumentDetail detail) {
+		String strLog = "[deleteDetailLot] ";
+		try {
+			log.info(strLog + "[parameters] detail: " + detail);
+			for (DocumentDetailLot detailLot : detailLotCollection) {
+				if (detailLot.getDocumentDetail().equals(detail)) {
+					detailLotCollection.remove(detailLot);
+					log.info(strLog + " detailLot eliminado: " + detailLot);
+					break;
+				}
+			}
+
+		} catch (Exception e) {
+			log.error(strLog + "[Exception]" + e.getMessage());
+			e.printStackTrace();
+		}
+
 	}
 
 	/**
@@ -2324,6 +2389,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			saveButtonAction(documentEntity);
 		} catch (Exception e) {
 			log.error(strLog + "[Exception]" + e.getMessage());
+			e.printStackTrace();
 			ViewHelper.showNotification("Se presentó un error al eliminar el registro",
 					Notification.Type.ERROR_MESSAGE);
 		}
@@ -2365,6 +2431,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			ViewHelper.showNotification("Se presentó un error al imprimir la factura", Notification.Type.ERROR_MESSAGE);
 		} catch (Exception e) {
 			log.error(strLog + "[Exception]" + e.getMessage());
+			e.printStackTrace();
 			ViewHelper.showNotification("Se presentó un error al imprimir la factura", Notification.Type.ERROR_MESSAGE);
 		}
 	}
@@ -2425,6 +2492,8 @@ public class InvoiceLayout extends VerticalLayout implements View {
 						document.getTotalValueNoTax() != null ? document.getTotalValueNoTax() : 0.0);
 			}
 		} catch (Exception e) {
+			log.error(strLog + "[Exception]" + e.getMessage());
+			e.printStackTrace();
 
 		}
 		return parameters;
@@ -2450,6 +2519,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 			getUI().addWindow(cashChangeWindow);
 		} catch (IOException e) {
 			log.error("Error al cargar lista de lotes. Exception:" + e);
+			e.printStackTrace();
 		}
 
 		return true;
