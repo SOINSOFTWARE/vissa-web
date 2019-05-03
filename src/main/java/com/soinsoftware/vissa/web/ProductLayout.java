@@ -27,6 +27,7 @@ import com.soinsoftware.vissa.bll.ProductCategoryBll;
 import com.soinsoftware.vissa.bll.ProductTypeBll;
 import com.soinsoftware.vissa.bll.TableSequenceBll;
 import com.soinsoftware.vissa.bll.WarehouseBll;
+import com.soinsoftware.vissa.common.CommonsConstants;
 import com.soinsoftware.vissa.exception.ModelValidationException;
 import com.soinsoftware.vissa.model.Lot;
 import com.soinsoftware.vissa.model.MeasurementUnit;
@@ -289,9 +290,12 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 
 		MUGrid.getEditor().setEnabled(true);
 
+		cbMeasureUnit.addValueChangeListener(e -> convertMuEquivalence(CommonsConstants.MEASUREMENT_UNIT_PRODUCT));
+
 		layout.addComponents(horizontaLayout, MUGrid);
 
 		MUGrid.getEditor().addSaveListener(e -> {
+
 			saveMuProduct(e.getBean());
 			priceGrid.getDataProvider().refreshAll();
 		});
@@ -1111,7 +1115,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 			MUGrid.focus();
 
 			MUGrid.select(umNew);
-			// MUGrid.getDataProvider().refreshAll();
+			MUGrid.getDataProvider().refreshAll();
 		} catch (Exception e) {
 			log.error(strLog + "[Exception] " + e.getMessage());
 			e.printStackTrace();
