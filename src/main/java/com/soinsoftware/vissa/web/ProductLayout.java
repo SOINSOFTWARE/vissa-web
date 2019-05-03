@@ -12,7 +12,6 @@ import java.util.Set;
 import org.apache.log4j.Logger;
 import org.hibernate.HibernateException;
 import org.springframework.scheduling.annotation.Async;
-import org.springframework.transaction.SavepointManager;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.vaadin.dialogs.ConfirmDialog;
@@ -231,7 +230,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 
 		Button newPriceBtn = new Button("Nueva unidad de medida");
 		newPriceBtn.setStyleName(ValoTheme.BUTTON_TINY);
-		newPriceBtn.addClickListener(e -> addItemPriceGrid());
+		newPriceBtn.addClickListener(e -> addItemMuGrid());
 
 		Button deletePriceBtn = new Button("Eliminar unidad de medida");
 		deletePriceBtn.setStyleName(ValoTheme.BUTTON_TINY);
@@ -292,8 +291,6 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 
 		layout.addComponents(horizontaLayout, MUGrid);
 
-		cbMeasureUnit.addValueChangeListener(e -> MUEquivalences(e.getValue()));
-
 		MUGrid.getEditor().addSaveListener(e -> {
 			saveMuProduct(e.getBean());
 			priceGrid.getDataProvider().refreshAll();
@@ -345,8 +342,6 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		priceGrid.getEditor().setEnabled(true);
 
 		layout.addComponents(priceGrid);
-
-		cbMeasureUnit.addValueChangeListener(e -> MUEquivalences(e.getValue()));
 
 		fillMUGridData(product);
 
@@ -1087,12 +1082,41 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 	/*
 	 * Método para agregar un item a la grid de UM y precios
 	 */
-	private void addItemPriceGrid() {
-		MeasurementUnitProduct muProduct = new MeasurementUnitProduct();
-		priceProductList.add(muProduct);
-		MUGrid.focus();
-		MUGrid.getDataProvider().refreshAll();
-		/// refreshPriceGrid();
+	private void addItemMuGrid() {
+		String strLog = "";
+		try {
+
+			// Se obtiene la UM pral
+			MeasurementUnitProduct umPral = new MeasurementUnitProduct();
+			List<MeasurementUnitProduct> muProducts = measurementUnitProductBll.selectPrincipal(product);
+			if (muProducts != null && !muProducts.isEmpty()) {
+				umPral = muProducts.get(0);
+			}
+			MeasurementUnitProduct umNew = new MeasurementUnitProduct();
+
+			// Se copian los valores de precios a la nueva UM
+			umNew.setProduct(product);
+			umNew.setPurchasePrice(umPral.getPurchasePrice());
+			umNew.setPurchaseTax(umPral.getPurchaseTax());
+			umNew.setUtility(umPral.getUtility());
+			umNew.setUtilityPrc(umPral.getUtilityPrc());
+			umNew.setSalePrice(umPral.getSalePrice());
+			umNew.setSaleTax(umPral.getSaleTax());
+			// Se copia el mismo stock para luego modificarlo de acuerdo a la equivalencia
+			umNew.setStock(umPral.getStock());
+
+			// Agregar a la lista que es data provider de la grid
+			priceProductList.add(umNew);
+			// Seleccionar en la grid la nueva um
+			MUGrid.focus();
+
+			MUGrid.select(umNew);
+			// MUGrid.getDataProvider().refreshAll();
+		} catch (Exception e) {
+			log.error(strLog + "[Exception] " + e.getMessage());
+			e.printStackTrace();
+		}
+
 	}
 
 	/**
@@ -1135,39 +1159,37 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 	}
 
 	/**
-	 * Método para buscar las equivalencias de la nueva MU del producto
+	 * Convertir valores de precios y stock de acuerdo a la UM equivalente
 	 * 
-	 * @param measurementUnit
+	 * @param mu
 	 */
-	private void MUEquivalences(MeasurementUnit measurementUnit) {
-		String strLog = "[MUEquivalences]";
+	public MeasurementUnitProduct convertMuEquivalence(MeasurementUnitProduct muProduct) {
+		String strLog = "[convertMuEquivalence] ";
 		try {
-			if (measurementUnit != null) {
-				MeasurementUnitProduct muProductSource = null;
-				MeasurementUnitProduct muProductTarget = MeasurementUnitProduct.builder()
-						.measurementUnit(measurementUnit).build();
+			// Se busca las UM donde la nueva UM es equivalencia
+			List<MeasurementUnitProduct> muProducts = measurementUnitProductBll
+					.selectMuEquivalence(muProduct.getMeasurementUnit(), muProduct.getProduct());
 
-				if (priceProductList != null && !priceProductList.isEmpty() && priceProductList.size() > 1) {
-					// Se toma de referencia la primera MU
-					muProductSource = priceProductList.get(0);
-					if (!muProductSource.getMeasurementUnit().equals(muProductTarget.getMeasurementUnit())) {
-						// Convertir la unidad de medida
-						convertMUProduct(muProductSource, muProductTarget);
-					} else {
-						// Si se cambia la primera UM se actualizan las otras
-						for (MeasurementUnitProduct muProduct : priceProductList) {
-							if (muProduct != muProductSource) {
-								convertMUProduct(muProductSource, muProduct);
-							}
-						}
-					}
-				}
+			if (muProducts != null && !muProducts.isEmpty()) {
+				// Se toma el primero que se encuentre
+				MeasurementUnitProduct muEquivalent = muProducts.get(0);
+
+				// La cantidad es el factor de conversión
+				Double qtyEquivalence = muEquivalent.getQtyEquivalence();
+
+				// El precio se divide
+				muProduct.setPurchasePrice(muProduct.getPurchasePrice() / qtyEquivalence);
+
+				// El stock se multiplica
+				muProduct.setStock(muProduct.getStock() * qtyEquivalence);
 			}
+
 		} catch (Exception e) {
-			log.error(strLog + "[Exception]" + e.getMessage());
+			log.error(strLog + "[Exception] " + e.getMessage());
 			e.printStackTrace();
 		}
 
+		return muProduct;
 	}
 
 	/**
