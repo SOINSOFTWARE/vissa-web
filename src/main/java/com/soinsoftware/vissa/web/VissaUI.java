@@ -99,11 +99,13 @@ public class VissaUI extends UI {
 	protected static final String KEY_COLLECTION = "Recaudos";
 	protected static final String KEY_SUPPLIER_PAYMENTS = "Pago a proveedores";
 	protected static final String KEY_EGRESS = "Egresos";
-	protected static final String KEY_COMPANY = "Compañía";
+	protected static final String KEY_COMPANY = "Empresa";
 	protected static final String KEY_MENU = "Menus";
 	protected static final String KEY_NOTIFICATION = "Notificaciones";
 	protected static final String KEY_MEASUREMENT_UNIT = "Unidades de medida";
 	protected static final String KEY_PRODUCT_CATEGORY = "Dependencias";
+	protected static final String KEY_EGRESS_TYPE = "Tipos de egresos";
+	protected static final String KEY_STORES = "Puntos de venta";
 
 	private PermissionUtil permissionUtil;
 
@@ -240,6 +242,12 @@ public class VissaUI extends UI {
 			if (permissionUtil.canView(KEY_PRODUCT_CATEGORY)) {
 				treeData.addItem(KEY_ADMINISTRATION, KEY_PRODUCT_CATEGORY);
 			}
+			if (permissionUtil.canView(KEY_EGRESS_TYPE)) {
+				treeData.addItem(KEY_ADMINISTRATION, KEY_EGRESS_TYPE);
+			}
+			if (permissionUtil.canView(KEY_STORES)) {
+				treeData.addItem(KEY_ADMINISTRATION, KEY_STORES);
+			}
 		}
 
 	}
@@ -250,19 +258,23 @@ public class VissaUI extends UI {
 		Component menuItemsLayout = buildMenuItemsLayout(root);
 		menu.addComponent(buildTopLayout());
 		menu.addComponent(buildShowMenuButton(menu));
-		
-		menu.addComponent(buildMenuBar());		
-		
-		TextField txtSalePoint = new TextField();		
+
+		menu.addComponent(buildMenuBar());
+
+		TextField txtSalePoint = new TextField();
 		txtSalePoint.setValue("PUNTO DE VENTA 1");
 		txtSalePoint.setReadOnly(true);
-		txtSalePoint.addStyleNames(ValoTheme.TEXTFIELD_BORDERLESS, ValoTheme.TEXTFIELD_TINY, ValoTheme.TEXTFIELD_ALIGN_CENTER);		
+		txtSalePoint.addStyleNames(ValoTheme.TEXTFIELD_BORDERLESS, ValoTheme.TEXTFIELD_TINY,
+				ValoTheme.TEXTFIELD_ALIGN_CENTER);
 		menu.addComponent(txtSalePoint);
+
 		
 		menu.addComponent(menuItemsLayout);
 
 		menu.setWidth("100%");
 		menu.setSizeFull();
+		menu.addStyleName("v-scrollable");
+		
 
 		// buildNavigator(root, menu, menuItemsLayout);
 		return menu;
@@ -312,6 +324,7 @@ public class VissaUI extends UI {
 
 		tree = new Tree<>();
 		treeData = new TreeData<>();
+		tree.scrollToEnd();
 
 		buildMenuItems();
 
@@ -418,6 +431,8 @@ public class VissaUI extends UI {
 		navigator.addView(KEY_NOTIFICATION, NotificationLayout.class);
 		navigator.addView(KEY_MEASUREMENT_UNIT, MeasurementUnitLayout.class);
 		navigator.addView(KEY_PRODUCT_CATEGORY, ProductCategoryLayout.class);
+		navigator.addView(KEY_EGRESS_TYPE, EgressTypeLayout.class);
+		navigator.addView(KEY_STORES, StoreLayout.class);
 		navigator.setErrorView(DefaultView.class);
 		UI.getCurrent().setNavigator(navigator);
 
