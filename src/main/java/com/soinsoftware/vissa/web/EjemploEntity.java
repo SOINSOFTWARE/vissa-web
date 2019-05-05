@@ -1,22 +1,18 @@
 package com.soinsoftware.vissa.web;
 
-import static com.soinsoftware.vissa.web.VissaUI.KEY_WAREHOUSE;
+import static com.soinsoftware.vissa.web.VissaUI.KEY_EGRESS_TYPE;
 
 import java.io.IOException;
-import java.math.BigInteger;
 import java.util.Set;
 
 import org.apache.log4j.Logger;
+import org.jsoup.helper.StringUtil;
 
-import com.soinsoftware.vissa.bll.TableSequenceBll;
-import com.soinsoftware.vissa.bll.WarehouseBll;
-import com.soinsoftware.vissa.model.Product;
-import com.soinsoftware.vissa.model.TableSequence;
-import com.soinsoftware.vissa.model.Warehouse;
+import com.soinsoftware.vissa.bll.EgressTypeBll;
+import com.soinsoftware.vissa.model.EgressType;
 import com.soinsoftware.vissa.util.ViewHelper;
-import com.vaadin.data.provider.ConfigurableFilterDataProvider;
 import com.vaadin.data.provider.ListDataProvider;
-import com.vaadin.server.SerializablePredicate;
+import com.vaadin.server.FontAwesome;
 import com.vaadin.ui.AbstractOrderedLayout;
 import com.vaadin.ui.Button;
 import com.vaadin.ui.Component;
@@ -30,61 +26,37 @@ import com.vaadin.ui.TextField;
 import com.vaadin.ui.VerticalLayout;
 import com.vaadin.ui.themes.ValoTheme;
 
-@SuppressWarnings("unchecked")
-public class EjemploEntity extends AbstractEditableLayout<Warehouse> {
+@SuppressWarnings({ "unchecked", "deprecation" })
+public class EjemploEntity extends AbstractEditableLayout<EgressType> {
 
 	/**
 	 * 
 	 */
-	private static final long serialVersionUID = 5076502522106126046L;
+	private static final long serialVersionUID = 5076502522106926046L;
 
-	protected static final Logger log = Logger.getLogger(EjemploEntity.class);
+	protected static final Logger log = Logger.getLogger(EgressTypeLayout.class);
 
-	private final WarehouseBll warehouseBll;
+	// Blls
+	private final EgressTypeBll egressTypeBll;
 
-	private final TableSequenceBll tableSequenceBll;
-
-	private Grid<Warehouse> warehouseGrid;
-
+	// Components
+	private Grid<EgressType> grid;
 	private TextField txFilterByName;
 	private TextField txFilterByCode;
 	private TextField txtCode;
 	private TextField txtName;
 
-	private boolean listMode;
-	private TableSequence tableSequence;
-
-	private ConfigurableFilterDataProvider<Warehouse, Void, SerializablePredicate<Warehouse>> filterProductDataProvider;
-
-	public EjemploEntity(boolean list) throws IOException {
-		super("Bodegas", KEY_WAREHOUSE);
-		listMode = list;
-		warehouseBll = WarehouseBll.getInstance();
-		tableSequenceBll = TableSequenceBll.getInstance();
-		if (listMode) {
-			addListTab();
-		}
-	}
+	private ListDataProvider<EgressType> dataProvider;
 
 	public EjemploEntity() throws IOException {
-		super("Bodegas", KEY_WAREHOUSE);
-		warehouseBll = WarehouseBll.getInstance();
-		tableSequenceBll = TableSequenceBll.getInstance();
-		if (listMode) {
-			addListTab();
-		}
-		listMode = false;
+		super("Conceptos de egresos", KEY_EGRESS_TYPE);
+		egressTypeBll = EgressTypeBll.getInstance();
 	}
 
 	@Override
 	protected AbstractOrderedLayout buildListView() {
 		VerticalLayout layout = ViewHelper.buildVerticalLayout(false, false);
-		Panel buttonPanel = null;
-		if (listMode) {
-			buttonPanel = buildButtonPanelListMode();
-		} else {
-			buttonPanel = buildButtonPanelForLists();
-		}
+		Panel buttonPanel = buildButtonPanelForLists();
 		Panel filterPanel = buildFilterPanel();
 		Panel dataPanel = buildGridPanel();
 		layout.addComponents(buttonPanel, filterPanel, dataPanel);
@@ -94,7 +66,7 @@ public class EjemploEntity extends AbstractEditableLayout<Warehouse> {
 	}
 
 	@Override
-	protected AbstractOrderedLayout buildEditionView(Warehouse entity) {
+	protected AbstractOrderedLayout buildEditionView(EgressType entity) {
 		VerticalLayout layout = ViewHelper.buildVerticalLayout(false, false);
 		Panel buttonPanel = buildButtonPanelForEdition(entity);
 		Component dataPanel = buildEditionComponent(entity);
@@ -105,37 +77,41 @@ public class EjemploEntity extends AbstractEditableLayout<Warehouse> {
 	@Override
 	protected Panel buildGridPanel() {
 		VerticalLayout layout = ViewHelper.buildVerticalLayout(true, true);
-		warehouseGrid = ViewHelper.buildGrid(SelectionMode.SINGLE);
-		warehouseGrid.addColumn(Warehouse::getCode).setCaption("Código");
-		warehouseGrid.addColumn(Warehouse::getName).setCaption("Nombre");
+		grid = ViewHelper.buildGrid(SelectionMode.SINGLE);
+		grid.addColumn(EgressType::getCode).setCaption("Código");
+		grid.addColumn(EgressType::getName).setCaption("Nombre");
 
-		layout.addComponent(ViewHelper.buildPanel(null, warehouseGrid));
+		layout.addComponent(ViewHelper.buildPanel(null, grid));
+
+		grid.addItemClickListener(listener -> {
+			if (listener.getMouseEventDetails().isDoubleClick())
+				grid.select(listener.getItem());
+			showEditionTab(listener.getItem(), "Editar", FontAwesome.EDIT);
+		});
+
 		fillGridData();
+
 		return ViewHelper.buildPanel(null, layout);
 	}
 
 	@Override
-	protected Component buildEditionComponent(Warehouse warehouse) {
-		// Cosultar consecutivo de productos
-		getSequence();
+	protected Component buildEditionComponent(EgressType entity) {
+
 		VerticalLayout layout = ViewHelper.buildVerticalLayout(true, true);
-		/// 1. Informacion producto
-		txtCode = new TextField("Código de bodega");
-		txtCode.setWidth("50%");
-		txtCode.setEnabled(false);
 
-		txtCode.setValue(warehouse != null ? warehouse.getCode()
-				: tableSequence != null ? String.valueOf(tableSequence.getSequence()) : "");
+		txtCode = new TextField("Código de egreso");
+		txtCode.setStyleName(ValoTheme.TEXTAREA_TINY);
+		txtCode.setRequiredIndicatorVisible(true);
 
-		txtName = new TextField("Nombre de bodega");
-		txtName.setWidth("50%");
-		txtName.setValue(warehouse != null ? warehouse.getName() : "");
+		txtName = new TextField("Nombre de egreso");
+		txtName.setStyleName(ValoTheme.TEXTAREA_TINY);
+		txtName.setRequiredIndicatorVisible(true);
 
 		// ----------------------------------------------------------------------------------
 
 		final FormLayout form = new FormLayout();
 		form.setMargin(true);
-		form.setCaption("Datos del producto");
+		form.setCaption("Datos del tipo de egreso");
 		form.setCaptionAsHtml(true);
 		form.setSizeFull();
 		form.setWidth("50%");
@@ -144,7 +120,31 @@ public class EjemploEntity extends AbstractEditableLayout<Warehouse> {
 		form.addComponents(txtCode, txtName);
 
 		layout.addComponents(form);
+
+		// Establece valores para los campos
+		setFieldValues(entity);
+
 		return layout;
+	}
+
+	/**
+	 * Metodo para establecer los valores en los componentes
+	 * 
+	 * @param entity
+	 */
+	private void setFieldValues(EgressType entity) {
+		String strLog = "[setFieldValues] ";
+		try {
+			log.info(strLog + "[parameters] entity: " + entity);
+
+			if (entity != null) {
+				txtCode.setValue(entity.getCode());
+				txtName.setValue(entity.getName());
+			}
+		} catch (Exception e) {
+			log.error(strLog + "[Exception]" + e.getMessage());
+			e.printStackTrace();
+		}
 	}
 
 	protected Panel buildButtonPanelListMode() {
@@ -156,79 +156,183 @@ public class EjemploEntity extends AbstractEditableLayout<Warehouse> {
 		return ViewHelper.buildPanel(null, layout);
 	}
 
+	/**
+	 * Metodo para cargar los datos en la grid
+	 */
 	@Override
 	protected void fillGridData() {
-		ListDataProvider<Warehouse> dataProvider = new ListDataProvider<>(warehouseBll.selectAll(false));
-		filterProductDataProvider = dataProvider.withConfigurableFilter();
-		warehouseGrid.setDataProvider(filterProductDataProvider);
-
+		String strLog = "[fillGridData] ";
+		try {
+			dataProvider = new ListDataProvider<>(egressTypeBll.selectAll(false));
+			grid.setDataProvider(dataProvider);
+		} catch (Exception e) {
+			log.error(strLog + "[Exception] " + e.getMessage());
+			e.printStackTrace();
+		}
 	}
 
+	/**
+	 * Metodo con el evento del botón guardar
+	 */
 	@Override
-	protected void saveButtonAction(Warehouse entity) {
-		Warehouse.Builder warehouseBuilder = null;
-		if (entity == null) {
-			warehouseBuilder = Warehouse.builder();
-		} else {
-			warehouseBuilder = Warehouse.builder(entity);
+	protected void saveButtonAction(EgressType entity) {
+		String strLog = "[saveButtonAction] ";
+		try {
+			log.info(strLog + "[parameters] entity: " + entity);
+
+			String message = validateRequiredFields();
+			if (!message.isEmpty()) {
+				ViewHelper.showNotification(message, Notification.Type.WARNING_MESSAGE);
+			} else {
+				saveEntity(entity);
+			}
+		} catch (Exception e) {
+			log.error(strLog + "[Exception] " + e.getMessage());
+			e.printStackTrace();
+		}
+	}
+
+	/**
+	 * Metodo para guardar el tipo de egreso
+	 * 
+	 * @param entity
+	 */
+	private void saveEntity(EgressType entity) {
+		String strLog = "[saveEgressType] ";
+		try {
+
+			log.info(strLog + "[parameters] entity: " + entity);
+
+			EgressType.Builder builder = null;
+			if (entity == null) {
+				builder = EgressType.builder();
+			} else {
+				builder = EgressType.builder(entity);
+			}
+
+			entity = builder.code(txtCode.getValue().toUpperCase()).name(txtName.getValue().toUpperCase())
+					.archived(false).build();
+
+			save(egressTypeBll, entity, "Tipo de egreso guardado");
+
+		} catch (Exception e) {
+			log.error(strLog + "[Exception] " + e.getMessage());
+			e.printStackTrace();
+		}
+	}
+
+	/**
+	 * Metodo para validar los campos obligatorios para guardar el tipo de egreso
+	 * 
+	 * @return
+	 */
+	private String validateRequiredFields() {
+		String message = "";
+		String character = "|";
+
+		if (StringUtil.isBlank(txtCode.getValue())) {
+			if (!message.isEmpty()) {
+				message = message.concat(character);
+			}
+			message = message.concat("El código es obligatorio");
+		}
+		if (StringUtil.isBlank(txtName.getValue())) {
+			if (!message.isEmpty()) {
+				message = message.concat(character);
+			}
+			message = message.concat("El nombre es obligatorio");
 		}
 
-		entity = warehouseBuilder.code(txtCode.getValue()).name(txtName.getValue()).archived(false).build();
-		save(warehouseBll, entity, "Bodega guardada");
-		tableSequenceBll.save(tableSequence);
-
+		return message;
 	}
 
+	/**
+	 * Metodo para obtener el registro seleccionado de la grid
+	 */
 	@Override
-	public Warehouse getSelected() {
-		Warehouse warehouseObj = null;
-		Set<Warehouse> warehouses = warehouseGrid.getSelectedItems();
-		if (warehouses != null && !warehouses.isEmpty()) {
-			warehouseObj = (Warehouse) warehouses.toArray()[0];
+	public EgressType getSelected() {
+		String strLog = "[getSelected] ";
+		EgressType egressTypeObj = null;
+		try {
+			Set<EgressType> egressTypes = grid.getSelectedItems();
+			if (egressTypes != null && !egressTypes.isEmpty()) {
+				egressTypeObj = (EgressType) egressTypes.toArray()[0];
+			}
+		} catch (Exception e) {
+			log.error(strLog + "" + e.getMessage());
+			e.printStackTrace();
 		}
-		return warehouseObj;
+		return egressTypeObj;
 	}
 
 	@Override
-	protected void delete(Warehouse entity) {
-		entity = Warehouse.builder(entity).archived(true).build();
-		save(warehouseBll, entity, "Bodega borrada");
+	protected void delete(EgressType entity) {
+		String strLog = "[delete] ";
+		try {
+			log.info(strLog + "[parameters] entity: " + entity);
+
+			entity = EgressType.builder(entity).archived(true).build();
+			save(egressTypeBll, entity, "Tipo de egreso borrado");
+		} catch (Exception e) {
+			log.error(strLog + "[Exception] " + e.getMessage());
+			e.printStackTrace();
+		}
 	}
 
 	private Panel buildFilterPanel() {
 		HorizontalLayout layout = ViewHelper.buildHorizontalLayout(true, true);
-		txFilterByName = new TextField("Nombre");
-		txFilterByName.addValueChangeListener(e -> refreshGrid());
+
 		txFilterByCode = new TextField("Código");
+		txFilterByCode.setStyleName(ValoTheme.TEXTFIELD_TINY);
 		txFilterByCode.addValueChangeListener(e -> refreshGrid());
+		txFilterByName = new TextField("Nombre");
+
+		txFilterByName.setStyleName(ValoTheme.TEXTFIELD_TINY);
+		txFilterByName.addValueChangeListener(e -> refreshGrid());
+
 		layout.addComponents(txFilterByCode, txFilterByName);
+
 		return ViewHelper.buildPanel("Filtrar por", layout);
 	}
 
+	/**
+	 * Metodo para recargar los registros de la grid
+	 */
 	private void refreshGrid() {
-		filterProductDataProvider.setFilter(filterGrid());
-		warehouseGrid.getDataProvider().refreshAll();
-	}
-
-	private SerializablePredicate<Warehouse> filterGrid() {
-		SerializablePredicate<Warehouse> columnPredicate = null;
-		String codeFilter = txFilterByCode.getValue().trim();
-		String nameFilter = txFilterByName.getValue().trim();
-		columnPredicate = warehouse -> (warehouse.getName().toLowerCase().contains(nameFilter.toLowerCase())
-				&& warehouse.getCode().toLowerCase().contains(codeFilter.toLowerCase()));
-		return columnPredicate;
-	}
-
-	private void getSequence() {
-		BigInteger seq = null;
-		TableSequence tableSeqObj = tableSequenceBll.select(Warehouse.class.getSimpleName());
-		if (tableSeqObj != null) {
-			seq = tableSeqObj.getSequence().add(BigInteger.valueOf(1L));
-			TableSequence.Builder builder = TableSequence.builder(tableSeqObj);
-			tableSequence = builder.sequence(seq).build();
-		} else {
-			ViewHelper.showNotification("No hay consecutivo configurado para bodegas",
-					Notification.Type.ERROR_MESSAGE);
+		if (dataProvider != null) {
+			dataProvider.setFilter(egressType -> filterGrid(egressType));
 		}
 	}
+
+	/**
+	 * Metodo para filtrar los registros de la grid
+	 * 
+	 * @param entity
+	 * @return
+	 */
+	private boolean filterGrid(EgressType entity) {
+		String strLog = "[filterGrid] ";
+		boolean result = false;
+		try {
+
+			// Filtrar por el codigo del tipo de egreso
+			String codeFilter = txFilterByCode.getValue();
+			if (!org.jsoup.helper.StringUtil.isBlank(codeFilter)) {
+				result = result && (entity.getCode().contains(codeFilter.toUpperCase()));
+			}
+
+			// Filtrar por el nombre del tipo de egreso
+			String nameFilter = txFilterByName.getValue();
+			if (!org.jsoup.helper.StringUtil.isBlank(nameFilter)) {
+				result = result && (entity.getCode().contains(nameFilter.toUpperCase()));
+			}
+		} catch (Exception e) {
+			log.error(strLog + "[Exception] " + e.getMessage());
+			e.printStackTrace();
+			ViewHelper.showNotification(e.getMessage(), Notification.Type.WARNING_MESSAGE);
+		}
+		return result;
+
+	}
+
 }

@@ -91,8 +91,9 @@ public class MenuLayout extends AbstractEditableLayout<Menu> {
 
 		VerticalLayout layout = ViewHelper.buildVerticalLayout(true, true);
 		txtName = new TextField("Nombre");
-		txtName.setStyleName(ValoTheme.TEXTFIELD_TINY);
+		txtName.setStyleName(ValoTheme.TEXTFIELD_SMALL);
 		txtName.setRequiredIndicatorVisible(true);
+		txtName.setValue(menu != null ? menu.getName() : "");
 
 		FormLayout companyForm = ViewHelper.buildForm("Menu", false, false);
 		companyForm.addComponent(txtName);
