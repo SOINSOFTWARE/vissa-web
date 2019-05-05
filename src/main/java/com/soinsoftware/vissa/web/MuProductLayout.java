@@ -178,7 +178,8 @@ public class MuProductLayout extends AbstractEditableLayout<MeasurementUnitProdu
 
 		muProductGrid.getEditor().setEnabled(true);
 
-	//	muProductGrid.getEditor().addSaveListener(e -> validateMeasurementUnit(e.getBean()));
+		// muProductGrid.getEditor().addSaveListener(e ->
+		// validateMeasurementUnit(e.getBean()));
 
 		layout.addComponents(buttonLayout, muProductGrid);
 
@@ -319,8 +320,8 @@ public class MuProductLayout extends AbstractEditableLayout<MeasurementUnitProdu
 
 			measurementUnitProductBll.save(entity);
 			log.info(strLog + " MU product guardada: " + entity);
-            
-			//Se consulta la UM guardada al producto
+
+			// Se consulta la UM guardada al producto
 			List<MeasurementUnitProduct> muList = measurementUnitProductBll.select(entity.getMeasurementUnit(),
 					product);
 
@@ -439,10 +440,10 @@ public class MuProductLayout extends AbstractEditableLayout<MeasurementUnitProdu
 				Double qtyEquivalence = muEquivalent.getQtyEquivalence();
 
 				// El precio se divide
-				muProduct.setPurchasePrice(muProduct.getPurchasePrice() / qtyEquivalence);
+				muProduct.setPurchasePrice((double) Math.round(muEquivalent.getPurchasePrice() / qtyEquivalence));
 
 				// El stock se multiplica
-				muProduct.setStock(muProduct.getStock() * qtyEquivalence);
+				muProduct.setStock((double) (muEquivalent.getStock() * qtyEquivalence));
 			}
 
 		} catch (Exception e) {

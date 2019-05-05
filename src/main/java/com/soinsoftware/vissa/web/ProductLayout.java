@@ -2,14 +2,18 @@ package com.soinsoftware.vissa.web;
 
 import static com.soinsoftware.vissa.web.VissaUI.KEY_PRODUCTS;
 
+import java.io.File;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.apache.log4j.Logger;
+import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
 import org.hibernate.HibernateException;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.transaction.annotation.Propagation;
@@ -27,7 +31,6 @@ import com.soinsoftware.vissa.bll.ProductCategoryBll;
 import com.soinsoftware.vissa.bll.ProductTypeBll;
 import com.soinsoftware.vissa.bll.TableSequenceBll;
 import com.soinsoftware.vissa.bll.WarehouseBll;
-import com.soinsoftware.vissa.common.CommonsConstants;
 import com.soinsoftware.vissa.exception.ModelValidationException;
 import com.soinsoftware.vissa.model.Lot;
 import com.soinsoftware.vissa.model.MeasurementUnit;
@@ -46,10 +49,14 @@ import com.vaadin.data.Binder;
 import com.vaadin.data.Binder.Binding;
 import com.vaadin.data.provider.ConfigurableFilterDataProvider;
 import com.vaadin.data.provider.ListDataProvider;
+import com.vaadin.data.provider.Query;
+import com.vaadin.server.FileDownloader;
+import com.vaadin.server.FileResource;
 import com.vaadin.server.FontAwesome;
 import com.vaadin.server.Page;
 import com.vaadin.server.SerializablePredicate;
 import com.vaadin.ui.AbstractOrderedLayout;
+import com.vaadin.ui.Alignment;
 import com.vaadin.ui.Button;
 import com.vaadin.ui.CheckBox;
 import com.vaadin.ui.ComboBox;
@@ -125,6 +132,8 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 	private ELayoutMode mode = ELayoutMode.ALL;
 
 	private Window lotSubwindow;
+
+	private Button printBtn;
 
 	public ProductLayout(ELayoutMode mode, List<Product> productList) throws IOException {
 		super("Productos", KEY_PRODUCTS);
@@ -290,13 +299,18 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 
 		MUGrid.getEditor().setEnabled(true);
 
-		cbMeasureUnit.addValueChangeListener(e -> convertMuEquivalence(CommonsConstants.MEASUREMENT_UNIT_PRODUCT));
+		/*
+		 * cbMeasureUnit.addValueChangeListener(e -> { MeasurementUnitProduct muProd =
+		 * new MeasurementUnitProduct(); muProd.setProduct(product);
+		 * muProd.setMeasurementUnit(e.getValue()); convertMuEquivalence(muProd);
+		 * MUGrid.getDataProvider().refreshAll(); });
+		 */
 
 		layout.addComponents(horizontaLayout, MUGrid);
 
 		MUGrid.getEditor().addSaveListener(e -> {
-
-			saveMuProduct(e.getBean());
+			MeasurementUnitProduct muProd = convertMuEquivalence(e.getBean());
+			saveMuProduct(muProd);
 			priceGrid.getDataProvider().refreshAll();
 		});
 
@@ -1023,17 +1037,36 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 	 * 
 	 */
 	private Panel buildFilterPanel() {
+		String strLog = "[buildFilterPanel]";
 		HorizontalLayout layout = ViewHelper.buildHorizontalLayout(true, true);
+		try {
+			txFilterByCode = new TextField("Código");
+			txFilterByCode.focus();
+			txFilterByCode.addStyleName(ValoTheme.TEXTFIELD_TINY);
+			txFilterByCode.addValueChangeListener(e -> refreshGrid());
 
-		txFilterByCode = new TextField("Código");
-		txFilterByCode.focus();
-		txFilterByCode.addStyleName(ValoTheme.TEXTFIELD_TINY);
-		txFilterByCode.addValueChangeListener(e -> refreshGrid());
+			txFilterByName = new TextField("Nombre");
+			txFilterByName.addStyleName(ValoTheme.TEXTFIELD_TINY);
+			txFilterByName.addValueChangeListener(e -> refreshGrid());
 
-		txFilterByName = new TextField("Nombre");
-		txFilterByName.addStyleName(ValoTheme.TEXTFIELD_TINY);
-		txFilterByName.addValueChangeListener(e -> refreshGrid());
-		layout.addComponents(txFilterByCode, txFilterByName);
+			String fileName = "ReporteProductos";
+			File fileTemp = File.createTempFile(fileName, ".xlsx");
+			String filePath = fileTemp.getPath();
+			log.info(strLog + "filePath:" + filePath);
+
+			printBtn = new Button(FontAwesome.PRINT);
+			printBtn.addStyleName(ValoTheme.BUTTON_ICON_ONLY);
+			printBtn.addClickListener(e -> printReport(filePath));
+
+			FileDownloader downloader = new FileDownloader(new FileResource(fileTemp));
+			downloader.extend(printBtn);
+
+			layout.addComponents(txFilterByCode, txFilterByName, printBtn);
+			layout.setComponentAlignment(printBtn, Alignment.BOTTOM_CENTER);
+		} catch (Exception e) {
+			log.error(strLog + "[Exception] " + e.getMessage());
+			e.printStackTrace();
+		}
 		return ViewHelper.buildPanel("Filtrar por", layout);
 	}
 
@@ -1106,6 +1139,7 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 			umNew.setUtilityPrc(umPral.getUtilityPrc());
 			umNew.setSalePrice(umPral.getSalePrice());
 			umNew.setSaleTax(umPral.getSaleTax());
+			umNew.setPrincipal(false);
 			// Se copia el mismo stock para luego modificarlo de acuerdo a la equivalencia
 			umNew.setStock(umPral.getStock());
 
@@ -1171,21 +1205,23 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 		String strLog = "[convertMuEquivalence] ";
 		try {
 			// Se busca las UM donde la nueva UM es equivalencia
-			List<MeasurementUnitProduct> muProducts = measurementUnitProductBll
-					.selectMuEquivalence(muProduct.getMeasurementUnit(), muProduct.getProduct());
+			if (muProduct != null) {
+				List<MeasurementUnitProduct> muProducts = measurementUnitProductBll
+						.selectMuEquivalence(muProduct.getMeasurementUnit(), muProduct.getProduct());
 
-			if (muProducts != null && !muProducts.isEmpty()) {
-				// Se toma el primero que se encuentre
-				MeasurementUnitProduct muEquivalent = muProducts.get(0);
+				if (muProducts != null && !muProducts.isEmpty()) {
+					// Se toma el primero que se encuentre
+					MeasurementUnitProduct muEquivalent = muProducts.get(0);
 
-				// La cantidad es el factor de conversión
-				Double qtyEquivalence = muEquivalent.getQtyEquivalence();
+					// La cantidad es el factor de conversión
+					Double qtyEquivalence = muEquivalent.getQtyEquivalence();
 
-				// El precio se divide
-				muProduct.setPurchasePrice(muProduct.getPurchasePrice() / qtyEquivalence);
+					// El precio se divide
+					muProduct.setPurchasePrice(muEquivalent.getPurchasePrice() / qtyEquivalence);
 
-				// El stock se multiplica
-				muProduct.setStock(muProduct.getStock() * qtyEquivalence);
+					// El stock se multiplica
+					muProduct.setStock(muEquivalent.getStock() * qtyEquivalence);
+				}
 			}
 
 		} catch (Exception e) {
@@ -1240,6 +1276,29 @@ public class ProductLayout extends AbstractEditableLayout<Product> {
 			e.printStackTrace();
 		}
 		return muTargetStock;
+	}
+
+	@SuppressWarnings("unchecked")
+	public void printReport(String fileName) {
+		List<Product> products = productGrid.getDataProvider().fetch(new Query<>()).collect(Collectors.toList());
+		log.info("size: " + products.size());
+
+		try {
+			String sheetName = "Facturas";
+			List<String> columns = Arrays.asList("CODIGO", "NOMBRE", "CATEGORIA", "STOCK",
+					"UNIDAD DE MEDIDA PRINCIPAL");
+
+			ProductReportGenerator<Product> excelWriter = new ProductReportGenerator<Product>(fileName);
+			excelWriter.createSheet(sheetName, columns, products);
+			excelWriter.exportFile();
+
+		} catch (InvalidFormatException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 
 	public void updateProductLayout(Product product) {
