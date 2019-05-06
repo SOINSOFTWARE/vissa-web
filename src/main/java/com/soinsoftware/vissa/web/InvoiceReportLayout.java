@@ -34,6 +34,8 @@ import com.soinsoftware.vissa.util.StringUtility;
 import com.soinsoftware.vissa.util.ViewHelper;
 import com.vaadin.data.provider.ListDataProvider;
 import com.vaadin.data.provider.Query;
+import com.vaadin.navigator.View;
+import com.vaadin.navigator.ViewChangeListener.ViewChangeEvent;
 import com.vaadin.server.FileDownloader;
 import com.vaadin.server.FileResource;
 import com.vaadin.server.FontAwesome;
@@ -155,10 +157,8 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 	@Override
 	protected AbstractOrderedLayout buildEditionView(Document entity) {
 		VerticalLayout layout = ViewHelper.buildVerticalLayout(false, false);
-		Panel buttonPanel = buildButtonPanelForEdition(entity);
 		Component dataPanel = buildEditionComponent(entity);
-		Panel buttonPanel2 = buildButtonPanelForEdition(entity);
-		layout.addComponents(buttonPanel, dataPanel, buttonPanel2);
+		layout.addComponents(dataPanel);
 		return layout;
 	}
 
@@ -216,6 +216,8 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 			grid.addItemClickListener(listener -> {
 				if (listener.getMouseEventDetails().isDoubleClick()) {
 					grid.select(listener.getItem());
+					editButtonAction("Factura");
+
 				}
 			});
 			fillGridData();
@@ -231,8 +233,21 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 	}
 
 	@Override
-	protected Component buildEditionComponent(Document person) {
+	protected Component buildEditionComponent(Document document) {
+		String strLog = "[buildEditionComponent] ";
+
 		VerticalLayout layout = ViewHelper.buildVerticalLayout(false, false);
+		try {
+			InvoiceLayout invoiceLayout = new InvoiceLayout();
+			invoiceLayout.enter(this.event);
+			// invoiceLayout.test();
+			// invoiceLayout.searchDocument(document.getCode());
+
+			layout.addComponent(invoiceLayout);
+		} catch (Exception e) {
+			log.error(strLog + "[Exception] " + e.getMessage());
+			e.printStackTrace();
+		}
 
 		return layout;
 	}
@@ -272,6 +287,29 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 			log.error(strLog + "[Exception]" + e.getMessage());
 			e.printStackTrace();
 		}
+	}
+
+	/**
+	 * Metodo para construir la ventana para mostrar la factura
+	 * 
+	 * @param document
+	 */
+	private Component buildInvoiceWindow(Document document) {
+		String strLog = "[buildInvoiceWindow] ";
+		VerticalLayout layout = ViewHelper.buildVerticalLayout(false, false);
+		try {
+			log.info(strLog + "[parameters] document: " + document);
+
+			InvoiceLayout invoiceLayout = new InvoiceLayout();
+
+			layout.addComponent(invoiceLayout);
+
+		} catch (Exception e) {
+			log.error(strLog + "[Exception] " + e.getMessage());
+			e.printStackTrace();
+		}
+		return layout;
+
 	}
 
 	/*
@@ -401,9 +439,8 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 			txtQuantity.setStyleName(ValoTheme.TEXTFIELD_TINY);
 
 			txtTotal = new TextField("Total:");
-			txtTotal.setReadOnly(true);			
+			txtTotal.setReadOnly(true);
 			txtTotal.setStyleName(ValoTheme.TEXTFIELD_TINY);
-			
 
 			String fileName = "Reporte" + documentType.getName().replaceAll(" ", "");
 			File fileTemp = File.createTempFile(fileName, ".xlsx");
@@ -462,7 +499,7 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 			result = document.getDocumentDate().before(endDateFilter)
 					&& document.getDocumentDate().after(iniDateFilter);
 
-			// Filtro por tipo de pago			
+			// Filtro por tipo de pago
 			if (cbFilterPaymentType.getSelectedItem().isPresent()) {
 				PaymentType paymentTypeFilter = cbFilterPaymentType.getSelectedItem().get().getPaymentType();
 

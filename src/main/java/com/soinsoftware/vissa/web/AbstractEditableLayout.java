@@ -38,6 +38,7 @@ public abstract class AbstractEditableLayout<E> extends VerticalLayout implement
 	protected String pageTitle;
 	private PermissionUtil permissionUtil;
 	protected boolean hasError = false;
+	protected ViewChangeEvent event;
 
 	public AbstractEditableLayout(String pageTitle, String menuName) {
 		super();
@@ -48,6 +49,7 @@ public abstract class AbstractEditableLayout<E> extends VerticalLayout implement
 	@Override
 	public void enter(ViewChangeEvent event) {
 		View.super.enter(event);
+		this.event = event;
 		this.permissionUtil = new PermissionUtil(getSession().getAttribute(User.class).getRole().getPermissions());
 		setMargin(true);
 		addPageTitle(pageTitle);

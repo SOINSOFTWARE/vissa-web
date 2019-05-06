@@ -274,6 +274,60 @@ public class InvoiceLayout extends VerticalLayout implements View {
 		// NotificationUtil.showNotification(this);
 
 	}
+	
+	public void test () {
+		this.addDetachListener(e -> exit());
+		this.getUI().addDetachListener(e -> exit());
+
+		this.user = getSession().getAttribute(User.class);
+		this.role = user.getRole();
+		this.permissionUtil = new PermissionUtil(this.role.getPermissions());
+		// setMargin(true);
+		String title = "";
+		if (transactionType.equals(ETransactionType.ENTRADA)) {
+			title = "Compra";
+		} else {
+			title = "Venta";
+		}
+		Label tittle = new Label(title);
+		tittle.addStyleName(ValoTheme.LABEL_H3);
+		addComponent(tittle);
+
+		// Crear el generador de facturas
+		String reportName = null;
+		if (transactionType.equals(ETransactionType.ENTRADA)) {
+			reportName = Commons.PURCHASE_REPORT_NAME;
+		} else if (transactionType.equals(ETransactionType.SALIDA)) {
+			reportName = Commons.SALE_REPORT_NAME;
+		}
+		if (reportName != null && !reportName.isEmpty()) {
+			pdfGenerator = new PdfGenerator(
+					new File(VaadinService.getCurrent().getBaseDirectory().getAbsolutePath() + reportName), title);
+		}
+
+		VerticalLayout layout = ViewHelper.buildVerticalLayout(false, false);
+
+		// Panel de botones
+		Panel buttonPanel = buildButtonPanel();
+
+		// Panel de filtros
+		Panel filterPanel = buildFilterPanel();
+
+		// Panel de encabezado factura
+		Panel headerPanel = buildHeaderPanel();
+
+		// Panel de detalle factura
+		Panel detailPanel = buildDetailPanel();
+
+		layout.addComponents(buttonPanel, filterPanel, headerPanel, detailPanel);
+		addComponent(layout);
+		this.setMargin(false);
+		this.setSpacing(false);
+		// notificationWindow();
+		// Commons.appWindow = getUI();
+		// NotificationUtil.showNotification(this);
+
+	}
 
 	public void notificationWindow() {
 
@@ -2209,7 +2263,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 	 * 
 	 * @param documentNumber
 	 */
-	private void searchDocument(String documentNumber) {
+	public void searchDocument(String documentNumber) {
 		String strLog = "[searchDocument]";
 		try {
 			// cleanButtonAction();
