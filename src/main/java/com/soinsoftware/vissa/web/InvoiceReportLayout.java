@@ -4,6 +4,7 @@ import static com.soinsoftware.vissa.web.VissaUI.KEY_REPORTS;
 
 import java.io.File;
 import java.io.IOException;
+import java.text.DecimalFormat;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Date;
@@ -30,12 +31,11 @@ import com.soinsoftware.vissa.model.PersonType;
 import com.soinsoftware.vissa.util.Commons;
 import com.soinsoftware.vissa.util.DateUtil;
 import com.soinsoftware.vissa.util.ELayoutMode;
+import com.soinsoftware.vissa.util.NumericUtil;
 import com.soinsoftware.vissa.util.StringUtility;
 import com.soinsoftware.vissa.util.ViewHelper;
 import com.vaadin.data.provider.ListDataProvider;
 import com.vaadin.data.provider.Query;
-import com.vaadin.navigator.View;
-import com.vaadin.navigator.ViewChangeListener.ViewChangeEvent;
 import com.vaadin.server.FileDownloader;
 import com.vaadin.server.FileResource;
 import com.vaadin.server.FontAwesome;
@@ -201,7 +201,10 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 			}).setCaption(Commons.PERSON_TYPE);
 
 			grid.addColumn(Document::getPaymentStatus).setCaption("Estado");
-			totalColumn = grid.addColumn(Document::getTotalValue).setCaption("Total");
+			
+			totalColumn = grid.addColumn(document -> {
+				return NumericUtil.formatDecimal(document.getTotalValue());
+			}).setCaption("Total");
 
 			grid.addColumn(document -> {
 				Double payValue = document.getPayValue() != null ? document.getPayValue() : document.getTotalValue();
@@ -239,7 +242,7 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 		VerticalLayout layout = ViewHelper.buildVerticalLayout(false, false);
 		try {
 			InvoiceLayout invoiceLayout = new InvoiceLayout();
-			invoiceLayout.enter(this.event);
+			invoiceLayout.test();
 			// invoiceLayout.test();
 			// invoiceLayout.searchDocument(document.getCode());
 
@@ -322,7 +325,8 @@ public class InvoiceReportLayout extends AbstractEditableLayout<Document> {
 		String total = null;
 		try {
 			log.info(strLog + "[parameters] documentList: " + detailDataProv);
-			total = String.valueOf(detailDataProv.fetch(new Query<>()).mapToDouble(Document::getTotalValue).sum());
+			total = NumericUtil
+					.formatDecimal((detailDataProv.fetch(new Query<>()).mapToDouble(Document::getTotalValue).sum()));
 			String quantity = String.valueOf(detailDataProv.size(new Query<>()));
 			txtQuantity.setValue(quantity);
 			txtTotal.setValue(total);

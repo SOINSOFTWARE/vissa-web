@@ -95,6 +95,7 @@ import com.vaadin.ui.Label;
 import com.vaadin.ui.Notification;
 import com.vaadin.ui.Panel;
 import com.vaadin.ui.TextField;
+import com.vaadin.ui.UI;
 import com.vaadin.ui.VerticalLayout;
 import com.vaadin.ui.Window;
 import com.vaadin.ui.components.grid.FooterRow;
@@ -275,7 +276,7 @@ public class InvoiceLayout extends VerticalLayout implements View {
 
 	}
 	
-	public void test () {
+	public void test () {	
 		this.addDetachListener(e -> exit());
 		this.getUI().addDetachListener(e -> exit());
 

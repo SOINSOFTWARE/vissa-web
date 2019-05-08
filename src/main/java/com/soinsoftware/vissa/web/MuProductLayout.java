@@ -287,7 +287,7 @@ public class MuProductLayout extends AbstractEditableLayout<MeasurementUnitProdu
 		try {
 			String message = validateRequiredFields();
 			if (!message.isEmpty()) {
-				ViewHelper.showNotification(message, Notification.Type.ERROR_MESSAGE);
+				ViewHelper.showNotification(message, Notification.Type.WARNING_MESSAGE);
 			} else {
 				for (MeasurementUnitProduct muProduct : muProductList) {
 					muProduct = convertMuEquivalence(muProduct);
@@ -390,6 +390,16 @@ public class MuProductLayout extends AbstractEditableLayout<MeasurementUnitProdu
 			} else {
 				if (muProduct.isPrincipal()) {
 					qtyPral++;
+				}
+				// Se valida que los datos para UMequivalente estén diligenciados
+				if (muProduct.getMuEquivalence() != null && muProduct.getQtyEquivalence() == 0) {
+					message = "Debe ingresar la cantidad en la UM equivalente para "
+							+ muProduct.getMeasurementUnit().getName();
+					break;
+				}
+				if (muProduct.getMuEquivalence() == null && muProduct.getQtyEquivalence() != 0) {
+					message = "Debe ingresar la UM equivalente para " + muProduct.getMeasurementUnit().getName();
+					break;
 				}
 			}
 		}

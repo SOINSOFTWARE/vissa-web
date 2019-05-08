@@ -8,6 +8,7 @@ public class Commons {
 	public static String PERSON_TYPE;
 	public static final String FORMAT_DATE_TIME = "dd-MM-yyyy HH:mm:ss";
 	public static final String FORMAT_DATE = "dd-MM-yyyy";
+	public static final String DECIMAL_FORMAT = "###,###,###.##";
 	public static String MENU_NAME;
 	public static String LOGIN;
 	public static String ROLE;

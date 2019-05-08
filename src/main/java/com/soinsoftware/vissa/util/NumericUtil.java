@@ -1,6 +1,7 @@
 package com.soinsoftware.vissa.util;
 
 import java.math.BigDecimal;
+import java.text.DecimalFormat;
 
 import org.jfree.util.Log;
 
@@ -43,6 +44,18 @@ public class NumericUtil {
 			Log.error(strLog + "[Exception]" + e.getMessage());
 		}
 		return bigDecVlr;
+	}
+
+	public static String formatDecimal(Double value) {
+		String str = null;
+		try {
+			String pattern = Commons.DECIMAL_FORMAT;
+			DecimalFormat myFormatter = new DecimalFormat(pattern);
+			str = myFormatter.format(value);
+		} catch (Exception e) {
+			Log.error(e.getMessage());
+		}
+		return str;
 	}
 
 }
