@@ -4,18 +4,22 @@ import java.io.File;
 import java.io.IOException;
 import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
+import java.util.List;
 
 import javax.servlet.annotation.WebServlet;
 
 import org.apache.log4j.Logger;
 
 import com.soinsoftware.vissa.bll.UserBll;
+import com.soinsoftware.vissa.bll.UserStoreBll;
 import com.soinsoftware.vissa.common.CommonsConstants;
 import com.soinsoftware.vissa.model.ERole;
 import com.soinsoftware.vissa.model.ETransactionType;
 import com.soinsoftware.vissa.model.Person;
 import com.soinsoftware.vissa.model.PersonType;
+import com.soinsoftware.vissa.model.Store;
 import com.soinsoftware.vissa.model.User;
+import com.soinsoftware.vissa.model.UserStore;
 import com.soinsoftware.vissa.util.Commons;
 import com.soinsoftware.vissa.util.ELayoutMode;
 import com.soinsoftware.vissa.util.PermissionUtil;
@@ -23,6 +27,7 @@ import com.soinsoftware.vissa.util.ViewHelper;
 import com.vaadin.annotations.Theme;
 import com.vaadin.annotations.VaadinServletConfiguration;
 import com.vaadin.data.TreeData;
+import com.vaadin.data.provider.ListDataProvider;
 import com.vaadin.data.provider.TreeDataProvider;
 import com.vaadin.event.ShortcutAction;
 import com.vaadin.event.ShortcutListener;
@@ -36,6 +41,7 @@ import com.vaadin.server.VaadinServlet;
 import com.vaadin.shared.ui.ContentMode;
 import com.vaadin.ui.Alignment;
 import com.vaadin.ui.Button;
+import com.vaadin.ui.ComboBox;
 import com.vaadin.ui.Component;
 import com.vaadin.ui.ComponentContainer;
 import com.vaadin.ui.CssLayout;
@@ -262,19 +268,18 @@ public class VissaUI extends UI {
 		menu.addComponent(buildMenuBar());
 
 		TextField txtSalePoint = new TextField();
-		txtSalePoint.setValue("PUNTO DE VENTA 1");
+		txtSalePoint.setValue(
+				getSession().getAttribute(Store.class) == null ? "" : getSession().getAttribute(Store.class).getName());
 		txtSalePoint.setReadOnly(true);
 		txtSalePoint.addStyleNames(ValoTheme.TEXTFIELD_BORDERLESS, ValoTheme.TEXTFIELD_TINY,
 				ValoTheme.TEXTFIELD_ALIGN_CENTER);
 		menu.addComponent(txtSalePoint);
 
-		
 		menu.addComponent(menuItemsLayout);
 
 		menu.setWidth("100%");
 		menu.setSizeFull();
 		menu.addStyleName("v-scrollable");
-		
 
 		// buildNavigator(root, menu, menuItemsLayout);
 		return menu;
@@ -443,8 +448,93 @@ public class VissaUI extends UI {
 		if (user == null) {
 			buildLoginForm();
 		} else {
-			permissionUtil = new PermissionUtil(user.getRole().getPermissions());
-			buildValoMenuLayout();
+			validateStore(user);
+		}
+	}
+
+	private boolean validateStore(User user) {
+		String strLog = "[validateStore] ";
+		try {
+			List<UserStore> storeList = UserStoreBll.getInstance().select(user);
+			/// Si el usuario está asociado a varias puntos de venta se muestra lista de
+			/// estos para escoger una
+			if (storeList.size() > 1) {
+				buildStoreWindow(storeList);
+				return false;
+			} else if (storeList.size() == 1) {
+				selectStore(storeList.get(0).getStore());
+			}
+
+		} catch (Exception e) {
+			log.error(strLog + "[Exception]" + e.getMessage());
+			e.printStackTrace();
+			return false;
+		}
+
+		return true;
+
+	}
+
+	private void buildStoreWindow(List<UserStore> stores) {
+		String strLog = "[buildStoreWindow] ";
+		try {
+			Window storeWindow = ViewHelper.buildSubwindow("25%", null);
+			storeWindow.setClosable(false);
+			storeWindow.setDraggable(false);
+			storeWindow.setModal(true);
+			storeWindow.setResizable(false);
+
+			VerticalLayout layout = ViewHelper.buildVerticalLayout(true, true);
+
+			ComboBox<UserStore> cbStore = new ComboBox<>("Seleccione el punto de venta");
+			cbStore.setStyleName(ValoTheme.COMBOBOX_TINY);
+			cbStore.setEmptySelectionAllowed(false);
+			cbStore.setEmptySelectionCaption("Seleccione");
+
+			ListDataProvider<UserStore> storeData = new ListDataProvider<>(stores);
+			cbStore.setDataProvider(storeData);
+			cbStore.setItemCaptionGenerator(userStore -> {
+				return userStore.getStore().getName();
+			});
+			Button btn = new Button("Ingresar");
+			btn.setStyleName(ValoTheme.BUTTON_TINY);
+			btn.addClickListener(e -> {
+				selectStore(cbStore.getSelectedItem().isPresent() ? cbStore.getSelectedItem().get().getStore() : null);
+				storeWindow.close();
+			});
+			layout.addComponents(cbStore, btn);
+			layout.setComponentAlignment(cbStore, Alignment.MIDDLE_CENTER);
+			layout.setComponentAlignment(btn, Alignment.MIDDLE_CENTER);
+
+			storeWindow.setContent(layout);
+
+			getUI().addWindow(storeWindow);
+
+		} catch (Exception e) {
+			log.error(strLog + "[Exception] " + e.getMessage());
+			e.printStackTrace();
+		}
+
+	}
+
+	private void selectStore(Store store) {
+		String strLog = "[selectStore] ";
+		try {
+
+			log.info(strLog + "[parameters] store: " + store);
+			if (store != null) {
+				getSession().setAttribute(Store.class, store);
+				log.info(strLog + getSession().getAttribute(Store.class));
+				
+				//Se construye el menu de inicio
+				permissionUtil = new PermissionUtil(getSession().getAttribute(User.class).getRole().getPermissions());
+				buildValoMenuLayout();
+			} else {
+				ViewHelper.showNotification("Debe seleccionar el punto de venta", Notification.Type.WARNING_MESSAGE);
+			}
+		} catch (Exception e) {
+			log.error(strLog + "[Exception] " + e.getMessage());
+			e.printStackTrace();
 		}
 	}
 
@@ -452,6 +542,9 @@ public class VissaUI extends UI {
 		return getSession().getAttribute(User.class);
 	}
 
+	/**
+	 * Costruir de venta para login
+	 */
 	private void buildLoginForm() {
 		VerticalLayout contentLayout = new VerticalLayout();
 		contentLayout.setSizeFull();
@@ -527,6 +620,12 @@ public class VissaUI extends UI {
 		setContent(loginPanel);
 	}
 
+	/**
+	 * Metodo para autenticar en el sistema
+	 * 
+	 * @param username
+	 * @param password
+	 */
 	private void authenticate(String username, String password) {
 		try {
 			User user = UserBll.getInstance().select(User.builder().login(username).password(password).build());
@@ -541,6 +640,11 @@ public class VissaUI extends UI {
 		}
 	}
 
+	/**
+	 * Ventana para el cambio de contraseña
+	 * 
+	 * @param login
+	 */
 	private void buildChangePasswordWindow(String login) {
 		Window subWindow = ViewHelper.buildSubwindow("50%", null);
 		UserLayout userLayout;
