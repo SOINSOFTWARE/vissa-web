@@ -8,8 +8,9 @@ import java.util.Set;
 import org.apache.log4j.Logger;
 import org.jsoup.helper.StringUtil;
 
-import com.soinsoftware.vissa.bll.EgressTypeBll;
+import com.soinsoftware.vissa.bll.WarehouseTransferBll;
 import com.soinsoftware.vissa.model.EgressType;
+import com.soinsoftware.vissa.model.WarehouseTransfer;
 import com.soinsoftware.vissa.util.ViewHelper;
 import com.vaadin.data.provider.ListDataProvider;
 import com.vaadin.server.FontAwesome;
@@ -27,7 +28,7 @@ import com.vaadin.ui.VerticalLayout;
 import com.vaadin.ui.themes.ValoTheme;
 
 @SuppressWarnings({ "unchecked", "deprecation" })
-public class WarehouseTransferLayout extends AbstractEditableLayout<EgressType> {
+public class WarehouseTransferLayout extends AbstractEditableLayout<WarehouseTransfer> {
 
 	/**
 	 * 
@@ -37,20 +38,20 @@ public class WarehouseTransferLayout extends AbstractEditableLayout<EgressType> 
 	protected static final Logger log = Logger.getLogger(EgressTypeLayout.class);
 
 	// Blls
-	private final EgressTypeBll egressTypeBll;
+	private final WarehouseTransferBll egressTypeBll;
 
 	// Components
-	private Grid<EgressType> grid;
+	private Grid<WarehouseTransfer> grid;
 	private TextField txFilterByName;
 	private TextField txFilterByCode;
 	private TextField txtCode;
 	private TextField txtName;
 
-	private ListDataProvider<EgressType> dataProvider;
+	private ListDataProvider<WarehouseTransfer> dataProvider;
 
 	public WarehouseTransferLayout() throws IOException {
 		super("Conceptos de egresos", KEY_EGRESS_TYPE);
-		egressTypeBll = EgressTypeBll.getInstance();
+		egressTypeBll = WarehouseTransferBll.getInstance();
 	}
 
 	@Override
@@ -66,7 +67,7 @@ public class WarehouseTransferLayout extends AbstractEditableLayout<EgressType> 
 	}
 
 	@Override
-	protected AbstractOrderedLayout buildEditionView(EgressType entity) {
+	protected AbstractOrderedLayout buildEditionView(WarehouseTransfer entity) {
 		VerticalLayout layout = ViewHelper.buildVerticalLayout(false, false);
 		Panel buttonPanel = buildButtonPanelForEdition(entity);
 		Component dataPanel = buildEditionComponent(entity);
@@ -78,8 +79,12 @@ public class WarehouseTransferLayout extends AbstractEditableLayout<EgressType> 
 	protected Panel buildGridPanel() {
 		VerticalLayout layout = ViewHelper.buildVerticalLayout(true, true);
 		grid = ViewHelper.buildGrid(SelectionMode.SINGLE);
-		grid.addColumn(EgressType::getCode).setCaption("Código");
-		grid.addColumn(EgressType::getName).setCaption("Nombre");
+		grid.addColumn(WarehouseTransfer::getCode).setCaption("Número");
+		grid.addColumn(WarehouseTransfer::getTransferDate).setCaption("Fecha de traslado");
+		grid.addColumn(WarehouseTransfer::getWarehouseSource).setCaption("Bodega origen");
+		grid.addColumn(WarehouseTransfer::getWarehouseTarget).setCaption("Bodega destino");
+		grid.addColumn(WarehouseTransfer::getLot).setCaption("Lote");
+		grid.addColumn(WarehouseTransfer::getQuantity).setCaption("Cantidad");
 
 		layout.addComponent(ViewHelper.buildPanel(null, grid));
 
@@ -95,7 +100,7 @@ public class WarehouseTransferLayout extends AbstractEditableLayout<EgressType> 
 	}
 
 	@Override
-	protected Component buildEditionComponent(EgressType entity) {
+	protected Component buildEditionComponent(WarehouseTransfer entity) {
 
 		VerticalLayout layout = ViewHelper.buildVerticalLayout(true, true);
 
@@ -132,14 +137,13 @@ public class WarehouseTransferLayout extends AbstractEditableLayout<EgressType> 
 	 * 
 	 * @param entity
 	 */
-	private void setFieldValues(EgressType entity) {
+	private void setFieldValues(WarehouseTransfer entity) {
 		String strLog = "[setFieldValues] ";
 		try {
 			log.info(strLog + "[parameters] entity: " + entity);
 
 			if (entity != null) {
-				txtCode.setValue(entity.getCode());
-				txtName.setValue(entity.getName());
+
 			}
 		} catch (Exception e) {
 			log.error(strLog + "[Exception]" + e.getMessage());
@@ -175,7 +179,7 @@ public class WarehouseTransferLayout extends AbstractEditableLayout<EgressType> 
 	 * Metodo con el evento del botón guardar
 	 */
 	@Override
-	protected void saveButtonAction(EgressType entity) {
+	protected void saveButtonAction(WarehouseTransfer entity) {
 		String strLog = "[saveButtonAction] ";
 		try {
 			log.info(strLog + "[parameters] entity: " + entity);
@@ -197,21 +201,24 @@ public class WarehouseTransferLayout extends AbstractEditableLayout<EgressType> 
 	 * 
 	 * @param entity
 	 */
-	private void saveEntity(EgressType entity) {
+	private void saveEntity(WarehouseTransfer entity) {
 		String strLog = "[saveEgressType] ";
 		try {
 
 			log.info(strLog + "[parameters] entity: " + entity);
 
-			EgressType.Builder builder = null;
+			WarehouseTransfer.Builder builder = null;
 			if (entity == null) {
-				builder = EgressType.builder();
+				builder = WarehouseTransfer.builder();
 			} else {
-				builder = EgressType.builder(entity);
+				builder = WarehouseTransfer.builder(entity);
 			}
 
-			entity = builder.code(txtCode.getValue().toUpperCase()).name(txtName.getValue().toUpperCase())
-					.archived(false).build();
+			/*
+			 * entity =
+			 * builder.code(txtCode.getValue().toUpperCase()).name(txtName.getValue().
+			 * toUpperCase()) .archived(false).build();
+			 */
 
 			save(egressTypeBll, entity, "Tipo de egreso guardado");
 
@@ -250,7 +257,7 @@ public class WarehouseTransferLayout extends AbstractEditableLayout<EgressType> 
 	 * Metodo para obtener el registro seleccionado de la grid
 	 */
 	@Override
-	public EgressType getSelected() {
+	public WarehouseTransfer getSelected() {
 		String strLog = "[getSelected] ";
 		EgressType egressTypeObj = null;
 		try {
