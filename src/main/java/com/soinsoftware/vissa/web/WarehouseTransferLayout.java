@@ -1,6 +1,6 @@
 package com.soinsoftware.vissa.web;
 
-import static com.soinsoftware.vissa.web.VissaUI.KEY_EGRESS_TYPE;
+import static com.soinsoftware.vissa.web.VissaUI.KEY_WAREHOUSE_TRANSFER;
 
 import java.io.IOException;
 import java.util.Set;
@@ -9,13 +9,14 @@ import org.apache.log4j.Logger;
 import org.jsoup.helper.StringUtil;
 
 import com.soinsoftware.vissa.bll.WarehouseTransferBll;
-import com.soinsoftware.vissa.model.EgressType;
+import com.soinsoftware.vissa.model.Warehouse;
 import com.soinsoftware.vissa.model.WarehouseTransfer;
 import com.soinsoftware.vissa.util.ViewHelper;
 import com.vaadin.data.provider.ListDataProvider;
 import com.vaadin.server.FontAwesome;
 import com.vaadin.ui.AbstractOrderedLayout;
 import com.vaadin.ui.Button;
+import com.vaadin.ui.ComboBox;
 import com.vaadin.ui.Component;
 import com.vaadin.ui.FormLayout;
 import com.vaadin.ui.Grid;
@@ -46,11 +47,13 @@ public class WarehouseTransferLayout extends AbstractEditableLayout<WarehouseTra
 	private TextField txFilterByCode;
 	private TextField txtCode;
 	private TextField txtName;
+	private ComboBox<Warehouse> cbWarehouseSource;
+	private ComboBox<Warehouse> cbWarehouseTarget;
 
 	private ListDataProvider<WarehouseTransfer> dataProvider;
 
 	public WarehouseTransferLayout() throws IOException {
-		super("Conceptos de egresos", KEY_EGRESS_TYPE);
+		super("Conceptos de egresos", KEY_WAREHOUSE_TRANSFER);
 		egressTypeBll = WarehouseTransferBll.getInstance();
 	}
 
@@ -104,11 +107,11 @@ public class WarehouseTransferLayout extends AbstractEditableLayout<WarehouseTra
 
 		VerticalLayout layout = ViewHelper.buildVerticalLayout(true, true);
 
-		txtCode = new TextField("Código de egreso");
+		txtCode = new TextField("Número de traslado");
 		txtCode.setStyleName(ValoTheme.TEXTAREA_TINY);
 		txtCode.setRequiredIndicatorVisible(true);
 
-		txtName = new TextField("Nombre de egreso");
+		cbWarehouseSource = new ComboBox("Bodega origen");
 		txtName.setStyleName(ValoTheme.TEXTAREA_TINY);
 		txtName.setRequiredIndicatorVisible(true);
 
@@ -259,11 +262,11 @@ public class WarehouseTransferLayout extends AbstractEditableLayout<WarehouseTra
 	@Override
 	public WarehouseTransfer getSelected() {
 		String strLog = "[getSelected] ";
-		EgressType egressTypeObj = null;
+		WarehouseTransfer egressTypeObj = null;
 		try {
-			Set<EgressType> egressTypes = grid.getSelectedItems();
+			Set<WarehouseTransfer> egressTypes = grid.getSelectedItems();
 			if (egressTypes != null && !egressTypes.isEmpty()) {
-				egressTypeObj = (EgressType) egressTypes.toArray()[0];
+				egressTypeObj = (WarehouseTransfer) egressTypes.toArray()[0];
 			}
 		} catch (Exception e) {
 			log.error(strLog + "" + e.getMessage());
@@ -273,12 +276,12 @@ public class WarehouseTransferLayout extends AbstractEditableLayout<WarehouseTra
 	}
 
 	@Override
-	protected void delete(EgressType entity) {
+	protected void delete(WarehouseTransfer entity) {
 		String strLog = "[delete] ";
 		try {
 			log.info(strLog + "[parameters] entity: " + entity);
 
-			entity = EgressType.builder(entity).archived(true).build();
+			entity = WarehouseTransfer.builder(entity).archived(true).build();
 			save(egressTypeBll, entity, "Tipo de egreso borrado");
 		} catch (Exception e) {
 			log.error(strLog + "[Exception] " + e.getMessage());
@@ -317,22 +320,22 @@ public class WarehouseTransferLayout extends AbstractEditableLayout<WarehouseTra
 	 * @param entity
 	 * @return
 	 */
-	private boolean filterGrid(EgressType entity) {
+	private boolean filterGrid(WarehouseTransfer entity) {
 		String strLog = "[filterGrid] ";
 		boolean result = false;
 		try {
 
 			// Filtrar por el codigo del tipo de egreso
-			String codeFilter = txFilterByCode.getValue();
-			if (!org.jsoup.helper.StringUtil.isBlank(codeFilter)) {
-				result = result && (entity.getCode().contains(codeFilter.toUpperCase()));
-			}
-
-			// Filtrar por el nombre del tipo de egreso
-			String nameFilter = txFilterByName.getValue();
-			if (!org.jsoup.helper.StringUtil.isBlank(nameFilter)) {
-				result = result && (entity.getCode().contains(nameFilter.toUpperCase()));
-			}
+			/*
+			 * String codeFilter = txFilterByCode.getValue(); if
+			 * (!org.jsoup.helper.StringUtil.isBlank(codeFilter)) { result = result &&
+			 * (entity.getCode().contains(codeFilter.toUpperCase())); }
+			 * 
+			 * // Filtrar por el nombre del tipo de egreso String nameFilter =
+			 * txFilterByName.getValue(); if
+			 * (!org.jsoup.helper.StringUtil.isBlank(nameFilter)) { result = result &&
+			 * (entity.getCode().contains(nameFilter.toUpperCase())); }
+			 */
 		} catch (Exception e) {
 			log.error(strLog + "[Exception] " + e.getMessage());
 			e.printStackTrace();

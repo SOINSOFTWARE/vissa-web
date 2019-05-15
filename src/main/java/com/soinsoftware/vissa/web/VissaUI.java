@@ -112,6 +112,7 @@ public class VissaUI extends UI {
 	protected static final String KEY_PRODUCT_CATEGORY = "Dependencias";
 	protected static final String KEY_EGRESS_TYPE = "Tipos de egresos";
 	protected static final String KEY_STORES = "Puntos de venta";
+	protected static final String KEY_WAREHOUSE_TRANSFER = "Traslado de bodegas";
 
 	private PermissionUtil permissionUtil;
 
@@ -187,6 +188,9 @@ public class VissaUI extends UI {
 			}
 			if (permissionUtil.canView(KEY_INVENTORY_MOV)) {
 				treeData.addItem(KEY_INVENTORY, KEY_INVENTORY_MOV);
+			}
+			if (permissionUtil.canView(KEY_WAREHOUSE_TRANSFER)) {
+				treeData.addItem(KEY_INVENTORY, KEY_WAREHOUSE_TRANSFER);
 			}
 		}
 		if (permissionUtil.canView(KEY_REPORTS)) {
@@ -438,6 +442,7 @@ public class VissaUI extends UI {
 		navigator.addView(KEY_PRODUCT_CATEGORY, ProductCategoryLayout.class);
 		navigator.addView(KEY_EGRESS_TYPE, EgressTypeLayout.class);
 		navigator.addView(KEY_STORES, StoreLayout.class);
+		navigator.addView(KEY_WAREHOUSE_TRANSFER, WarehouseLayout.class);
 		navigator.setErrorView(DefaultView.class);
 		UI.getCurrent().setNavigator(navigator);
 
