@@ -442,7 +442,7 @@ public class VissaUI extends UI {
 		navigator.addView(KEY_PRODUCT_CATEGORY, ProductCategoryLayout.class);
 		navigator.addView(KEY_EGRESS_TYPE, EgressTypeLayout.class);
 		navigator.addView(KEY_STORES, StoreLayout.class);
-		navigator.addView(KEY_WAREHOUSE_TRANSFER, WarehouseLayout.class);
+		navigator.addView(KEY_WAREHOUSE_TRANSFER, WarehouseTransferLayout.class);
 		navigator.setErrorView(DefaultView.class);
 		UI.getCurrent().setNavigator(navigator);
 

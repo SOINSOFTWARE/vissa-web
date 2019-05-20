@@ -7,7 +7,9 @@ import java.util.Set;
 
 import org.apache.log4j.Logger;
 import org.jsoup.helper.StringUtil;
+import org.vaadin.ui.NumberField;
 
+import com.soinsoftware.vissa.bll.WarehouseBll;
 import com.soinsoftware.vissa.bll.WarehouseTransferBll;
 import com.soinsoftware.vissa.model.Warehouse;
 import com.soinsoftware.vissa.model.WarehouseTransfer;
@@ -40,6 +42,7 @@ public class WarehouseTransferLayout extends AbstractEditableLayout<WarehouseTra
 
 	// Blls
 	private final WarehouseTransferBll egressTypeBll;
+	private final WarehouseBll warehouseBll;
 
 	// Components
 	private Grid<WarehouseTransfer> grid;
@@ -47,14 +50,16 @@ public class WarehouseTransferLayout extends AbstractEditableLayout<WarehouseTra
 	private TextField txFilterByCode;
 	private TextField txtCode;
 	private TextField txtName;
+	private NumberField txtQuantity;
 	private ComboBox<Warehouse> cbWarehouseSource;
 	private ComboBox<Warehouse> cbWarehouseTarget;
 
 	private ListDataProvider<WarehouseTransfer> dataProvider;
 
 	public WarehouseTransferLayout() throws IOException {
-		super("Conceptos de egresos", KEY_WAREHOUSE_TRANSFER);
+		super("Translado de bodegas", KEY_WAREHOUSE_TRANSFER);
 		egressTypeBll = WarehouseTransferBll.getInstance();
+		warehouseBll = WarehouseBll.getInstance();
 	}
 
 	@Override
@@ -111,21 +116,39 @@ public class WarehouseTransferLayout extends AbstractEditableLayout<WarehouseTra
 		txtCode.setStyleName(ValoTheme.TEXTAREA_TINY);
 		txtCode.setRequiredIndicatorVisible(true);
 
-		cbWarehouseSource = new ComboBox("Bodega origen");
-		txtName.setStyleName(ValoTheme.TEXTAREA_TINY);
-		txtName.setRequiredIndicatorVisible(true);
+		ListDataProvider<Warehouse> warehouseData = new ListDataProvider<>(warehouseBll.selectAll());
+
+		cbWarehouseSource = new ComboBox<Warehouse>("Bodega origen");
+		cbWarehouseSource.setEmptySelectionCaption("Seleccione");
+		cbWarehouseSource.setEmptySelectionAllowed(false);
+		cbWarehouseSource.setStyleName(ValoTheme.COMBOBOX_TINY);
+		cbWarehouseSource.setRequiredIndicatorVisible(true);
+		cbWarehouseSource.setDataProvider(warehouseData);
+		cbWarehouseSource.setItemCaptionGenerator(Warehouse::getName);
+
+		cbWarehouseTarget = new ComboBox<Warehouse>("Bodega destino");
+		cbWarehouseTarget.setEmptySelectionCaption("Seleccione");
+		cbWarehouseTarget.setEmptySelectionAllowed(false);
+		cbWarehouseTarget.setStyleName(ValoTheme.COMBOBOX_TINY);
+		cbWarehouseTarget.setRequiredIndicatorVisible(true);
+		cbWarehouseTarget.setDataProvider(warehouseData);
+		cbWarehouseTarget.setItemCaptionGenerator(Warehouse::getName);
+
+		txtQuantity = new NumberField("Cantidad de ítems a transferir");
+		txtQuantity.setStyleName(ValoTheme.TEXTAREA_TINY);
+		txtQuantity.setRequiredIndicatorVisible(true);
 
 		// ----------------------------------------------------------------------------------
 
 		final FormLayout form = new FormLayout();
 		form.setMargin(true);
-		form.setCaption("Datos del tipo de egreso");
+		form.setCaption("Datos del traslado de bodegas");
 		form.setCaptionAsHtml(true);
 		form.setSizeFull();
 		form.setWidth("50%");
 		form.addStyleName(ValoTheme.FORMLAYOUT_LIGHT);
 
-		form.addComponents(txtCode, txtName);
+		form.addComponents(txtCode, cbWarehouseSource, cbWarehouseTarget, txtQuantity);
 
 		layout.addComponents(form);
 
