@@ -50,6 +50,7 @@ public class WarehouseTransferLayout extends AbstractEditableLayout<WarehouseTra
 	private TextField txFilterByCode;
 	private TextField txtCode;
 	private TextField txtName;
+	private TextField txtProduct;
 	private NumberField txtQuantity;
 	private ComboBox<Warehouse> cbWarehouseSource;
 	private ComboBox<Warehouse> cbWarehouseTarget;
@@ -134,6 +135,8 @@ public class WarehouseTransferLayout extends AbstractEditableLayout<WarehouseTra
 		cbWarehouseTarget.setDataProvider(warehouseData);
 		cbWarehouseTarget.setItemCaptionGenerator(Warehouse::getName);
 
+		txtProduct = new TextField("Cantidad de ítems a transferir");
+		
 		txtQuantity = new NumberField("Cantidad de ítems a transferir");
 		txtQuantity.setStyleName(ValoTheme.TEXTAREA_TINY);
 		txtQuantity.setRequiredIndicatorVisible(true);
